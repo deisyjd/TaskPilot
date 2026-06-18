@@ -167,19 +167,21 @@ export function TaskModal({ task, defaultStatus = 'pending', open, onClose }: Pr
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        className="p-0 gap-0 overflow-hidden"
+        className="p-0 gap-0 flex flex-col"
         style={{
           maxWidth: '880px',
           width: '95vw',
+          height: '90vh',
           maxHeight: '90vh',
           borderRadius: 'var(--tp-r-card)',
           border: '1px solid var(--tp-border)',
           boxShadow: '0 24px 64px rgba(17,19,24,0.18)',
+          overflow: 'hidden',
         }}
       >
         {/* ── Header ── */}
         <div
-          className="flex items-start gap-4 px-7 pt-6 pb-5"
+          className="flex items-start gap-4 px-7 pt-6 pb-5 shrink-0"
           style={{ borderBottom: '1px solid var(--tp-border)' }}
         >
           <div className="flex-1 min-w-0">
@@ -204,19 +206,10 @@ export function TaskModal({ task, defaultStatus = 'pending', open, onClose }: Pr
               style={{ color: 'var(--tp-text)', lineHeight: '1.3' }}
             />
           </div>
-          {!isNew && (
-            <button
-              onClick={() => setConfirmOpen(true)}
-              className="p-2.5 rounded-xl transition-all hover:scale-105 shrink-0"
-              style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
         </div>
 
         {/* ── Body ── */}
-        <div className="flex overflow-hidden" style={{ maxHeight: 'calc(90vh - 148px)' }}>
+        <div className="flex flex-1 min-h-0 overflow-hidden">
 
           {/* ── Left: content ── */}
           <div className="flex-1 overflow-y-auto px-7 py-6 space-y-7 min-w-0">
@@ -541,24 +534,38 @@ export function TaskModal({ task, defaultStatus = 'pending', open, onClose }: Pr
 
         {/* ── Footer ── */}
         <div
-          className="flex items-center justify-end gap-2.5 px-7 py-4"
+          className="flex items-center px-7 py-4 shrink-0 gap-2.5"
           style={{ borderTop: '1px solid var(--tp-border)', backgroundColor: 'var(--tp-surface)' }}
         >
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 text-sm font-medium rounded-full transition-all hover:opacity-70"
-            style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!form.title.trim()}
-            className="px-6 py-2.5 text-sm font-semibold rounded-full transition-all hover:opacity-88 disabled:opacity-40"
-            style={{ backgroundColor: 'var(--tp-dark)', color: '#FFFFFF' }}
-          >
-            {isNew ? 'Crear tarea' : 'Guardar cambios'}
-          </button>
+          {/* Delete — left, only in edit mode */}
+          {!isNew && (
+            <button
+              onClick={() => setConfirmOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all hover:opacity-80"
+              style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Eliminar
+            </button>
+          )}
+
+          <div className="flex items-center gap-2.5 ml-auto">
+            <button
+              onClick={onClose}
+              className="px-5 py-2.5 text-sm font-medium rounded-full transition-all hover:opacity-70"
+              style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!form.title.trim()}
+              className="px-6 py-2.5 text-sm font-semibold rounded-full transition-all hover:opacity-88 disabled:opacity-40"
+              style={{ backgroundColor: 'var(--tp-dark)', color: '#FFFFFF' }}
+            >
+              {isNew ? 'Crear tarea' : 'Guardar cambios'}
+            </button>
+          </div>
         </div>
       </DialogContent>
 
