@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 const mainNav = [
   { label: 'Dashboard',        href: '/dashboard',      icon: LayoutDashboard },
   { label: 'Tablero',          href: '/board',           icon: Columns3 },
+  { label: 'Proyectos',        href: '/projects',        icon: FolderOpen },
   { label: 'Línea de tiempo',  href: '/timeline',        icon: CalendarDays },
   { label: 'Revisión semanal', href: '/weekly-review',   icon: ClipboardCheck },
   { label: 'Responsables',     href: '/users',           icon: Users },
@@ -36,8 +37,10 @@ export function Sidebar() {
   const currentUser = useCurrentUser()
   const isAdmin = can(currentUser, 'create_user')
 
-  const isActive = (href: string) =>
-    pathname === href || pathname.startsWith(href + '/')
+  const isActive = (href: string) => {
+    if (href === '/projects') return pathname === '/projects' || pathname.startsWith('/projects/')
+    return pathname === href || pathname.startsWith(href + '/')
+  }
 
   return (
     <aside

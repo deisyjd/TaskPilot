@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useCurrentUser } from '@/store/useUserStore'
 import { USERS } from '@/data/users'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Project } from '@/types'
-import { FolderPlus, Upload, X, ImageIcon } from 'lucide-react'
+import { FolderPlus } from 'lucide-react'
+import { ImageUploader } from '@/components/shared/ImageUploader'
 
 const PRESET_COLORS = [
   '#6366f1', '#0ea5e9', '#f43f5e', '#10b981', '#f59e0b',
@@ -32,7 +33,6 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
   const [status, setStatus] = useState<'active' | 'inactive'>('active')
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
-  const coverInputRef = useRef<HTMLInputElement>(null)
 
   const isEditMode = Boolean(existingProject)
 
@@ -54,16 +54,6 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
       setCoverPreview(null)
     }
   }, [existingProject, open])
-
-  // ─── Cover image upload ────────────────────────────────────
-  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setCoverPreview(reader.result as string)
-    reader.readAsDataURL(file)
-    e.target.value = ''
-  }
 
   // ─── Member toggle ─────────────────────────────────────────
   const toggleMember = (memberName: string) => {
@@ -210,67 +200,12 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
           </div>
 
           {/* Cover image */}
-          <div>
-            <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--tp-text-2)' }}>
-              Imagen de portada
-            </p>
-            {coverPreview ? (
-              <div className="relative">
-                <img
-                  src={coverPreview}
-                  alt="Portada"
-                  className="w-full object-cover"
-                  style={{ height: '120px', borderRadius: '12px' }}
-                />
-                <button
-                  onClick={() => setCoverPreview(null)}
-                  className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-all hover:opacity-80"
-                  style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff' }}
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => coverInputRef.current?.click()}
-                  className="absolute bottom-2 right-2 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all hover:opacity-80"
-                  style={{
-                    backgroundColor: 'rgba(0,0,0,0.5)',
-                    color: '#fff',
-                    borderRadius: '999px',
-                    backdropFilter: 'blur(4px)',
-                  }}
-                >
-                  <Upload className="w-3 h-3" />
-                  Cambiar
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => coverInputRef.current?.click()}
-                className="w-full flex flex-col items-center justify-center gap-2 transition-all hover:opacity-80"
-                style={{
-                  height: '80px',
-                  borderRadius: '12px',
-                  border: '2px dashed var(--tp-border)',
-                  backgroundColor: 'var(--tp-bg)',
-                  color: 'var(--tp-text-2)',
-                  cursor: 'pointer',
-                }}
-              >
-                <ImageIcon className="w-5 h-5" />
-                <span className="text-xs">Subir imagen de portada</span>
-              </button>
-            )}
-            <input
-              ref={coverInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleCoverUpload}
-            />
-            <p className="text-xs mt-1" style={{ color: 'var(--tp-text-2)' }}>
-              En producción: se almacena en Supabase/S3. Ahora se guarda como base64.
-            </p>
-          </div>
+          <ImageUploader
+            label="Imagen de portada"
+            value={coverPreview ?? undefined}
+            onChange={(url) => setCoverPreview(url)}
+            aspectRatio="cover"
+          />
 
           {/* Color picker */}
           <div>

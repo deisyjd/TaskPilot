@@ -18,7 +18,7 @@ const pageTitles: Record<string, { title: string; sub: string }> = {
   '/settings':     { title: 'Configuración',         sub: 'Preferencias del sistema' },
   '/chats':        { title: 'Chats',                 sub: 'Mensajes y conversaciones del equipo' },
   '/admin/users':  { title: 'Administración',        sub: 'Gestión de usuarios y roles' },
-  '/projects':     { title: 'Proyectos',             sub: 'Detalle del proyecto' },
+  '/projects':     { title: 'Proyectos',             sub: 'Todos los proyectos activos' },
 }
 
 const PRIORITY_ORDER: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 }

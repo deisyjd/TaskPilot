@@ -39,7 +39,7 @@ export default function ProjectPage({
           </p>
         </div>
         <Link
-          href="/board"
+          href="/projects"
           className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium transition-all hover:opacity-80"
           style={{
             backgroundColor: 'var(--tp-dark)',
@@ -61,12 +61,12 @@ export default function ProjectPage({
       {/* Back navigation */}
       <div className="flex items-center gap-3">
         <Link
-          href="/board"
+          href="/projects"
           className="flex items-center gap-2 text-sm font-medium transition-all hover:opacity-70"
           style={{ color: 'var(--tp-text-2)', textDecoration: 'none' }}
         >
           <ArrowLeft className="w-4 h-4" />
-          Volver al tablero
+          Proyectos
         </Link>
         <span style={{ color: 'var(--tp-border)' }}>/</span>
         <span className="text-sm font-medium" style={{ color: 'var(--tp-text)' }}>

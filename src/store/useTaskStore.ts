@@ -144,6 +144,20 @@ export const useTaskStore = create<TaskStore>()(
     {
       name: 'taskpilot-store',
       version: 1,
+      storage: {
+        getItem: (name) => {
+          const value = localStorage.getItem(name)
+          return value ? JSON.parse(value) : null
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, JSON.stringify(value))
+          } catch {
+            console.warn('[taskpilot-store] localStorage quota exceeded — state not persisted.')
+          }
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      },
       onRehydrateStorage: () => (state) => {
         if (state?.projects) _refreshProjectCache(state.projects)
       },
