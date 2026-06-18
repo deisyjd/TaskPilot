@@ -48,18 +48,20 @@ export function Sidebar() {
       style={{ backgroundColor: 'var(--tp-dark)' }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 pt-6 pb-5">
+      <div className="flex items-center gap-2.5 px-5 pt-6 pb-5">
         <img
-          src="/wipli-icon.png"
-          alt="Wipli"
-          width={36}
-          height={36}
+          src="/wipli-logo.png"
+          alt="W"
+          width={34}
+          height={34}
           className="rounded-xl shrink-0"
           style={{ objectFit: 'cover' }}
         />
-        <span className="font-semibold text-lg tracking-tight">
-          <span className="text-white">Wip</span>
-          <span style={{ color: 'var(--tp-lime)' }}>li</span>
+        <span
+          className="text-white text-lg tracking-tight leading-none"
+          style={{ fontFamily: 'var(--font-sora), system-ui, sans-serif', fontWeight: 800 }}
+        >
+          Wip<span style={{ color: 'var(--tp-lime)' }}>li</span>
         </span>
       </div>
 
