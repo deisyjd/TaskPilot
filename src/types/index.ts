@@ -111,6 +111,7 @@ export interface Project {
   description?: string
   coverImageUrl?: string
   status?: ProjectStatus
+  featured?: boolean
   createdBy?: string
   members?: string[]
   createdAt?: string

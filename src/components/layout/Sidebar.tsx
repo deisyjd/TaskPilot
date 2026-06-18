@@ -103,15 +103,25 @@ export function Sidebar() {
 
       {/* Projects */}
       <div className="px-4 py-4 flex-1">
-        <p className="text-xs font-semibold uppercase tracking-widest text-white/30 px-1 mb-2">
-          Proyectos
-        </p>
-        {projects.filter((p) => p.status !== 'inactive').length === 0 ? (
-          <p className="text-xs text-white/25 px-2 py-2">Sin proyectos activos</p>
+        <Link
+          href="/projects"
+          className="flex items-center justify-between px-1 mb-2 group"
+        >
+          <p className="text-xs font-semibold uppercase tracking-widest text-white/30 group-hover:text-white/50 transition-colors">
+            Destacados
+          </p>
+        </Link>
+        {projects.filter((p) => p.featured).length === 0 ? (
+          <Link
+            href="/projects"
+            className="block text-xs text-white/25 px-2 py-2 hover:text-white/40 transition-colors"
+          >
+            Destaca proyectos en /proyectos →
+          </Link>
         ) : (
           <div className="space-y-0.5">
             {projects
-              .filter((p) => p.status !== 'inactive')
+              .filter((p) => p.featured)
               .slice(0, 8)
               .map((project) => {
                 const active = isActive(`/projects/${project.id}`)

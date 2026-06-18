@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Plus, Search, FolderOpen, Users, CheckSquare } from 'lucide-react'
+import { Plus, Search, FolderOpen, Users, CheckSquare, Star } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useCurrentUser } from '@/store/useUserStore'
 import { can } from '@/lib/permissions'
@@ -15,75 +15,113 @@ const STATUS_LABELS: Record<string, string> = {
   archived: 'Archivado',
 }
 
-type Filter = 'all' | 'active' | 'inactive'
+type Filter = 'all' | 'active' | 'inactive' | 'featured'
 
-function ProjectCard({ project, taskCount }: { project: Project; taskCount: number }) {
+interface CardProps {
+  project: Project
+  taskCount: number
+  onToggleFeatured: (id: string, current: boolean) => void
+}
+
+function ProjectCard({ project, taskCount, onToggleFeatured }: CardProps) {
   const memberCount = project.members?.length ?? 0
+  const featured = project.featured ?? false
 
   return (
-    <Link
-      href={`/projects/${project.id}`}
-      className="group flex flex-col overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5"
+    <div
+      className="group relative flex flex-col overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5"
       style={{
         backgroundColor: 'var(--tp-surface)',
         borderRadius: 'var(--tp-r-card)',
-        border: '1px solid var(--tp-border)',
+        border: `1px solid ${featured ? project.color + '55' : 'var(--tp-border)'}`,
         textDecoration: 'none',
       }}
     >
       {/* Cover / color banner */}
-      <div className="relative h-28 overflow-hidden shrink-0">
-        {project.coverImageUrl ? (
-          <img
-            src={project.coverImageUrl}
-            alt={project.name}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <div
-            className="w-full h-full"
-            style={{
-              background: `linear-gradient(135deg, ${project.color}55 0%, ${project.color}22 100%)`,
-              backgroundColor: `${project.color}18`,
-            }}
-          >
+      <Link href={`/projects/${project.id}`} className="block">
+        <div className="relative h-28 overflow-hidden shrink-0">
+          {project.coverImageUrl ? (
+            <img
+              src={project.coverImageUrl}
+              alt={project.name}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
             <div
-              className="absolute bottom-3 right-3 w-10 h-10 rounded-2xl flex items-center justify-center opacity-40"
-              style={{ backgroundColor: project.color }}
+              className="w-full h-full"
+              style={{
+                background: `linear-gradient(135deg, ${project.color}55 0%, ${project.color}22 100%)`,
+                backgroundColor: `${project.color}18`,
+              }}
             >
-              <FolderOpen className="w-5 h-5 text-white" />
+              <div
+                className="absolute bottom-3 right-3 w-10 h-10 rounded-2xl flex items-center justify-center opacity-40"
+                style={{ backgroundColor: project.color }}
+              >
+                <FolderOpen className="w-5 h-5 text-white" />
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Status badge */}
-        {project.status && project.status !== 'active' && (
-          <span
-            className="absolute top-2.5 left-2.5 text-[10px] font-semibold px-2 py-0.5 rounded-full"
-            style={{
-              backgroundColor: project.status === 'inactive' ? '#FEF2F2' : '#F3F4F6',
-              color: project.status === 'inactive' ? '#DC2626' : '#6B7280',
-            }}
-          >
-            {STATUS_LABELS[project.status] ?? project.status}
-          </span>
-        )}
-      </div>
+          {/* Status badge */}
+          {project.status && project.status !== 'active' && (
+            <span
+              className="absolute top-2.5 left-2.5 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              style={{
+                backgroundColor: project.status === 'inactive' ? '#FEF2F2' : '#F3F4F6',
+                color: project.status === 'inactive' ? '#DC2626' : '#6B7280',
+              }}
+            >
+              {STATUS_LABELS[project.status] ?? project.status}
+            </span>
+          )}
+        </div>
+      </Link>
+
+      {/* Star button — top right, above the card */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onToggleFeatured(project.id, featured) }}
+        title={featured ? 'Quitar del sidebar' : 'Destacar en sidebar'}
+        className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full transition-all"
+        style={{
+          backgroundColor: featured ? project.color : 'rgba(0,0,0,0.35)',
+          backdropFilter: 'blur(4px)',
+          opacity: featured ? 1 : 0,
+          // Show on hover even when not featured
+        }}
+        onMouseEnter={(e) => { if (!featured) (e.currentTarget as HTMLElement).style.opacity = '1' }}
+        onMouseLeave={(e) => { if (!featured) (e.currentTarget as HTMLElement).style.opacity = '0' }}
+      >
+        <Star
+          className="w-3.5 h-3.5"
+          fill={featured ? '#111318' : 'none'}
+          style={{ color: featured ? '#111318' : '#fff' }}
+        />
+      </button>
 
       {/* Card body */}
-      <div className="flex flex-col gap-3 p-4 flex-1">
+      <Link href={`/projects/${project.id}`} className="flex flex-col gap-3 p-4 flex-1">
         <div className="flex items-start gap-2.5">
           <div
             className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5"
             style={{ backgroundColor: project.color }}
           />
           <div className="flex-1 min-w-0">
-            <h3
-              className="text-sm font-semibold truncate leading-snug"
-              style={{ color: 'var(--tp-text)' }}
-            >
-              {project.name}
-            </h3>
+            <div className="flex items-center gap-1.5">
+              <h3
+                className="text-sm font-semibold truncate leading-snug"
+                style={{ color: 'var(--tp-text)' }}
+              >
+                {project.name}
+              </h3>
+              {featured && (
+                <Star
+                  className="w-3 h-3 shrink-0"
+                  fill={project.color}
+                  style={{ color: project.color }}
+                />
+              )}
+            </div>
             {project.description && (
               <p
                 className="text-xs mt-1 line-clamp-2 leading-relaxed"
@@ -107,19 +145,32 @@ function ProjectCard({ project, taskCount }: { project: Project; taskCount: numb
               <span className="text-xs">{memberCount} miembro{memberCount !== 1 ? 's' : ''}</span>
             </div>
           )}
+          {featured && (
+            <span
+              className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: `${project.color}20`, color: project.color }}
+            >
+              En sidebar
+            </span>
+          )}
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   )
 }
 
 export default function ProjectsPage() {
   const projects = useTaskStore((s) => s.projects)
+  const updateProject = useTaskStore((s) => s.updateProject)
   const tasks = useTaskStore((s) => s.tasks)
   const currentUser = useCurrentUser()
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+
+  const handleToggleFeatured = (id: string, current: boolean) => {
+    updateProject(id, { featured: !current })
+  }
 
   const taskCountByProject = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -135,19 +186,22 @@ export default function ProjectsPage() {
     return projects.filter((p) => {
       if (filter === 'active' && p.status === 'inactive') return false
       if (filter === 'inactive' && p.status !== 'inactive') return false
+      if (filter === 'featured' && !p.featured) return false
       if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false
       return true
     })
   }, [projects, filter, search])
 
   const counts = useMemo(() => ({
-    all: projects.length,
-    active: projects.filter((p) => p.status !== 'inactive').length,
+    all:      projects.length,
+    active:   projects.filter((p) => p.status !== 'inactive').length,
     inactive: projects.filter((p) => p.status === 'inactive').length,
+    featured: projects.filter((p) => p.featured).length,
   }), [projects])
 
   const FILTERS: { key: Filter; label: string }[] = [
     { key: 'all',      label: `Todos (${counts.all})` },
+    { key: 'featured', label: `Destacados (${counts.featured})` },
     { key: 'active',   label: `Activos (${counts.active})` },
     { key: 'inactive', label: `Inactivos (${counts.inactive})` },
   ]
@@ -179,18 +233,23 @@ export default function ProjectsPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {FILTERS.map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className="px-3.5 py-1.5 text-xs font-medium rounded-full transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-full transition-all"
               style={{
-                backgroundColor: filter === key ? 'var(--tp-dark)' : 'var(--tp-surface)',
-                color: filter === key ? '#fff' : 'var(--tp-text-2)',
+                backgroundColor: filter === key
+                  ? key === 'featured' ? 'var(--tp-lime)' : 'var(--tp-dark)'
+                  : 'var(--tp-surface)',
+                color: filter === key
+                  ? key === 'featured' ? '#111318' : '#fff'
+                  : 'var(--tp-text-2)',
                 border: '1px solid var(--tp-border)',
               }}
             >
+              {key === 'featured' && <Star className="w-3 h-3" fill={filter === 'featured' ? '#111318' : 'none'} />}
               {label}
             </button>
           ))}
@@ -213,6 +272,11 @@ export default function ProjectsPage() {
         )}
       </div>
 
+      {/* Hint */}
+      <p className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
+        Toca la <Star className="w-3 h-3 inline-block mx-0.5 -mt-0.5" /> en cada proyecto para destacarlo en el sidebar.
+      </p>
+
       {/* Grid */}
       {visible.length === 0 ? (
         <div
@@ -231,12 +295,14 @@ export default function ProjectsPage() {
           </div>
           <div className="text-center">
             <p className="text-sm font-medium" style={{ color: 'var(--tp-text)' }}>
-              {search ? 'Sin resultados' : 'Sin proyectos'}
+              {search ? 'Sin resultados' : filter === 'featured' ? 'Sin proyectos destacados' : 'Sin proyectos'}
             </p>
             <p className="text-xs mt-1" style={{ color: 'var(--tp-text-2)' }}>
               {search
-                ? `No se encontró ningún proyecto para "${search}"`
-                : 'Crea tu primer proyecto con el botón de arriba'}
+                ? `No se encontró "${search}"`
+                : filter === 'featured'
+                  ? 'Toca ★ en cualquier proyecto para que aparezca en el sidebar'
+                  : 'Crea tu primer proyecto con el botón de arriba'}
             </p>
           </div>
         </div>
@@ -247,6 +313,7 @@ export default function ProjectsPage() {
               key={project.id}
               project={project}
               taskCount={taskCountByProject[project.name] ?? 0}
+              onToggleFeatured={handleToggleFeatured}
             />
           ))}
         </div>
