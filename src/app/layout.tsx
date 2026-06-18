@@ -15,8 +15,8 @@ export const metadata: Metadata = {
   title: "Wipli",
   description: "Gestión de clientes, publicaciones y operación semanal",
   icons: {
-    icon: "/wipli-icon.png",
-    apple: "/wipli-icon.png",
+    icon: [{ url: "/wipli-icon.png", type: "image/png" }],
+    apple: [{ url: "/wipli-icon.png" }],
   },
 };
 
