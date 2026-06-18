@@ -11,7 +11,11 @@ import { formatDateTime } from '@/lib/dates'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cn } from '@/lib/utils'
-import { Trash2, Plus, X, Send, CheckSquare, MessageSquare, Tag, ChevronDown } from 'lucide-react'
+import { Trash2, Plus, X, Send, CheckSquare, MessageSquare, Tag, ChevronDown, Image } from 'lucide-react'
+import { ImageUploader } from '@/components/shared/ImageUploader'
+import { FileUploader } from '@/components/shared/FileUploader'
+import { ReferenceLinks } from '@/components/shared/ReferenceLinks'
+import { Attachment, ReferenceLink } from '@/types'
 
 const STATUSES = Object.entries(STATUS_LABELS) as [TaskStatus, string][]
 const PRIORITIES = Object.entries(PRIORITY_LABELS) as [Priority, string][]
@@ -113,6 +117,9 @@ export function TaskModal({ task, defaultStatus = 'pending', open, onClose }: Pr
     setForm(task ?? emptyTask(defaultStatus))
     setTagInput(''); setCheckInput(''); setCommentInput('')
   }, [task, defaultStatus, open])
+
+  const attachments: Attachment[] = form.attachments ?? []
+  const links: ReferenceLink[] = form.links ?? []
 
   const setField = <K extends keyof Task>(key: K, value: Task[K]) =>
     setForm((f) => ({ ...f, [key]: value }))
@@ -308,6 +315,33 @@ export function TaskModal({ task, defaultStatus = 'pending', open, onClose }: Pr
                 </button>
               </div>
             </div>
+
+            {/* Cover image */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Image className="w-3.5 h-3.5" style={{ color: 'var(--tp-text-2)' }} />
+                <FieldLabel>Imagen de portada</FieldLabel>
+              </div>
+              <ImageUploader
+                value={form.coverImageUrl}
+                onChange={(url) => setField('coverImageUrl', url ?? undefined)}
+                aspectRatio="cover"
+              />
+            </div>
+
+            {/* Attachments */}
+            <FileUploader
+              value={attachments}
+              onChange={(files) => setField('attachments', files)}
+              uploadedBy="Deisy"
+            />
+
+            {/* Reference links */}
+            <ReferenceLinks
+              value={links}
+              onChange={(l) => setField('links', l)}
+              createdBy="Deisy"
+            />
 
             {/* Comments */}
             <div>

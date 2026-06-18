@@ -8,13 +8,16 @@ import { isOverdue } from '@/lib/dates'
 import { ProjectModal } from '@/components/projects/ProjectModal'
 
 const pageTitles: Record<string, { title: string; sub: string }> = {
-  '/dashboard': { title: 'Dashboard', sub: 'Resumen de operaciones del día' },
-  '/board': { title: 'Tablero', sub: 'Gestión de tareas por estado' },
-  '/timeline': { title: 'Línea de tiempo', sub: 'Vista semanal de entregas' },
-  '/weekly-review': { title: 'Revisión semanal', sub: 'Cumplimiento y pendientes' },
-  '/users': { title: 'Responsables', sub: 'Carga de trabajo por usuario' },
-  '/history': { title: 'Historial', sub: 'Registro de actividad' },
-  '/settings': { title: 'Configuración', sub: 'Preferencias del sistema' },
+  '/dashboard':    { title: 'Dashboard',             sub: 'Resumen de operaciones del día' },
+  '/board':        { title: 'Tablero',               sub: 'Gestión de tareas por estado' },
+  '/timeline':     { title: 'Línea de tiempo',       sub: 'Vista semanal de entregas' },
+  '/weekly-review':{ title: 'Revisión semanal',      sub: 'Cumplimiento y pendientes' },
+  '/users':        { title: 'Responsables',          sub: 'Carga de trabajo por usuario' },
+  '/history':      { title: 'Historial',             sub: 'Registro de actividad' },
+  '/settings':     { title: 'Configuración',         sub: 'Preferencias del sistema' },
+  '/chats':        { title: 'Chats',                 sub: 'Mensajes y conversaciones del equipo' },
+  '/admin/users':  { title: 'Administración',        sub: 'Gestión de usuarios y roles' },
+  '/projects':     { title: 'Proyectos',             sub: 'Detalle del proyecto' },
 }
 
 export function Header() {
