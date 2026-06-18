@@ -15,7 +15,8 @@ export const metadata: Metadata = {
   title: "Wipli",
   description: "Gestión de clientes, publicaciones y operación semanal",
   icons: {
-    icon: "/favicon.svg",
+    icon: "/wipli-icon.png",
+    apple: "/wipli-icon.png",
   },
 };
 
