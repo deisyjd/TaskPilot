@@ -6,6 +6,7 @@ import { Task, TaskStatus } from '@/types'
 import { PROJECT_NAMES } from '@/data/projects'
 import { USER_NAMES } from '@/data/users'
 import { KanbanColumn } from '@/components/board/KanbanColumn'
+import { TaskModal } from '@/components/board/TaskModal'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -14,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, SlidersHorizontal } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Search, SlidersHorizontal, Plus } from 'lucide-react'
 
 const STATUSES: TaskStatus[] = [
   'pending',
@@ -32,7 +34,8 @@ export default function BoardPage() {
   const [projectFilter, setProjectFilter] = useState('all')
   const [assigneeFilter, setAssigneeFilter] = useState('all')
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus>('pending')
 
   const filtered = useMemo(() => {
     return tasks.filter((t) => {
@@ -53,8 +56,20 @@ export default function BoardPage() {
     )
   }, [filtered])
 
-  const handleAddTask = (status: TaskStatus) => {
+  const openEdit = (task: Task) => {
+    setSelectedTask(task)
+    setModalOpen(true)
+  }
+
+  const openNew = (status: TaskStatus) => {
+    setSelectedTask(null)
     setNewTaskStatus(status)
+    setModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setModalOpen(false)
+    setSelectedTask(null)
   }
 
   return (
@@ -78,9 +93,7 @@ export default function BoardPage() {
           <SelectContent>
             <SelectItem value="all">Todos los proyectos</SelectItem>
             {PROJECT_NAMES.map((p) => (
-              <SelectItem key={p} value={p}>
-                {p}
-              </SelectItem>
+              <SelectItem key={p} value={p}>{p}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -92,16 +105,24 @@ export default function BoardPage() {
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             {USER_NAMES.map((u) => (
-              <SelectItem key={u} value={u}>
-                {u}
-              </SelectItem>
+              <SelectItem key={u} value={u}>{u}</SelectItem>
             ))}
           </SelectContent>
         </Select>
 
-        <div className="flex items-center gap-1.5 text-xs text-gray-400 ml-auto">
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span>{filtered.length} tareas</span>
+        <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>{filtered.length} tareas</span>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => openNew('pending')}
+            className="bg-violet-600 hover:bg-violet-700 text-white h-9"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Nueva tarea
+          </Button>
         </div>
       </div>
 
@@ -112,37 +133,19 @@ export default function BoardPage() {
             key={status}
             status={status}
             tasks={byStatus[status]}
-            onCardClick={setSelectedTask}
-            onAddTask={handleAddTask}
+            onCardClick={openEdit}
+            onAddTask={openNew}
           />
         ))}
       </div>
 
-      {/* Task detail modal — Phase 6 */}
-      {selectedTask && (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
-          onClick={() => setSelectedTask(null)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-xs text-gray-400 mb-1">{selectedTask.project}</p>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">{selectedTask.title}</h2>
-            <p className="text-sm text-gray-500">{selectedTask.description}</p>
-            <p className="text-xs text-gray-400 mt-4">
-              Modal de edición completo disponible en Fase 6.
-            </p>
-            <button
-              className="mt-4 text-sm text-violet-600 hover:underline"
-              onClick={() => setSelectedTask(null)}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Task modal */}
+      <TaskModal
+        open={modalOpen}
+        task={selectedTask}
+        defaultStatus={newTaskStatus}
+        onClose={closeModal}
+      />
     </div>
   )
 }
