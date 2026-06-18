@@ -36,14 +36,20 @@ export function Sidebar() {
       <div className="flex items-center gap-3 px-5 pt-6 pb-5">
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-          style={{ backgroundColor: 'var(--tp-lime)' }}
+          style={{ backgroundColor: '#1E2226', border: '1px solid rgba(255,255,255,0.08)' }}
         >
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <path d="M9 2L15.5 6V12L9 16L2.5 12V6L9 2Z" fill="#111318" strokeWidth="0" />
-            <path d="M6 9L8 11L12 7" stroke="#111318" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Main body */}
+            <path d="M2 17L18 3L14.5 18L9 12.5L2 17Z" fill="#DFFF5F"/>
+            {/* Inner wing fold */}
+            <path d="M9 12.5L10.8 17L14.5 18" fill="#BFDB4A"/>
+            {/* Tail piece */}
+            <path d="M5.5 14.5L8 17L9.5 14.5L9 12.5Z" fill="#CBEF43"/>
           </svg>
         </div>
-        <span className="text-white font-semibold text-lg tracking-tight">TaskPilot</span>
+        <span className="font-semibold text-lg tracking-tight">
+          <span className="text-white">Wipl</span><span style={{ color: 'var(--tp-lime)' }}>i</span>
+        </span>
       </div>
 
       {/* Nav */}

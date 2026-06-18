@@ -12,8 +12,11 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "TaskPilot",
+  title: "Wipli",
   description: "Gestión de clientes, publicaciones y operación semanal",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Dark rounded background -->
+  <rect width="100" height="100" rx="22" ry="22" fill="#111318"/>
+  <!-- Paper airplane - Wipli style -->
+  <!-- Main body -->
+  <path d="M14 82 L86 18 L72 88 L44 62 L14 82Z" fill="#DFFF5F"/>
+  <!-- Inner fold/wing -->
+  <path d="M44 62 L52 84 L72 88" fill="#9BB83A"/>
+  <!-- Small tail triangle -->
+  <path d="M30 70 L42 80 L46 70 L44 62Z" fill="#BFDB4A"/>
+</svg>
