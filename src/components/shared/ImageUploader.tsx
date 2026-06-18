@@ -1,20 +1,69 @@
 'use client'
 
-// In production: upload to S3/Supabase Storage/Firebase Storage, store URL instead of base64
+// In production: upload to S3/Supabase Storage/Firebase Storage, store URL instead of base64.
+// For localStorage mode, images are resized + compressed via Canvas before storing.
 
 import { useRef, useState } from 'react'
 import { Upload, X, RefreshCw, ImageIcon } from 'lucide-react'
 
 interface Props {
-  value?: string        // current image URL or base64
+  value?: string
   onChange: (url: string | null) => void
   label?: string
   className?: string
-  aspectRatio?: 'square' | 'cover'  // square=1:1, cover=16:9
+  aspectRatio?: 'square' | 'cover'
 }
 
-const MAX_SIZE_BYTES = 5 * 1024 * 1024 // 5MB
+const MAX_SIZE_BYTES = 5 * 1024 * 1024 // 5 MB — raw file limit before compression
 const ALLOWED_TYPES = ['image/png', 'image/jpg', 'image/jpeg', 'image/webp']
+
+// Max output dimensions after canvas resize
+const MAX_DIMS: Record<'square' | 'cover', { w: number; h: number }> = {
+  square: { w: 160, h: 160 },   // ~10-20 KB JPEG at 0.75
+  cover:  { w: 640, h: 360 },   // ~50-80 KB JPEG at 0.80
+}
+const QUALITY: Record<'square' | 'cover', number> = {
+  square: 0.75,
+  cover:  0.80,
+}
+
+function compressImage(
+  file: File,
+  mode: 'square' | 'cover',
+  onDone: (dataUrl: string) => void,
+  onError: (msg: string) => void
+) {
+  const url = URL.createObjectURL(file)
+  const img = new window.Image()
+
+  img.onload = () => {
+    URL.revokeObjectURL(url)
+    const { w: maxW, h: maxH } = MAX_DIMS[mode]
+    let { naturalWidth: sw, naturalHeight: sh } = img
+
+    // Scale down proportionally
+    const ratio = Math.min(maxW / sw, maxH / sh, 1) // never upscale
+    const tw = Math.round(sw * ratio)
+    const th = Math.round(sh * ratio)
+
+    const canvas = document.createElement('canvas')
+    canvas.width = tw
+    canvas.height = th
+    const ctx = canvas.getContext('2d')
+    if (!ctx) { onError('Error al procesar la imagen.'); return }
+
+    ctx.drawImage(img, 0, 0, tw, th)
+    const dataUrl = canvas.toDataURL('image/jpeg', QUALITY[mode])
+    onDone(dataUrl)
+  }
+
+  img.onerror = () => {
+    URL.revokeObjectURL(url)
+    onError('No se pudo leer la imagen.')
+  }
+
+  img.src = url
+}
 
 export function ImageUploader({
   value,
@@ -26,6 +75,7 @@ export function ImageUploader({
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const containerClass =
     aspectRatio === 'cover'
@@ -34,6 +84,7 @@ export function ImageUploader({
 
   function handleFile(file: File) {
     setError(null)
+
     if (!ALLOWED_TYPES.includes(file.type)) {
       setError('Formato no válido. Usa PNG, JPG o WEBP.')
       return
@@ -42,12 +93,20 @@ export function ImageUploader({
       setError('El archivo supera el límite de 5 MB.')
       return
     }
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const result = e.target?.result
-      if (typeof result === 'string') onChange(result)
-    }
-    reader.readAsDataURL(file)
+
+    setLoading(true)
+    compressImage(
+      file,
+      aspectRatio,
+      (dataUrl) => {
+        setLoading(false)
+        onChange(dataUrl)
+      },
+      (msg) => {
+        setLoading(false)
+        setError(msg)
+      }
+    )
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -76,19 +135,22 @@ export function ImageUploader({
           dragging ? 'border-[var(--tp-lime)] scale-[1.01]' : 'border-[var(--tp-border)]'
         }`}
         style={{ background: 'var(--tp-surface)' }}
-        onClick={() => !value && inputRef.current?.click()}
+        onClick={() => !value && !loading && inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
       >
-        {value ? (
-          <>
-            <img
-              src={value}
-              alt="Preview"
-              className="w-full h-full object-cover"
+        {loading ? (
+          <div className="w-full h-full flex items-center justify-center min-h-[120px]">
+            <div
+              className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin"
+              style={{ borderColor: 'var(--tp-lime)', borderTopColor: 'transparent' }}
             />
-            {/* Overlay — stacks vertically so it fits any size */}
+          </div>
+        ) : value ? (
+          <>
+            <img src={value} alt="Preview" className="w-full h-full object-cover" />
+            {/* Overlay — stacked so it fits any container size */}
             <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-2">
               <button
                 type="button"
@@ -122,9 +184,7 @@ export function ImageUploader({
               <p className="text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>
                 Arrastra una imagen aquí
               </p>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--tp-text-2)', opacity: 0.6 }}>
-                o
-              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--tp-text-2)', opacity: 0.6 }}>o</p>
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); inputRef.current?.click() }}
@@ -142,9 +202,7 @@ export function ImageUploader({
         )}
       </div>
 
-      {error && (
-        <p className="text-xs text-red-500 mt-0.5">{error}</p>
-      )}
+      {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
 
       <input
         ref={inputRef}
