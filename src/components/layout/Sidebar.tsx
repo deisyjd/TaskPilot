@@ -11,7 +11,7 @@ import {
   History,
   Settings,
 } from 'lucide-react'
-import { PROJECTS } from '@/data/projects'
+import { useTaskStore } from '@/store/useTaskStore'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -26,6 +26,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const projects = useTaskStore((s) => s.projects)
 
   return (
     <aside
@@ -76,7 +77,7 @@ export function Sidebar() {
           Proyectos
         </p>
         <div className="space-y-0.5">
-          {PROJECTS.slice(0, 7).map((project) => (
+          {projects.slice(0, 8).map((project) => (
             <Link
               key={project.id}
               href={`/board`}

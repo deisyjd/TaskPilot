@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Bell, Plus } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { isOverdue } from '@/lib/dates'
+import { ProjectModal } from '@/components/projects/ProjectModal'
 
 const pageTitles: Record<string, { title: string; sub: string }> = {
   '/dashboard': { title: 'Dashboard', sub: 'Resumen de operaciones del día' },
@@ -17,9 +19,10 @@ const pageTitles: Record<string, { title: string; sub: string }> = {
 
 export function Header() {
   const pathname = usePathname()
-  const page = pageTitles[pathname] ?? { title: 'TaskPilot', sub: '' }
+  const page = pageTitles[pathname] ?? { title: 'Wipli', sub: '' }
   const tasks = useTaskStore((s) => s.tasks)
   const alerts = tasks.filter((t) => isOverdue(t.dueDate, t.status) || t.priority === 'urgent').length
+  const [projectModalOpen, setProjectModalOpen] = useState(false)
 
   return (
     <header
@@ -59,8 +62,9 @@ export function Header() {
           )}
         </div>
 
-        {/* New task button */}
+        {/* New project button */}
         <button
+          onClick={() => setProjectModalOpen(true)}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-88"
           style={{
             backgroundColor: 'var(--tp-dark)',
@@ -69,9 +73,11 @@ export function Header() {
           }}
         >
           <Plus className="w-4 h-4" />
-          Nueva tarea
+          Nuevo proyecto
         </button>
       </div>
+
+      <ProjectModal open={projectModalOpen} onClose={() => setProjectModalOpen(false)} />
     </header>
   )
 }

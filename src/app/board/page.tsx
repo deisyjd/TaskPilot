@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { Task, TaskStatus } from '@/types'
-import { PROJECT_NAMES } from '@/data/projects'
 import { USER_NAMES } from '@/data/users'
 import { KanbanColumn } from '@/components/board/KanbanColumn'
 import { TaskModal } from '@/components/board/TaskModal'
@@ -24,6 +23,7 @@ const inputBase: React.CSSProperties = {
 
 export default function BoardPage() {
   const tasks = useTaskStore((s) => s.tasks)
+  const projects = useTaskStore((s) => s.projects)
 
   const [search, setSearch] = useState('')
   const [projectFilter, setProjectFilter] = useState('all')
@@ -70,7 +70,7 @@ export default function BoardPage() {
           <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}
             style={{ ...inputBase, width: '180px', paddingRight: '28px', appearance: 'none', cursor: 'pointer' }}>
             <option value="all">Todos los proyectos</option>
-            {PROJECT_NAMES.map((p) => <option key={p} value={p}>{p}</option>)}
+            {projects.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
           </select>
           <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: 'var(--tp-text-2)' }} />
         </div>

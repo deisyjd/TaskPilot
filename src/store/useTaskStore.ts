@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { Task, TaskStatus, HistoryEvent, HistoryEventType } from '@/types'
+import { Task, TaskStatus, HistoryEvent, HistoryEventType, Project } from '@/types'
 import { MOCK_TASKS } from '@/data/tasks'
 import { MOCK_HISTORY } from '@/data/history'
+import { PROJECTS, _refreshProjectCache } from '@/data/projects'
 
 function newHistoryEvent(
   type: HistoryEventType,
@@ -26,10 +27,13 @@ function newHistoryEvent(
 interface TaskStore {
   tasks: Task[]
   history: HistoryEvent[]
+  projects: Project[]
   addTask: (task: Task) => void
   updateTask: (id: string, updates: Partial<Task>) => void
   moveTask: (id: string, status: TaskStatus) => void
   deleteTask: (id: string) => void
+  addProject: (project: Project) => void
+  deleteProject: (id: string) => void
   resetToMockData: () => void
 }
 
@@ -38,6 +42,7 @@ export const useTaskStore = create<TaskStore>()(
     (set, get) => ({
       tasks: MOCK_TASKS,
       history: MOCK_HISTORY,
+      projects: PROJECTS,
 
       addTask: (task) => {
         const event = newHistoryEvent('task-created', task, 'Tarea creada')
@@ -94,13 +99,33 @@ export const useTaskStore = create<TaskStore>()(
         set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }))
       },
 
+      addProject: (project) => {
+        set((s) => {
+          const updated = [...s.projects, project]
+          _refreshProjectCache(updated)
+          return { projects: updated }
+        })
+      },
+
+      deleteProject: (id) => {
+        set((s) => {
+          const updated = s.projects.filter((p) => p.id !== id)
+          _refreshProjectCache(updated)
+          return { projects: updated }
+        })
+      },
+
       resetToMockData: () => {
-        set({ tasks: MOCK_TASKS, history: MOCK_HISTORY })
+        _refreshProjectCache(PROJECTS)
+        set({ tasks: MOCK_TASKS, history: MOCK_HISTORY, projects: PROJECTS })
       },
     }),
     {
       name: 'taskpilot-store',
       version: 1,
+      onRehydrateStorage: () => (state) => {
+        if (state?.projects) _refreshProjectCache(state.projects)
+      },
     }
   )
 )

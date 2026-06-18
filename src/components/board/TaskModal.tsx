@@ -5,11 +5,11 @@ import {
   Task, TaskStatus, Priority, TaskType,
   STATUS_LABELS, PRIORITY_LABELS, TYPE_LABELS, STATUS_DOT_COLORS,
 } from '@/types'
-import { PROJECT_NAMES } from '@/data/projects'
 import { USER_NAMES } from '@/data/users'
 import { useTaskStore } from '@/store/useTaskStore'
 import { formatDateTime } from '@/lib/dates'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cn } from '@/lib/utils'
 import { Trash2, Plus, X, Send, CheckSquare, MessageSquare, Tag, ChevronDown } from 'lucide-react'
 
@@ -38,7 +38,7 @@ function uid() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}
 function emptyTask(status: TaskStatus = 'pending'): Task {
   const now = new Date().toISOString()
   return {
-    id: `t-${uid()}`, title: '', project: PROJECT_NAMES[0], description: '', status,
+    id: `t-${uid()}`, title: '', project: 'Qenta', description: '', status,
     assignee: USER_NAMES[0], dueDate: new Date().toISOString().split('T')[0],
     priority: 'medium', type: 'other', tags: [], checklist: [], comments: [],
     createdAt: now, updatedAt: now,
@@ -100,12 +100,14 @@ const fieldInput: React.CSSProperties = {
 
 export function TaskModal({ task, defaultStatus = 'pending', open, onClose }: Props) {
   const { addTask, updateTask, deleteTask } = useTaskStore()
+  const projects = useTaskStore((s) => s.projects)
   const isNew = !task
 
   const [form, setForm] = useState<Task>(task ?? emptyTask(defaultStatus))
   const [tagInput, setTagInput] = useState('')
   const [checkInput, setCheckInput] = useState('')
   const [commentInput, setCommentInput] = useState('')
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   useEffect(() => {
     setForm(task ?? emptyTask(defaultStatus))
@@ -146,7 +148,9 @@ export function TaskModal({ task, defaultStatus = 'pending', open, onClose }: Pr
     onClose()
   }
 
-  const handleDelete = () => { if (task) { deleteTask(task.id); onClose() } }
+  const handleDeleteConfirmed = () => {
+    if (task) { deleteTask(task.id); onClose() }
+  }
 
   const checklistDone = form.checklist.filter((c) => c.done).length
   const checklistPct = form.checklist.length > 0 ? Math.round((checklistDone / form.checklist.length) * 100) : 0
@@ -195,7 +199,7 @@ export function TaskModal({ task, defaultStatus = 'pending', open, onClose }: Pr
           </div>
           {!isNew && (
             <button
-              onClick={handleDelete}
+              onClick={() => setConfirmOpen(true)}
               className="p-2.5 rounded-xl transition-all hover:scale-105 shrink-0"
               style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}
             >
@@ -429,7 +433,7 @@ export function TaskModal({ task, defaultStatus = 'pending', open, onClose }: Pr
                   onChange={(e) => setField('project', e.target.value)}
                   style={fieldSelect}
                 >
-                  {PROJECT_NAMES.map((p) => <option key={p} value={p}>{p}</option>)}
+                  {projects.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
                 </select>
               </SelectWrapper>
             </div>
@@ -523,6 +527,15 @@ export function TaskModal({ task, defaultStatus = 'pending', open, onClose }: Pr
           </button>
         </div>
       </DialogContent>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="¿Eliminar esta tarea?"
+        description={`"${form.title || 'Esta tarea'}" se eliminará permanentemente y no se podrá recuperar.`}
+        confirmLabel="Sí, eliminar"
+        onConfirm={() => { setConfirmOpen(false); handleDeleteConfirmed() }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </Dialog>
   )
 }
