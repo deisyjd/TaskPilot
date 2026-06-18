@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
+import { useCurrentUser } from '@/store/useUserStore'
+import { USERS } from '@/data/users'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { FolderPlus } from 'lucide-react'
+import { Project } from '@/types'
+import { FolderPlus, Upload, X, ImageIcon } from 'lucide-react'
 
 const PRESET_COLORS = [
   '#6366f1', '#0ea5e9', '#f43f5e', '#10b981', '#f59e0b',
@@ -13,31 +16,117 @@ const PRESET_COLORS = [
 
 interface Props {
   open: boolean
+  project?: Project | null   // null/undefined = create mode, Project = edit mode (future)
   onClose: () => void
+  onSave?: (project: Project) => void  // optional callback; if omitted, calls addProject directly
 }
 
-export function ProjectModal({ open, onClose }: Props) {
+export function ProjectModal({ open, project: existingProject, onClose, onSave }: Props) {
   const addProject = useTaskStore((s) => s.addProject)
+  const currentUser = useCurrentUser()
 
+  // ─── Form state ────────────────────────────────────────────
   const [name, setName] = useState('')
   const [color, setColor] = useState(PRESET_COLORS[0])
+  const [description, setDescription] = useState('')
+  const [status, setStatus] = useState<'active' | 'inactive'>('active')
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([])
+  const [coverPreview, setCoverPreview] = useState<string | null>(null)
+  const coverInputRef = useRef<HTMLInputElement>(null)
 
+  const isEditMode = Boolean(existingProject)
+
+  // Populate fields when editing
+  useEffect(() => {
+    if (existingProject) {
+      setName(existingProject.name)
+      setColor(existingProject.color)
+      setDescription(existingProject.description ?? '')
+      setStatus(existingProject.status ?? 'active')
+      setSelectedMembers(existingProject.members ?? [])
+      setCoverPreview(existingProject.coverImageUrl ?? null)
+    } else {
+      setName('')
+      setColor(PRESET_COLORS[0])
+      setDescription('')
+      setStatus('active')
+      setSelectedMembers([])
+      setCoverPreview(null)
+    }
+  }, [existingProject, open])
+
+  // ─── Cover image upload ────────────────────────────────────
+  const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => setCoverPreview(reader.result as string)
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  // ─── Member toggle ─────────────────────────────────────────
+  const toggleMember = (memberName: string) => {
+    setSelectedMembers((prev) =>
+      prev.includes(memberName)
+        ? prev.filter((m) => m !== memberName)
+        : [...prev, memberName]
+    )
+  }
+
+  // ─── Save ──────────────────────────────────────────────────
   const handleSave = () => {
     if (!name.trim()) return
-    addProject({
-      id: name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + `-${Date.now()}`,
+
+    const baseId = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+
+    const newProject: Project = {
+      id: existingProject?.id ?? `${baseId}-${Date.now()}`,
       name: name.trim(),
       color,
-    })
-    setName('')
-    setColor(PRESET_COLORS[0])
-    onClose()
+      description: description.trim() || undefined,
+      coverImageUrl: coverPreview ?? undefined,
+      status,
+      members: selectedMembers.length > 0 ? selectedMembers : undefined,
+      createdBy: existingProject?.createdBy ?? currentUser.name,
+      createdAt: existingProject?.createdAt ?? new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      attachments: existingProject?.attachments,
+      links: existingProject?.links,
+    }
+
+    if (onSave) {
+      onSave(newProject)
+    } else {
+      // TODO: when updateProject is added to the store, use it here for edit mode.
+      // For now, addProject handles creation. Edit mode should call updateProject instead.
+      addProject(newProject)
+    }
+
+    handleClose()
   }
 
   const handleClose = () => {
     setName('')
     setColor(PRESET_COLORS[0])
+    setDescription('')
+    setStatus('active')
+    setSelectedMembers([])
+    setCoverPreview(null)
     onClose()
+  }
+
+  // ─── Input style ───────────────────────────────────────────
+  const inputStyle: React.CSSProperties = {
+    height: '42px',
+    width: '100%',
+    borderRadius: '12px',
+    border: '1px solid var(--tp-border)',
+    backgroundColor: 'var(--tp-bg)',
+    color: 'var(--tp-text)',
+    fontSize: '14px',
+    padding: '0 14px',
+    outline: 'none',
   }
 
   return (
@@ -45,17 +134,19 @@ export function ProjectModal({ open, onClose }: Props) {
       <DialogContent
         className="p-0 gap-0 overflow-hidden"
         style={{
-          maxWidth: '440px',
+          maxWidth: '520px',
           width: '92vw',
+          maxHeight: '90vh',
+          overflowY: 'auto',
           borderRadius: '28px',
           border: '1px solid var(--tp-border)',
           boxShadow: '0 24px 64px rgba(17,19,24,0.18)',
         }}
       >
-        {/* Header */}
+        {/* ── Header ─────────────────────────────────────────── */}
         <div
-          className="flex items-center gap-3 px-6 pt-6 pb-5"
-          style={{ borderBottom: '1px solid var(--tp-border)' }}
+          className="flex items-center gap-3 px-6 pt-6 pb-5 sticky top-0 z-10"
+          style={{ borderBottom: '1px solid var(--tp-border)', backgroundColor: 'var(--tp-surface)' }}
         >
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
@@ -65,20 +156,22 @@ export function ProjectModal({ open, onClose }: Props) {
           </div>
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--tp-text)' }}>
-              Nuevo proyecto
+              {isEditMode ? 'Editar proyecto' : 'Nuevo proyecto'}
             </h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--tp-text-2)' }}>
-              Aparecerá en el sidebar y en los selectores de tarea
+              {isEditMode
+                ? 'Modifica los datos del proyecto'
+                : 'Aparecerá en el sidebar y en los selectores de tarea'}
             </p>
           </div>
         </div>
 
-        {/* Body */}
+        {/* ── Body ───────────────────────────────────────────── */}
         <div className="px-6 py-5 space-y-5">
           {/* Name */}
           <div>
             <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--tp-text-2)' }}>
-              Nombre del proyecto
+              Nombre del proyecto *
             </p>
             <input
               value={name}
@@ -86,18 +179,97 @@ export function ProjectModal({ open, onClose }: Props) {
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
               placeholder="Ej: Mi nuevo cliente"
               autoFocus
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--tp-text-2)' }}>
+              Descripción
+            </p>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Breve descripción del proyecto, cliente o campaña..."
+              rows={3}
               style={{
-                height: '42px',
                 width: '100%',
                 borderRadius: '12px',
                 border: '1px solid var(--tp-border)',
                 backgroundColor: 'var(--tp-bg)',
                 color: 'var(--tp-text)',
                 fontSize: '14px',
-                padding: '0 14px',
+                padding: '10px 14px',
                 outline: 'none',
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                lineHeight: '1.5',
               }}
             />
+          </div>
+
+          {/* Cover image */}
+          <div>
+            <p className="text-xs font-semibold mb-1.5" style={{ color: 'var(--tp-text-2)' }}>
+              Imagen de portada
+            </p>
+            {coverPreview ? (
+              <div className="relative">
+                <img
+                  src={coverPreview}
+                  alt="Portada"
+                  className="w-full object-cover"
+                  style={{ height: '120px', borderRadius: '12px' }}
+                />
+                <button
+                  onClick={() => setCoverPreview(null)}
+                  className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-all hover:opacity-80"
+                  style={{ backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff' }}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => coverInputRef.current?.click()}
+                  className="absolute bottom-2 right-2 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all hover:opacity-80"
+                  style={{
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    color: '#fff',
+                    borderRadius: '999px',
+                    backdropFilter: 'blur(4px)',
+                  }}
+                >
+                  <Upload className="w-3 h-3" />
+                  Cambiar
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => coverInputRef.current?.click()}
+                className="w-full flex flex-col items-center justify-center gap-2 transition-all hover:opacity-80"
+                style={{
+                  height: '80px',
+                  borderRadius: '12px',
+                  border: '2px dashed var(--tp-border)',
+                  backgroundColor: 'var(--tp-bg)',
+                  color: 'var(--tp-text-2)',
+                  cursor: 'pointer',
+                }}
+              >
+                <ImageIcon className="w-5 h-5" />
+                <span className="text-xs">Subir imagen de portada</span>
+              </button>
+            )}
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleCoverUpload}
+            />
+            <p className="text-xs mt-1" style={{ color: 'var(--tp-text-2)' }}>
+              En producción: se almacena en Supabase/S3. Ahora se guarda como base64.
+            </p>
           </div>
 
           {/* Color picker */}
@@ -113,13 +285,77 @@ export function ProjectModal({ open, onClose }: Props) {
                   className="w-8 h-8 rounded-full transition-all hover:scale-110"
                   style={{
                     backgroundColor: c,
-                    outline: color === c ? `3px solid ${c}` : 'none',
-                    outlineOffset: '2px',
                     transform: color === c ? 'scale(1.15)' : undefined,
                     boxShadow: color === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none',
                   }}
                 />
               ))}
+            </div>
+          </div>
+
+          {/* Status toggle */}
+          <div>
+            <p className="text-xs font-semibold mb-2" style={{ color: 'var(--tp-text-2)' }}>
+              Estado
+            </p>
+            <div className="flex gap-2">
+              {(['active', 'inactive'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatus(s)}
+                  className="flex-1 py-2 text-sm font-medium rounded-xl transition-all"
+                  style={{
+                    backgroundColor: status === s ? 'var(--tp-dark)' : 'var(--tp-bg)',
+                    color: status === s ? '#FFFFFF' : 'var(--tp-text-2)',
+                    border: `1px solid ${status === s ? 'var(--tp-dark)' : 'var(--tp-border)'}`,
+                  }}
+                >
+                  {s === 'active' ? 'Activo' : 'Inactivo'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Member selector */}
+          <div>
+            <p className="text-xs font-semibold mb-2.5" style={{ color: 'var(--tp-text-2)' }}>
+              Miembros del equipo
+            </p>
+            <div className="flex flex-col gap-2">
+              {USERS.map((user) => {
+                const checked = selectedMembers.includes(user.name)
+                return (
+                  <label
+                    key={user.id}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all hover:opacity-80"
+                    style={{
+                      backgroundColor: checked ? `${color}12` : 'var(--tp-bg)',
+                      border: `1px solid ${checked ? color : 'var(--tp-border)'}`,
+                    }}
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0 ${user.color}`}
+                    >
+                      {user.initials}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium" style={{ color: 'var(--tp-text)' }}>
+                        {user.name}
+                      </p>
+                      <p className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
+                        {user.role}
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleMember(user.name)}
+                      className="w-4 h-4 rounded"
+                      style={{ accentColor: color }}
+                    />
+                  </label>
+                )
+              })}
             </div>
           </div>
 
@@ -132,13 +368,21 @@ export function ProjectModal({ open, onClose }: Props) {
             <span className="text-sm font-medium" style={{ color: name ? 'var(--tp-text)' : 'var(--tp-text-2)' }}>
               {name || 'Vista previa del proyecto'}
             </span>
+            {selectedMembers.length > 0 && (
+              <span className="ml-auto text-xs" style={{ color: 'var(--tp-text-2)' }}>
+                {selectedMembers.length} miembro{selectedMembers.length !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Footer */}
+        {/* ── Footer ─────────────────────────────────────────── */}
         <div
-          className="flex items-center justify-end gap-2.5 px-6 py-4"
-          style={{ borderTop: '1px solid var(--tp-border)', backgroundColor: 'var(--tp-surface)' }}
+          className="flex items-center justify-end gap-2.5 px-6 py-4 sticky bottom-0"
+          style={{
+            borderTop: '1px solid var(--tp-border)',
+            backgroundColor: 'var(--tp-surface)',
+          }}
         >
           <button
             onClick={handleClose}
@@ -153,7 +397,7 @@ export function ProjectModal({ open, onClose }: Props) {
             className="px-6 py-2.5 text-sm font-semibold rounded-full transition-all hover:opacity-85 disabled:opacity-40"
             style={{ backgroundColor: 'var(--tp-dark)', color: '#FFFFFF' }}
           >
-            Crear proyecto
+            {isEditMode ? 'Guardar cambios' : 'Crear proyecto'}
           </button>
         </div>
       </DialogContent>
