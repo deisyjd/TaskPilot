@@ -264,15 +264,17 @@ export function UserForm({ open, user, onClose }: Props) {
                     status: f.status === 'active' ? 'inactive' : 'active',
                   }))
                 }
-                className={`relative w-11 h-6 rounded-full transition-colors ${
-                  form.status === 'active' ? 'bg-[var(--tp-lime)]' : 'bg-gray-300'
-                }`}
-                style={form.status === 'active' ? { background: 'var(--tp-lime)' } : {}}
+                className="relative w-12 h-6 rounded-full transition-all overflow-hidden shrink-0"
+                style={{
+                  background: form.status === 'active' ? 'var(--tp-lime)' : '#D1D5DB',
+                }}
               >
                 <span
-                  className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                    form.status === 'active' ? 'translate-x-5' : 'translate-x-0.5'
-                  }`}
+                  className="absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform"
+                  style={{
+                    left: form.status === 'active' ? '26px' : '3px',
+                    transition: 'left 0.2s ease',
+                  }}
                 />
               </button>
             </div>

@@ -34,7 +34,6 @@ export function ImageUploader({
 
   function handleFile(file: File) {
     setError(null)
-
     if (!ALLOWED_TYPES.includes(file.type)) {
       setError('Formato no válido. Usa PNG, JPG o WEBP.')
       return
@@ -43,7 +42,6 @@ export function ImageUploader({
       setError('El archivo supera el límite de 5 MB.')
       return
     }
-
     const reader = new FileReader()
     reader.onload = (e) => {
       const result = e.target?.result
@@ -55,7 +53,6 @@ export function ImageUploader({
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (file) handleFile(file)
-    // Reset so same file can be re-selected
     e.target.value = ''
   }
 
@@ -69,7 +66,7 @@ export function ImageUploader({
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       {label && (
-        <label className="text-sm font-medium" style={{ color: 'var(--tp-text-2)' }}>
+        <label className="text-sm font-medium text-center block" style={{ color: 'var(--tp-text-2)' }}>
           {label}
         </label>
       )}
@@ -85,36 +82,35 @@ export function ImageUploader({
         onDrop={handleDrop}
       >
         {value ? (
-          /* Image preview */
           <>
             <img
               src={value}
               alt="Preview"
               className="w-full h-full object-cover"
             />
-            {/* Overlay buttons */}
-            <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            {/* Overlay — stacks vertically so it fits any size */}
+            <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-2">
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); inputRef.current?.click() }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--tp-r-btn)] text-xs font-semibold transition-all active:scale-95"
-                style={{ background: 'var(--tp-lime)', color: 'var(--tp-darker)' }}
+                className="flex items-center justify-center gap-1 w-full max-w-[96px] py-1.5 rounded-lg text-[11px] font-semibold transition-all active:scale-95"
+                style={{ background: 'var(--tp-lime)', color: '#111318' }}
               >
-                <RefreshCw size={12} />
+                <RefreshCw size={10} />
                 Cambiar
               </button>
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onChange(null); setError(null) }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--tp-r-btn)] text-xs font-semibold bg-white/20 text-white transition-all active:scale-95 hover:bg-red-500/80"
+                className="flex items-center justify-center gap-1 w-full max-w-[96px] py-1.5 rounded-lg text-[11px] font-semibold transition-all active:scale-95"
+                style={{ background: 'rgba(239,68,68,0.85)', color: '#fff' }}
               >
-                <X size={12} />
+                <X size={10} />
                 Eliminar
               </button>
             </div>
           </>
         ) : (
-          /* Empty state */
           <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-4 min-h-[120px]">
             <div
               className="w-12 h-12 rounded-full flex items-center justify-center"
@@ -133,7 +129,7 @@ export function ImageUploader({
                 type="button"
                 onClick={(e) => { e.stopPropagation(); inputRef.current?.click() }}
                 className="mt-1.5 flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--tp-r-btn)] text-xs font-semibold mx-auto transition-all active:scale-95"
-                style={{ background: 'var(--tp-lime)', color: 'var(--tp-darker)' }}
+                style={{ background: 'var(--tp-lime)', color: '#111318' }}
               >
                 <Upload size={12} />
                 Seleccionar
