@@ -12,54 +12,70 @@ interface Props {
   onAddTask: (status: TaskStatus) => void
 }
 
-const COLUMN_ACCENT: Record<TaskStatus, string> = {
-  pending: 'bg-gray-400',
-  'in-progress': 'bg-blue-500',
-  review: 'bg-amber-500',
-  scheduled: 'bg-violet-500',
-  done: 'bg-green-500',
-  blocked: 'bg-red-500',
+const STATUS_BG: Record<TaskStatus, string> = {
+  pending:      'rgba(156,163,175,0.15)',
+  'in-progress':'rgba(59,130,246,0.08)',
+  review:       'rgba(245,158,11,0.08)',
+  scheduled:    'rgba(139,92,246,0.08)',
+  done:         'rgba(34,197,94,0.08)',
+  blocked:      'rgba(239,68,68,0.08)',
+}
+
+const DOT_COLORS: Record<TaskStatus, string> = {
+  pending:      '#9CA3AF',
+  'in-progress':'#3B82F6',
+  review:       '#F59E0B',
+  scheduled:    '#8B5CF6',
+  done:         '#22C55E',
+  blocked:      '#EF4444',
 }
 
 export function KanbanColumn({ status, tasks, onCardClick, onAddTask }: Props) {
   return (
     <div className="flex flex-col w-72 shrink-0">
-      {/* Column header */}
-      <div className="flex items-center justify-between mb-3 px-0.5">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
-          <div className={cn('w-2.5 h-2.5 rounded-full', COLUMN_ACCENT[status])} />
-          <span className="text-sm font-semibold text-gray-700">{STATUS_LABELS[status]}</span>
-          <span className="text-xs bg-gray-100 text-gray-500 font-medium px-1.5 py-0.5 rounded-full">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: DOT_COLORS[status] }} />
+          <span className="text-sm font-semibold" style={{ color: 'var(--tp-text)' }}>{STATUS_LABELS[status]}</span>
+          <span
+            className="text-xs font-semibold px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: STATUS_BG[status], color: DOT_COLORS[status] }}
+          >
             {tasks.length}
           </span>
         </div>
         <button
           onClick={() => onAddTask(status)}
-          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+          className="p-1.5 rounded-xl transition-colors hover:opacity-80"
+          style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
           title="Nueva tarea"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Cards */}
-      <div className="flex flex-col gap-2 flex-1 min-h-[200px] rounded-xl bg-gray-50 p-2">
-        {tasks.length === 0 ? (
-          <div className="flex items-center justify-center h-24 text-xs text-gray-300">
+      {/* Column body */}
+      <div
+        className="flex flex-col gap-2 flex-1 min-h-[200px] p-2.5"
+        style={{ backgroundColor: STATUS_BG[status], borderRadius: 'var(--tp-r-inner)' }}
+      >
+        {tasks.length === 0 && (
+          <div className="flex items-center justify-center h-20 text-xs" style={{ color: 'var(--tp-text-2)', opacity: 0.5 }}>
             Sin tareas
           </div>
-        ) : (
-          tasks.map((task) => (
-            <TaskCard key={task.id} task={task} onClick={() => onCardClick(task)} />
-          ))
         )}
+        {tasks.map((task) => (
+          <TaskCard key={task.id} task={task} onClick={() => onCardClick(task)} />
+        ))}
 
         <button
           onClick={() => onAddTask(status)}
-          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors mt-1 w-full"
+          className="flex items-center justify-center gap-1.5 text-xs py-2 rounded-xl transition-all hover:opacity-80 mt-1"
+          style={{ color: 'var(--tp-text-2)', backgroundColor: 'rgba(255,255,255,0.6)' }}
         >
           <Plus className="w-3.5 h-3.5" />
-          Nueva tarea
+          Añadir tarea
         </button>
       </div>
     </div>

@@ -2,14 +2,10 @@
 
 import { Task } from '@/types'
 import { TimelineCard } from './TimelineCard'
-import { cn } from '@/lib/utils'
 import { Plus } from 'lucide-react'
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-const MONTH_NAMES = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-]
+const MONTH_NAMES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']
 
 interface Props {
   date: Date
@@ -24,50 +20,53 @@ export function DayColumn({ date, tasks, isToday, onCardClick, onAddTask }: Prop
   const dayNum = date.getDate()
   const month = MONTH_NAMES[date.getMonth()]
   const isWeekend = date.getDay() === 0 || date.getDay() === 6
-
   const done = tasks.filter((t) => t.status === 'done').length
   const active = tasks.filter((t) => t.status !== 'done').length
 
   return (
-    <div className={cn('flex flex-col w-52 shrink-0', isWeekend && 'opacity-80')}>
+    <div className="flex flex-col w-52 shrink-0" style={{ opacity: isWeekend ? 0.75 : 1 }}>
       {/* Day header */}
       <div
-        className={cn(
-          'rounded-xl p-3 mb-2 text-center',
-          isToday ? 'bg-violet-600 text-white' : 'bg-white border border-gray-100'
-        )}
+        className="rounded-2xl p-3 mb-2 text-center"
+        style={{
+          backgroundColor: isToday ? 'var(--tp-dark)' : 'var(--tp-surface)',
+          border: isToday ? 'none' : '1px solid var(--tp-border)',
+        }}
       >
-        <p className={cn('text-xs font-medium uppercase tracking-wide', isToday ? 'text-violet-200' : 'text-gray-400')}>
+        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: isToday ? 'rgba(255,255,255,0.5)' : 'var(--tp-text-2)' }}>
           {dayName}
         </p>
-        <p className={cn('text-2xl font-bold leading-none mt-1', isToday ? 'text-white' : 'text-gray-900')}>
+        <p className="text-3xl font-semibold leading-none mt-1" style={{ color: isToday ? 'var(--tp-lime)' : 'var(--tp-text)' }}>
           {dayNum}
         </p>
-        <p className={cn('text-xs mt-0.5', isToday ? 'text-violet-200' : 'text-gray-400')}>
+        <p className="text-xs mt-0.5" style={{ color: isToday ? 'rgba(255,255,255,0.4)' : 'var(--tp-text-2)' }}>
           {month}
         </p>
         {tasks.length > 0 && (
-          <div className={cn('flex items-center justify-center gap-2 mt-2 text-xs', isToday ? 'text-violet-200' : 'text-gray-400')}>
-            {active > 0 && <span>{active} pend.</span>}
-            {done > 0 && <span className={isToday ? 'text-violet-100' : 'text-green-500'}>✓ {done}</span>}
+          <div className="flex items-center justify-center gap-2 mt-2 text-xs" style={{ color: isToday ? 'rgba(255,255,255,0.5)' : 'var(--tp-text-2)' }}>
+            {active > 0 && <span>{active} act.</span>}
+            {done > 0 && <span style={{ color: isToday ? 'var(--tp-lime)' : '#22C55E' }}>✓{done}</span>}
           </div>
         )}
       </div>
 
       {/* Tasks */}
-      <div className="flex flex-col gap-1.5 flex-1 bg-gray-50/60 rounded-xl p-1.5 min-h-[120px]">
-        {tasks.length === 0 ? (
-          <div className="flex items-center justify-center h-16 text-xs text-gray-300">
+      <div
+        className="flex flex-col gap-1.5 flex-1 p-1.5 min-h-[120px]"
+        style={{ backgroundColor: 'var(--tp-bg-2)', borderRadius: 'var(--tp-r-inner)' }}
+      >
+        {tasks.length === 0 && (
+          <div className="flex items-center justify-center h-16 text-xs" style={{ color: 'var(--tp-text-2)', opacity: 0.4 }}>
             Sin tareas
           </div>
-        ) : (
-          tasks.map((task) => (
-            <TimelineCard key={task.id} task={task} onClick={() => onCardClick(task)} />
-          ))
         )}
+        {tasks.map((task) => (
+          <TimelineCard key={task.id} task={task} onClick={() => onCardClick(task)} />
+        ))}
         <button
           onClick={() => onAddTask(date)}
-          className="flex items-center justify-center gap-1 text-xs text-gray-300 hover:text-gray-500 py-1.5 rounded-lg hover:bg-gray-100 transition-colors mt-auto"
+          className="flex items-center justify-center gap-1 text-xs py-2 rounded-xl transition-all hover:opacity-80 mt-auto"
+          style={{ color: 'var(--tp-text-2)', backgroundColor: 'rgba(255,255,255,0.5)' }}
         >
           <Plus className="w-3 h-3" />
           Agregar

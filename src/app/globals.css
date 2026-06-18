@@ -4,12 +4,72 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─── TaskPilot Design Tokens ─────────────────────────────── */
+:root {
+  /* Brand colors */
+  --tp-bg:        #F4F7F2;
+  --tp-bg-2:      #EEF3ED;
+  --tp-surface:   #FFFFFF;
+  --tp-dark:      #111318;
+  --tp-darker:    #08090B;
+  --tp-lime:      #DFFF5F;
+  --tp-lime-alt:  #CFFF3C;
+  --tp-text:      #111111;
+  --tp-text-2:    #6B7280;
+  --tp-border:    rgba(0, 0, 0, 0.06);
+  --tp-shadow:    rgba(17, 19, 24, 0.08);
+
+  /* Radius */
+  --tp-r-card:    28px;
+  --tp-r-inner:   20px;
+  --tp-r-input:   14px;
+  --tp-r-btn:     999px;
+
+  /* Shadows */
+  --tp-shadow-sm: 0 1px 3px var(--tp-shadow), 0 1px 2px rgba(0,0,0,0.04);
+  --tp-shadow-md: 0 4px 16px var(--tp-shadow), 0 2px 6px rgba(0,0,0,0.04);
+
+  /* shadcn overrides */
+  --background: #F4F7F2;
+  --foreground: #111111;
+  --card: #FFFFFF;
+  --card-foreground: #111111;
+  --popover: #FFFFFF;
+  --popover-foreground: #111111;
+  --primary: #111318;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EEF3ED;
+  --secondary-foreground: #111111;
+  --muted: #EEF3ED;
+  --muted-foreground: #6B7280;
+  --accent: #DFFF5F;
+  --accent-foreground: #111111;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: rgba(0, 0, 0, 0.08);
+  --input: rgba(0, 0, 0, 0.08);
+  --ring: #DFFF5F;
+  --radius: 0.875rem;
+
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: #111318;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #DFFF5F;
+  --sidebar-primary-foreground: #111111;
+  --sidebar-accent: rgba(255,255,255,0.08);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(255,255,255,0.06);
+  --sidebar-ring: #DFFF5F;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-poppins), system-ui, sans-serif;
+  --font-heading: var(--font-poppins), system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -45,76 +105,7 @@
   --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-:root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --radius-4xl: calc(var(--radius) * 2.8);
 }
 
 @layer base {
@@ -122,9 +113,48 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
+    background-color: var(--tp-bg);
+    color: var(--tp-text);
+    font-family: var(--font-poppins), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
 }
+
+/* ─── Utility classes ─────────────────────────────────────── */
+.tp-card {
+  background: var(--tp-surface);
+  border-radius: var(--tp-r-card);
+  box-shadow: var(--tp-shadow-sm);
+  border: 1px solid var(--tp-border);
+}
+
+.tp-card-inner {
+  background: var(--tp-surface);
+  border-radius: var(--tp-r-inner);
+  border: 1px solid var(--tp-border);
+}
+
+.tp-btn-primary {
+  background: var(--tp-dark);
+  color: #FFFFFF;
+  border-radius: var(--tp-r-btn);
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+.tp-btn-primary:hover { opacity: 0.88; }
+
+.tp-btn-lime {
+  background: var(--tp-lime);
+  color: var(--tp-dark);
+  border-radius: var(--tp-r-btn);
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+.tp-btn-lime:hover { opacity: 0.88; }
+
+.tp-input {
+  border-radius: var(--tp-r-input);
+  border: 1px solid var(--tp-border);
+  background: var(--tp-surface);
+}
+.tp-input:focus { outline: 2px solid var(--tp-lime); outline-offset: 0; }
