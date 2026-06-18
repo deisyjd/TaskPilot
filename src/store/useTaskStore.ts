@@ -33,7 +33,9 @@ interface TaskStore {
   moveTask: (id: string, status: TaskStatus) => void
   deleteTask: (id: string) => void
   addProject: (project: Project) => void
+  updateProject: (id: string, updates: Partial<Project>) => void
   deleteProject: (id: string) => void
+  addGenericHistory: (event: Omit<HistoryEvent, 'id'>) => void
   resetToMockData: () => void
 }
 
@@ -107,12 +109,31 @@ export const useTaskStore = create<TaskStore>()(
         })
       },
 
+      updateProject: (id, updates) => {
+        set((s) => {
+          const updated = s.projects.map((p) =>
+            p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
+          )
+          _refreshProjectCache(updated)
+          return { projects: updated }
+        })
+      },
+
       deleteProject: (id) => {
         set((s) => {
           const updated = s.projects.filter((p) => p.id !== id)
           _refreshProjectCache(updated)
           return { projects: updated }
         })
+      },
+
+      // Generic history entry for non-task events (user/project/chat actions)
+      addGenericHistory: (event) => {
+        const entry: HistoryEvent = {
+          ...event,
+          id: `h-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        }
+        set((s) => ({ history: [entry, ...s.history] }))
       },
 
       resetToMockData: () => {

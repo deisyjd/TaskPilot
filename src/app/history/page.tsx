@@ -9,6 +9,7 @@ import { formatDateTime } from '@/lib/dates'
 import {
   Plus, Edit3, ArrowRightLeft, UserCheck, Calendar,
   CheckCircle2, AlertTriangle, Send, Activity,
+  UserPlus, FolderOpen, Paperclip, MessageCircle,
 } from 'lucide-react'
 
 const EVENT_CONFIG: Record<HistoryEventType, {
@@ -17,21 +18,32 @@ const EVENT_CONFIG: Record<HistoryEventType, {
   bg: string
   color: string
 }> = {
-  'task-created':    { label: 'Creada',           icon: <Plus className="w-3.5 h-3.5" />,           bg: '#F0FDF4', color: '#16A34A' },
-  'task-edited':     { label: 'Editada',           icon: <Edit3 className="w-3.5 h-3.5" />,          bg: '#EFF6FF', color: '#2563EB' },
-  'status-changed':  { label: 'Estado cambiado',  icon: <ArrowRightLeft className="w-3.5 h-3.5" />, bg: '#FDF4FF', color: '#9333EA' },
-  'assignee-changed':{ label: 'Responsable',       icon: <UserCheck className="w-3.5 h-3.5" />,      bg: '#FFF7ED', color: '#EA580C' },
-  'date-changed':    { label: 'Fecha ajustada',   icon: <Calendar className="w-3.5 h-3.5" />,       bg: '#FFFBEB', color: '#D97706' },
-  'task-completed':  { label: 'Completada',        icon: <CheckCircle2 className="w-3.5 h-3.5" />,   bg: '#F0FDF4', color: '#16A34A' },
-  'task-overdue':    { label: 'Vencida',           icon: <AlertTriangle className="w-3.5 h-3.5" />,  bg: '#FEF2F2', color: '#DC2626' },
-  'published':       { label: 'Publicada',         icon: <Send className="w-3.5 h-3.5" />,           bg: '#F0F9FF', color: '#0284C7' },
+  'task-created':          { label: 'Creada',              icon: <Plus className="w-3.5 h-3.5" />,           bg: '#F0FDF4', color: '#16A34A' },
+  'task-edited':           { label: 'Editada',             icon: <Edit3 className="w-3.5 h-3.5" />,          bg: '#EFF6FF', color: '#2563EB' },
+  'status-changed':        { label: 'Estado cambiado',     icon: <ArrowRightLeft className="w-3.5 h-3.5" />, bg: '#FDF4FF', color: '#9333EA' },
+  'assignee-changed':      { label: 'Responsable',         icon: <UserCheck className="w-3.5 h-3.5" />,      bg: '#FFF7ED', color: '#EA580C' },
+  'date-changed':          { label: 'Fecha ajustada',      icon: <Calendar className="w-3.5 h-3.5" />,       bg: '#FFFBEB', color: '#D97706' },
+  'task-completed':        { label: 'Completada',          icon: <CheckCircle2 className="w-3.5 h-3.5" />,   bg: '#F0FDF4', color: '#16A34A' },
+  'task-overdue':          { label: 'Vencida',             icon: <AlertTriangle className="w-3.5 h-3.5" />,  bg: '#FEF2F2', color: '#DC2626' },
+  'published':             { label: 'Publicada',           icon: <Send className="w-3.5 h-3.5" />,           bg: '#F0F9FF', color: '#0284C7' },
+  'user-created':          { label: 'Usuario creado',      icon: <UserPlus className="w-3.5 h-3.5" />,       bg: '#F0FDF4', color: '#16A34A' },
+  'user-edited':           { label: 'Usuario editado',     icon: <Edit3 className="w-3.5 h-3.5" />,          bg: '#EFF6FF', color: '#2563EB' },
+  'user-deactivated':      { label: 'Usuario desactivado', icon: <UserCheck className="w-3.5 h-3.5" />,      bg: '#FEF2F2', color: '#DC2626' },
+  'project-created':       { label: 'Proyecto creado',     icon: <FolderOpen className="w-3.5 h-3.5" />,     bg: '#F0FDF4', color: '#16A34A' },
+  'project-edited':        { label: 'Proyecto editado',    icon: <Edit3 className="w-3.5 h-3.5" />,          bg: '#EFF6FF', color: '#2563EB' },
+  'project-image-updated': { label: 'Imagen actualizada',  icon: <FolderOpen className="w-3.5 h-3.5" />,     bg: '#FDF4FF', color: '#9333EA' },
+  'file-added':            { label: 'Archivo adjunto',     icon: <Paperclip className="w-3.5 h-3.5" />,      bg: '#FFFBEB', color: '#D97706' },
+  'file-removed':          { label: 'Archivo eliminado',   icon: <Paperclip className="w-3.5 h-3.5" />,      bg: '#FEF2F2', color: '#DC2626' },
+  'link-added':            { label: 'Enlace añadido',      icon: <Paperclip className="w-3.5 h-3.5" />,      bg: '#EFF6FF', color: '#2563EB' },
+  'chat-created':          { label: 'Chat creado',         icon: <MessageCircle className="w-3.5 h-3.5" />,  bg: '#F0F9FF', color: '#0284C7' },
+  'message-sent':          { label: 'Mensaje enviado',     icon: <MessageCircle className="w-3.5 h-3.5" />,  bg: '#F0F9FF', color: '#0284C7' },
 }
 
 const ALL_TYPES = Object.keys(EVENT_CONFIG) as HistoryEventType[]
 
 function EventRow({ event }: { event: HistoryEvent }) {
   const cfg = EVENT_CONFIG[event.type]
-  const project = getProject(event.project)
+  const project = event.project ? getProject(event.project) : undefined
   const user = getUser(event.user)
 
   return (
@@ -84,8 +96,8 @@ export default function HistoryPage() {
   const filtered = useMemo(() => {
     return history.filter((e) => {
       if (typeFilter !== 'all' && e.type !== typeFilter) return false
-      if (search && !e.taskTitle.toLowerCase().includes(search.toLowerCase()) &&
-          !e.project.toLowerCase().includes(search.toLowerCase())) return false
+      if (search && !(e.taskTitle ?? '').toLowerCase().includes(search.toLowerCase()) &&
+          !(e.project ?? '').toLowerCase().includes(search.toLowerCase())) return false
       return true
     }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
   }, [history, typeFilter, search])
