@@ -49,9 +49,16 @@ export default function BoardPage() {
     }, {} as Record<TaskStatus, Task[]>)
   }, [filtered])
 
+  const moveTask = useTaskStore((s) => s.moveTask)
+
   const openEdit = (task: Task) => { setSelectedTask(task); setModalOpen(true) }
   const openNew = (status: TaskStatus) => { setSelectedTask(null); setNewTaskStatus(status); setModalOpen(true) }
   const closeModal = () => { setModalOpen(false); setSelectedTask(null) }
+
+  const handleDrop = (taskId: string, targetStatus: TaskStatus) => {
+    const task = tasks.find((t) => t.id === taskId)
+    if (task && task.status !== targetStatus) moveTask(taskId, targetStatus)
+  }
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -109,6 +116,7 @@ export default function BoardPage() {
             tasks={byStatus[status]}
             onCardClick={openEdit}
             onAddTask={openNew}
+            onDrop={(taskId) => handleDrop(taskId, status)}
           />
         ))}
       </div>

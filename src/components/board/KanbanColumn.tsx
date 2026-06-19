@@ -1,8 +1,8 @@
 'use client'
 
-import { Task, TaskStatus, STATUS_LABELS, STATUS_DOT_COLORS } from '@/types'
+import { useRef, useState } from 'react'
+import { Task, TaskStatus, STATUS_LABELS } from '@/types'
 import { TaskCard } from './TaskCard'
-import { cn } from '@/lib/utils'
 import { Plus } from 'lucide-react'
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
   tasks: Task[]
   onCardClick: (task: Task) => void
   onAddTask: (status: TaskStatus) => void
+  onDrop: (taskId: string) => void
 }
 
 const STATUS_BG: Record<TaskStatus, string> = {
@@ -30,17 +31,52 @@ const DOT_COLORS: Record<TaskStatus, string> = {
   blocked:      '#EF4444',
 }
 
-export function KanbanColumn({ status, tasks, onCardClick, onAddTask }: Props) {
+export function KanbanColumn({ status, tasks, onCardClick, onAddTask, onDrop }: Props) {
+  const [isDragOver, setIsDragOver] = useState(false)
+  // Counter to correctly handle dragenter/dragleave on child elements
+  const dragCounter = useRef(0)
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current++
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = () => {
+    dragCounter.current--
+    if (dragCounter.current === 0) setIsDragOver(false)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current = 0
+    setIsDragOver(false)
+    const taskId = e.dataTransfer.getData('taskId')
+    if (taskId) onDrop(taskId)
+  }
+
+  const accent = DOT_COLORS[status]
+
   return (
     <div className="flex flex-col w-72 shrink-0">
       {/* Header */}
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: DOT_COLORS[status] }} />
-          <span className="text-sm font-semibold" style={{ color: 'var(--tp-text)' }}>{STATUS_LABELS[status]}</span>
+          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: accent }} />
+          <span className="text-sm font-semibold" style={{ color: 'var(--tp-text)' }}>
+            {STATUS_LABELS[status]}
+          </span>
           <span
-            className="text-xs font-semibold px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: STATUS_BG[status], color: DOT_COLORS[status] }}
+            className="text-xs font-semibold px-2 py-0.5 rounded-full transition-all"
+            style={{
+              backgroundColor: isDragOver ? accent + '30' : STATUS_BG[status],
+              color: accent,
+            }}
           >
             {tasks.length}
           </span>
@@ -55,16 +91,38 @@ export function KanbanColumn({ status, tasks, onCardClick, onAddTask }: Props) {
         </button>
       </div>
 
-      {/* Column body */}
+      {/* Drop zone */}
       <div
-        className="flex flex-col gap-2 flex-1 min-h-[200px] p-2.5"
-        style={{ backgroundColor: STATUS_BG[status], borderRadius: 'var(--tp-r-inner)' }}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        className="flex flex-col gap-2 flex-1 min-h-[200px] p-2.5 transition-all"
+        style={{
+          backgroundColor: isDragOver ? accent + '18' : STATUS_BG[status],
+          borderRadius: 'var(--tp-r-inner)',
+          border: isDragOver ? `2px dashed ${accent}` : '2px solid transparent',
+          transform: isDragOver ? 'scale(1.01)' : 'scale(1)',
+        }}
       >
-        {tasks.length === 0 && (
-          <div className="flex items-center justify-center h-20 text-xs" style={{ color: 'var(--tp-text-2)', opacity: 0.5 }}>
+        {tasks.length === 0 && !isDragOver && (
+          <div
+            className="flex items-center justify-center h-20 text-xs"
+            style={{ color: 'var(--tp-text-2)', opacity: 0.5 }}
+          >
             Sin tareas
           </div>
         )}
+
+        {isDragOver && tasks.length === 0 && (
+          <div
+            className="flex items-center justify-center h-20 text-xs font-medium rounded-xl"
+            style={{ color: accent, border: `1px dashed ${accent}`, opacity: 0.7 }}
+          >
+            Soltar aquí
+          </div>
+        )}
+
         {tasks.map((task) => (
           <TaskCard key={task.id} task={task} onClick={() => onCardClick(task)} />
         ))}

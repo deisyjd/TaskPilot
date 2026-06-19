@@ -1,6 +1,7 @@
 'use client'
 
-import { Task, STATUS_LABELS, STATUS_DOT_COLORS, TaskStatus } from '@/types'
+import { useState } from 'react'
+import { Task, STATUS_DOT_COLORS, TaskStatus } from '@/types'
 import { getProject } from '@/data/projects'
 import { getUser } from '@/data/users'
 import { isOverdue, isToday, formatDate } from '@/lib/dates'
@@ -12,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { AlertTriangle, Calendar, CheckSquare, ChevronDown } from 'lucide-react'
+import { AlertTriangle, Calendar, CheckSquare, ChevronDown, GripVertical } from 'lucide-react'
 
 const STATUSES: { value: TaskStatus; label: string }[] = [
   { value: 'pending', label: 'Pendiente' },
@@ -44,15 +45,25 @@ export function TaskCard({ task, onClick }: Props) {
   const checklistDone = task.checklist.filter((c) => c.done).length
   const checklistTotal = task.checklist.length
   const badge = PRIORITY_BADGES[task.priority]
+  const [dragging, setDragging] = useState(false)
 
   return (
     <div
-      className="group cursor-pointer transition-all hover:shadow-md"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('taskId', task.id)
+        e.dataTransfer.effectAllowed = 'move'
+        setDragging(true)
+      }}
+      onDragEnd={() => setDragging(false)}
+      className="group transition-all hover:shadow-md"
       style={{
         backgroundColor: 'var(--tp-surface)',
         borderRadius: 'var(--tp-r-inner)',
         border: '1px solid var(--tp-border)',
         boxShadow: 'var(--tp-shadow-sm)',
+        opacity: dragging ? 0.4 : 1,
+        cursor: dragging ? 'grabbing' : 'grab',
       }}
       onClick={onClick}
     >
@@ -60,6 +71,10 @@ export function TaskCard({ task, onClick }: Props) {
         {/* Project + status row */}
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-1.5">
+            <GripVertical
+              className="w-3 h-3 opacity-0 group-hover:opacity-30 shrink-0 -ml-1 transition-opacity"
+              style={{ color: 'var(--tp-text-2)' }}
+            />
             <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: project?.color ?? '#94a3b8' }} />
             <span className="text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>{task.project}</span>
           </div>
