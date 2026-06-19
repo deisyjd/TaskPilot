@@ -63,7 +63,7 @@ export const useUserStore = create<UserStore>()(
     }),
     {
       name: 'wipli-users',
-      version: 1,
+      version: 2,
       storage: {
         getItem: (name) => {
           const value = localStorage.getItem(name)

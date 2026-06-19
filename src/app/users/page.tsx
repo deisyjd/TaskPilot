@@ -2,9 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
-import { USERS } from '@/data/users'
+import { useUserStore } from '@/store/useUserStore'
 import { Task, STATUS_DOT_COLORS, STATUS_LABELS, PRIORITY_COLORS, PRIORITY_LABELS } from '@/types'
-import { getProject } from '@/data/projects'
 import { isOverdue, isToday, formatDate } from '@/lib/dates'
 import { TaskModal } from '@/components/board/TaskModal'
 import { cn } from '@/lib/utils'
@@ -40,11 +39,13 @@ function StatPill({
 
 function UserCard({ userName }: { userName: string }) {
   const tasks = useTaskStore((s) => s.tasks)
+  const projects = useTaskStore((s) => s.projects)
+  const users = useUserStore((s) => s.users)
   const [expanded, setExpanded] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
-  const user = USERS.find((u) => u.name === userName)
+  const user = users.find((u) => u.name === userName)
 
   const userTasks = useMemo(() => tasks.filter((t) => t.assignee === userName), [tasks, userName])
 
@@ -156,7 +157,7 @@ function UserCard({ userName }: { userName: string }) {
             </p>
             <div className="space-y-1.5">
               {visibleTasks.map((task) => {
-                const project = getProject(task.project)
+                const project = projects.find((p) => p.name === task.project)
                 const overdue = isOverdue(task.dueDate, task.status)
                 const dueToday = isToday(task.dueDate)
                 return (
@@ -234,6 +235,7 @@ function UserCard({ userName }: { userName: string }) {
 
 export default function UsersPage() {
   const tasks = useTaskStore((s) => s.tasks)
+  const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
 
   const globalStats = useMemo(() => {
     const active = tasks.filter((t) => t.status !== 'done').length
@@ -273,7 +275,7 @@ export default function UsersPage() {
 
       {/* User cards grid */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {USERS.map((user) => (
+        {users.map((user) => (
           <UserCard key={user.id} userName={user.name} />
         ))}
       </div>

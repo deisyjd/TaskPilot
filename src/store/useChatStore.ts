@@ -56,7 +56,7 @@ export const useChatStore = create<ChatStore>()(
     }),
     {
       name: 'wipli-chats',
-      version: 1,
+      version: 2,
     }
   )
 )

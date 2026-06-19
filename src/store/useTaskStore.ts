@@ -143,7 +143,7 @@ export const useTaskStore = create<TaskStore>()(
     }),
     {
       name: 'taskpilot-store',
-      version: 1,
+      version: 2,
       storage: {
         getItem: (name) => {
           const value = localStorage.getItem(name)
