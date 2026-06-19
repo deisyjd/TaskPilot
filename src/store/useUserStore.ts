@@ -64,6 +64,7 @@ export const useUserStore = create<UserStore>()(
     {
       name: 'wipli-users',
       version: 2,
+      migrate: () => ({ users: USERS, currentUser: CURRENT_USER }),
       storage: {
         getItem: (name) => {
           const value = localStorage.getItem(name)

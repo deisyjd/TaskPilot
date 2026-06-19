@@ -5,6 +5,7 @@ import { useTaskStore } from '@/store/useTaskStore'
 import { Task, TaskStatus } from '@/types'
 import { isSameDay } from '@/lib/dates'
 import { DayColumn } from '@/components/timeline/DayColumn'
+import { MonthCalendar } from '@/components/timeline/MonthCalendar'
 import { TaskModal } from '@/components/board/TaskModal'
 import {
   Select,
@@ -13,8 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, LayoutGrid } from 'lucide-react'
+
+type ViewMode = 'week' | 'month'
 
 const MONTH_NAMES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -42,12 +44,13 @@ export default function TimelinePage() {
   const tasks = useTaskStore((s) => s.tasks)
   const projects = useTaskStore((s) => s.projects)
 
+  const [viewMode, setViewMode] = useState<ViewMode>('week')
   const [weekOffset, setWeekOffset] = useState(0)
   const [projectFilter, setProjectFilter] = useState('all')
   const [showDone, setShowDone] = useState(true)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
-  const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus>('pending')
+  const [newTaskStatus] = useState<TaskStatus>('pending')
   const [newTaskDate, setNewTaskDate] = useState<string>('')
 
   const weekStart = useMemo(() => getWeekStart(weekOffset), [weekOffset])
@@ -57,15 +60,21 @@ export default function TimelinePage() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
+  // Base filter (project + done): applied to both views
+  // Week view also filters by date range; month view passes all to MonthCalendar
   const filtered = useMemo(() => {
     return tasks.filter((t) => {
       if (projectFilter !== 'all' && t.project !== projectFilter) return false
       if (!showDone && t.status === 'done') return false
-      const d = new Date(t.dueDate)
-      d.setHours(0, 0, 0, 0)
-      return d >= weekStart && d <= weekEnd
+      if (viewMode === 'week') {
+        const [y, m, d] = t.dueDate.split('T')[0].split('-').map(Number)
+        const td = new Date(y, m - 1, d)
+        td.setHours(0, 0, 0, 0)
+        return td >= weekStart && td <= weekEnd
+      }
+      return true
     })
-  }, [tasks, projectFilter, showDone, weekStart, weekEnd])
+  }, [tasks, projectFilter, showDone, viewMode, weekStart, weekEnd])
 
   const tasksByDay = useMemo(() => {
     return weekDays.map((day) => ({
@@ -86,62 +95,96 @@ export default function TimelinePage() {
   const totalThisWeek = filtered.length
   const doneThisWeek = filtered.filter((t) => t.status === 'done').length
   const overdueThisWeek = filtered.filter((t) => {
-    const d = new Date(t.dueDate); d.setHours(0,0,0,0)
-    return d < today && t.status !== 'done'
+    const [y, m, d] = t.dueDate.split('T')[0].split('-').map(Number)
+    const td = new Date(y, m - 1, d); td.setHours(0,0,0,0)
+    return td < today && t.status !== 'done'
   }).length
 
-  const openEdit = (task: Task) => {
-    setSelectedTask(task)
-    setModalOpen(true)
-  }
+  const openEdit = (task: Task) => { setSelectedTask(task); setModalOpen(true) }
 
   const openNew = (date: Date) => {
     setSelectedTask(null)
     setNewTaskDate(date.toISOString().split('T')[0])
-    setNewTaskStatus('pending')
     setModalOpen(true)
   }
 
-  const closeModal = () => {
-    setModalOpen(false)
-    setSelectedTask(null)
-  }
+  const closeModal = () => { setModalOpen(false); setSelectedTask(null) }
 
   return (
     <div className="flex flex-col h-full gap-4">
       {/* Controls */}
       <div className="flex items-center gap-3 flex-wrap">
-        {/* Week navigation */}
-        <div className="flex items-center gap-2 bg-white border border-gray-100 rounded-lg px-3 py-1.5 shadow-sm">
+        {/* View toggle */}
+        <div
+          className="flex items-center gap-1 p-1 rounded-lg"
+          style={{ backgroundColor: 'var(--tp-surface)', border: '1px solid var(--tp-border)' }}
+        >
           <button
-            onClick={() => setWeekOffset((o) => o - 1)}
-            className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+            onClick={() => setViewMode('week')}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors"
+            style={{
+              backgroundColor: viewMode === 'week' ? 'var(--tp-dark)' : 'transparent',
+              color: viewMode === 'week' ? 'var(--tp-lime)' : 'var(--tp-text-2)',
+            }}
           >
-            <ChevronLeft className="w-4 h-4" />
+            <CalendarDays className="w-3.5 h-3.5" />
+            Semana
           </button>
-          <div className="flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-violet-500" />
-            <span className="text-sm font-medium text-gray-700 min-w-[220px] text-center">
-              {weekLabel}
-            </span>
-          </div>
           <button
-            onClick={() => setWeekOffset((o) => o + 1)}
-            className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+            onClick={() => setViewMode('month')}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors"
+            style={{
+              backgroundColor: viewMode === 'month' ? 'var(--tp-dark)' : 'transparent',
+              color: viewMode === 'month' ? 'var(--tp-lime)' : 'var(--tp-text-2)',
+            }}
           >
-            <ChevronRight className="w-4 h-4" />
+            <LayoutGrid className="w-3.5 h-3.5" />
+            Mes
           </button>
         </div>
 
-        {weekOffset !== 0 && (
-          <button
-            onClick={() => setWeekOffset(0)}
-            className="text-xs text-violet-600 hover:underline"
-          >
-            Semana actual
-          </button>
+        {/* Week navigation (only in week view) */}
+        {viewMode === 'week' && (
+          <>
+            <div
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg shadow-sm"
+              style={{ backgroundColor: 'var(--tp-surface)', border: '1px solid var(--tp-border)' }}
+            >
+              <button
+                onClick={() => setWeekOffset((o) => o - 1)}
+                className="p-0.5 rounded transition-colors hover:opacity-70"
+                style={{ color: 'var(--tp-text-2)' }}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span
+                className="text-sm font-medium min-w-[220px] text-center"
+                style={{ color: 'var(--tp-text)' }}
+              >
+                {weekLabel}
+              </span>
+              <button
+                onClick={() => setWeekOffset((o) => o + 1)}
+                className="p-0.5 rounded transition-colors hover:opacity-70"
+                style={{ color: 'var(--tp-text-2)' }}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {weekOffset !== 0 && (
+              <button
+                onClick={() => setWeekOffset(0)}
+                className="text-xs hover:underline"
+                style={{ color: 'var(--tp-accent, #7c3aed)' }}
+              >
+                Semana actual
+              </button>
+            )}
+          </>
         )}
 
+        {/* Project filter */}
         <Select value={projectFilter} onValueChange={(v) => setProjectFilter(v ?? 'all')}>
           <SelectTrigger className="w-44 h-9 bg-white text-sm">
             <SelectValue placeholder="Proyecto" />
@@ -156,42 +199,57 @@ export default function TimelinePage() {
 
         <button
           onClick={() => setShowDone((v) => !v)}
-          className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-            showDone
-              ? 'bg-green-50 border-green-200 text-green-700'
-              : 'bg-white border-gray-100 text-gray-400'
-          }`}
+          className="text-xs px-3 py-1.5 rounded-lg border transition-colors"
+          style={{
+            backgroundColor: showDone ? '#F0FDF4' : 'var(--tp-surface)',
+            borderColor: showDone ? '#BBF7D0' : 'var(--tp-border)',
+            color: showDone ? '#15803D' : 'var(--tp-text-2)',
+          }}
         >
           {showDone ? '✓ Completadas visibles' : 'Ocultar completadas'}
         </button>
 
-        {/* Weekly stats */}
-        <div className="ml-auto flex items-center gap-3 text-xs text-gray-400">
-          <span>{totalThisWeek} tareas</span>
-          {doneThisWeek > 0 && <span className="text-green-500">✓ {doneThisWeek} listas</span>}
-          {overdueThisWeek > 0 && <span className="text-red-400">⚠ {overdueThisWeek} vencidas</span>}
-        </div>
+        {/* Week stats (only in week view) */}
+        {viewMode === 'week' && (
+          <div className="ml-auto flex items-center gap-3 text-xs" style={{ color: 'var(--tp-text-2)' }}>
+            <span>{totalThisWeek} tareas</span>
+            {doneThisWeek > 0 && <span style={{ color: '#22C55E' }}>✓ {doneThisWeek} listas</span>}
+            {overdueThisWeek > 0 && <span style={{ color: '#F87171' }}>⚠ {overdueThisWeek} vencidas</span>}
+          </div>
+        )}
       </div>
 
-      {/* Timeline grid */}
-      <div className="flex gap-3 overflow-x-auto pb-4 flex-1">
-        {tasksByDay.map(({ date, tasks: dayTasks }) => (
-          <DayColumn
-            key={date.toISOString()}
-            date={date}
-            tasks={dayTasks}
-            isToday={isSameDay(date, today)}
-            onCardClick={openEdit}
-            onAddTask={openNew}
-          />
-        ))}
-      </div>
+      {/* Week view */}
+      {viewMode === 'week' && (
+        <div className="flex gap-3 overflow-x-auto pb-4 flex-1">
+          {tasksByDay.map(({ date, tasks: dayTasks }) => (
+            <DayColumn
+              key={date.toISOString()}
+              date={date}
+              tasks={dayTasks}
+              isToday={isSameDay(date, today)}
+              onCardClick={openEdit}
+              onAddTask={openNew}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Month view */}
+      {viewMode === 'month' && (
+        <MonthCalendar
+          tasks={filtered}
+          onTaskClick={openEdit}
+          onAddTask={openNew}
+        />
+      )}
 
       {/* Task modal */}
       <TaskModal
         open={modalOpen}
         task={selectedTask}
         defaultStatus={newTaskStatus}
+        defaultDueDate={newTaskDate}
         onClose={closeModal}
       />
     </div>

@@ -39,11 +39,11 @@ const PRIORITY_COLORS: Record<Priority, { bg: string; text: string }> = {
 
 function uid() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }
 
-function emptyTask(status: TaskStatus = 'pending', project = 'Qenta', assignee = ''): Task {
+function emptyTask(status: TaskStatus = 'pending', project = 'Qenta', assignee = '', dueDate = ''): Task {
   const now = new Date().toISOString()
   return {
     id: `t-${uid()}`, title: '', project, description: '', status,
-    assignee, dueDate: new Date().toISOString().split('T')[0],
+    assignee, dueDate: dueDate || new Date().toISOString().split('T')[0],
     priority: 'medium', type: 'other', tags: [], checklist: [], comments: [],
     createdAt: now, updatedAt: now,
   }
@@ -53,6 +53,7 @@ interface Props {
   task: Task | null
   defaultStatus?: TaskStatus
   defaultProject?: string
+  defaultDueDate?: string
   open: boolean
   onClose: () => void
 }
@@ -103,24 +104,24 @@ const fieldInput: React.CSSProperties = {
   outline: 'none',
 }
 
-export function TaskModal({ task, defaultStatus = 'pending', defaultProject, open, onClose }: Props) {
+export function TaskModal({ task, defaultStatus = 'pending', defaultProject, defaultDueDate, open, onClose }: Props) {
   const { addTask, updateTask, deleteTask } = useTaskStore()
   const projects = useTaskStore((s) => s.projects)
   const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
   const isNew = !task
 
   const defaultAssignee = users[0]?.name ?? ''
-  const [form, setForm] = useState<Task>(task ?? emptyTask(defaultStatus, defaultProject, defaultAssignee))
+  const [form, setForm] = useState<Task>(task ?? emptyTask(defaultStatus, defaultProject, defaultAssignee, defaultDueDate))
   const [tagInput, setTagInput] = useState('')
   const [checkInput, setCheckInput] = useState('')
   const [commentInput, setCommentInput] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   useEffect(() => {
-    setForm(task ?? emptyTask(defaultStatus, defaultProject, defaultAssignee))
+    setForm(task ?? emptyTask(defaultStatus, defaultProject, defaultAssignee, defaultDueDate))
     setTagInput(''); setCheckInput(''); setCommentInput('')
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task, defaultStatus, defaultProject, open])
+  }, [task, defaultStatus, defaultProject, defaultDueDate, open])
 
   const attachments: Attachment[] = form.attachments ?? []
   const links: ReferenceLink[] = form.links ?? []
