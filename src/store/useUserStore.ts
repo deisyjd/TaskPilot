@@ -23,6 +23,7 @@ interface UserStore {
   currentUser: User
   addUser: (user: User) => void
   updateUser: (id: string, updates: Partial<User>) => void
+  deleteUser: (id: string) => void
   deactivateUser: (id: string) => void
   activateUser: (id: string) => void
 }
@@ -42,6 +43,9 @@ export const useUserStore = create<UserStore>()(
             u.id === id ? { ...u, ...updates, updatedAt: new Date().toISOString() } : u
           ),
         })),
+
+      deleteUser: (id) =>
+        set((s) => ({ users: s.users.filter((u) => u.id !== id) })),
 
       deactivateUser: (id) =>
         set((s) => ({

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Edit2, UserCheck, UserX } from 'lucide-react'
+import { Search, Edit2, UserCheck, UserX, Trash2 } from 'lucide-react'
 import { User, UserRole } from '@/types'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
 import { useTaskStore } from '@/store/useTaskStore'
@@ -45,12 +45,14 @@ export function UserList() {
   const users = useUserStore((s) => s.users)
   const deactivateUser = useUserStore((s) => s.deactivateUser)
   const activateUser = useUserStore((s) => s.activateUser)
+  const deleteUser = useUserStore((s) => s.deleteUser)
   const tasks = useTaskStore((s) => s.tasks)
   const currentUser = useCurrentUser()
 
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all')
   const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const canEdit = can(currentUser, 'edit_user')
   const canDeactivate = can(currentUser, 'deactivate_user')
@@ -198,44 +200,86 @@ export function UserList() {
 
                 {/* Actions */}
                 {(canEdit || canDeactivate) && (
-                  <div className="flex items-center gap-2 pt-1 border-t" style={{ borderColor: 'var(--tp-border)' }}>
-                    {canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => setEditingUser(u)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-[var(--tp-r-btn)] text-xs font-medium border transition-all hover:bg-[var(--tp-bg-2)] active:scale-95"
-                        style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-text-2)' }}
-                      >
-                        <Edit2 size={12} />
-                        Editar
-                      </button>
-                    )}
+                  <div className="flex flex-col gap-2 pt-1 border-t" style={{ borderColor: 'var(--tp-border)' }}>
+                    <div className="flex items-center gap-2">
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingUser(u)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-[var(--tp-r-btn)] text-xs font-medium border transition-all hover:bg-[var(--tp-bg-2)] active:scale-95"
+                          style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-text-2)' }}
+                        >
+                          <Edit2 size={12} />
+                          Editar
+                        </button>
+                      )}
 
-                    {canDeactivate && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          isActive ? deactivateUser(u.id) : activateUser(u.id)
-                        }
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-[var(--tp-r-btn)] text-xs font-medium border transition-all active:scale-95 ${
-                          isActive
-                            ? 'hover:bg-red-50 hover:border-red-200 hover:text-red-600'
-                            : 'hover:bg-green-50 hover:border-green-200 hover:text-green-600'
-                        }`}
-                        style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-text-2)' }}
-                      >
-                        {isActive ? (
-                          <>
-                            <UserX size={12} />
-                            Desactivar
-                          </>
-                        ) : (
-                          <>
-                            <UserCheck size={12} />
-                            Activar
-                          </>
-                        )}
-                      </button>
+                      {canDeactivate && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            isActive ? deactivateUser(u.id) : activateUser(u.id)
+                          }
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-[var(--tp-r-btn)] text-xs font-medium border transition-all active:scale-95 ${
+                            isActive
+                              ? 'hover:bg-red-50 hover:border-red-200 hover:text-red-600'
+                              : 'hover:bg-green-50 hover:border-green-200 hover:text-green-600'
+                          }`}
+                          style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-text-2)' }}
+                        >
+                          {isActive ? (
+                            <>
+                              <UserX size={12} />
+                              Desactivar
+                            </>
+                          ) : (
+                            <>
+                              <UserCheck size={12} />
+                              Activar
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Delete — only for non-self users */}
+                    {can(currentUser, 'deactivate_user') && u.id !== currentUser?.id && (
+                      confirmDeleteId === u.id ? (
+                        <div
+                          className="flex items-center gap-2 px-3 py-2 rounded-[var(--tp-r-btn)] text-xs"
+                          style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA' }}
+                        >
+                          <span className="flex-1 font-medium" style={{ color: '#DC2626' }}>
+                            ¿Eliminar a {u.name}?
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => { deleteUser(u.id); setConfirmDeleteId(null) }}
+                            className="px-2.5 py-1 rounded-full text-xs font-semibold"
+                            style={{ backgroundColor: '#DC2626', color: '#FFFFFF' }}
+                          >
+                            Sí, eliminar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="px-2.5 py-1 rounded-full text-xs font-medium"
+                            style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteId(u.id)}
+                          className="flex items-center justify-center gap-1.5 py-1.5 rounded-[var(--tp-r-btn)] text-xs font-medium border transition-all hover:bg-red-50 hover:border-red-200 hover:text-red-600 active:scale-95"
+                          style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-text-2)' }}
+                        >
+                          <Trash2 size={12} />
+                          Eliminar usuario
+                        </button>
+                      )
                     )}
                   </div>
                 )}
