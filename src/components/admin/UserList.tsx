@@ -1,7 +1,9 @@
 'use client'
 
+'use client'
+
 import { useState } from 'react'
-import { Search, Edit2, UserCheck, UserX, Trash2 } from 'lucide-react'
+import { Search, Edit2, UserCheck, UserX, Trash2, AlertTriangle } from 'lucide-react'
 import { User, UserRole } from '@/types'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
 import { useTaskStore } from '@/store/useTaskStore'
@@ -47,12 +49,16 @@ export function UserList() {
   const activateUser = useUserStore((s) => s.activateUser)
   const deleteUser = useUserStore((s) => s.deleteUser)
   const tasks = useTaskStore((s) => s.tasks)
+  const updateTask = useTaskStore((s) => s.updateTask)
   const currentUser = useCurrentUser()
 
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all')
   const [editingUser, setEditingUser] = useState<User | null>(null)
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+  // Delete + reassign flow
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null)
+  const [reassignTo, setReassignTo] = useState('')
 
   const canEdit = can(currentUser, 'edit_user')
   const canDeactivate = can(currentUser, 'deactivate_user')
@@ -65,9 +71,36 @@ export function UserList() {
     return matchesSearch && matchesRole
   })
 
+  function getUserTasks(userName: string) {
+    return tasks.filter((t) => t.assignee === userName && t.status !== 'done')
+  }
+
   function getTaskCount(userName: string): number {
     return tasks.filter((t) => t.assignee === userName).length
   }
+
+  function openDeleteDialog(u: User) {
+    setDeleteTarget(u)
+    setReassignTo('')
+  }
+
+  function confirmDelete() {
+    if (!deleteTarget) return
+    // Reassign active tasks first if a target was chosen
+    if (reassignTo) {
+      getUserTasks(deleteTarget.name).forEach((t) => {
+        updateTask(t.id, { assignee: reassignTo })
+      })
+    }
+    deleteUser(deleteTarget.id)
+    setDeleteTarget(null)
+    setReassignTo('')
+  }
+
+  // Active users available for reassignment (excluding the one being deleted)
+  const reassignOptions = users.filter(
+    (u) => u.id !== deleteTarget?.id && u.status !== 'inactive'
+  )
 
   return (
     <>
@@ -244,42 +277,15 @@ export function UserList() {
 
                     {/* Delete — only for non-self users */}
                     {can(currentUser, 'deactivate_user') && u.id !== currentUser?.id && (
-                      confirmDeleteId === u.id ? (
-                        <div
-                          className="flex items-center gap-2 px-3 py-2 rounded-[var(--tp-r-btn)] text-xs"
-                          style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA' }}
-                        >
-                          <span className="flex-1 font-medium" style={{ color: '#DC2626' }}>
-                            ¿Eliminar a {u.name}?
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => { deleteUser(u.id); setConfirmDeleteId(null) }}
-                            className="px-2.5 py-1 rounded-full text-xs font-semibold"
-                            style={{ backgroundColor: '#DC2626', color: '#FFFFFF' }}
-                          >
-                            Sí, eliminar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDeleteId(null)}
-                            className="px-2.5 py-1 rounded-full text-xs font-medium"
-                            style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDeleteId(u.id)}
-                          className="flex items-center justify-center gap-1.5 py-1.5 rounded-[var(--tp-r-btn)] text-xs font-medium border transition-all hover:bg-red-50 hover:border-red-200 hover:text-red-600 active:scale-95"
-                          style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-text-2)' }}
-                        >
-                          <Trash2 size={12} />
-                          Eliminar usuario
-                        </button>
-                      )
+                      <button
+                        type="button"
+                        onClick={() => openDeleteDialog(u)}
+                        className="flex items-center justify-center gap-1.5 py-1.5 rounded-[var(--tp-r-btn)] text-xs font-medium border transition-all hover:bg-red-50 hover:border-red-200 hover:text-red-600 active:scale-95"
+                        style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-text-2)' }}
+                      >
+                        <Trash2 size={12} />
+                        Eliminar usuario
+                      </button>
                     )}
                   </div>
                 )}
@@ -295,6 +301,107 @@ export function UserList() {
         user={editingUser}
         onClose={() => setEditingUser(null)}
       />
+
+      {/* Delete + reassign dialog */}
+      {deleteTarget && (() => {
+        const pendingTasks = getUserTasks(deleteTarget.name)
+        const hasTasks = pendingTasks.length > 0
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
+          >
+            <div
+              className="w-full max-w-md p-6 flex flex-col gap-5"
+              style={{
+                backgroundColor: 'var(--tp-surface)',
+                borderRadius: '24px',
+                border: '1px solid var(--tp-border)',
+                boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
+              }}
+            >
+              {/* Header */}
+              <div className="flex items-start gap-3">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: '#FEF2F2' }}
+                >
+                  {hasTasks
+                    ? <AlertTriangle size={20} style={{ color: '#DC2626' }} />
+                    : <Trash2 size={20} style={{ color: '#DC2626' }} />}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--tp-text)' }}>
+                    Eliminar a {deleteTarget.name}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--tp-text-2)' }}>
+                    {hasTasks
+                      ? `Tiene ${pendingTasks.length} tarea${pendingTasks.length !== 1 ? 's' : ''} activa${pendingTasks.length !== 1 ? 's' : ''}. Reasígnalas antes de eliminar.`
+                      : 'Esta acción no se puede deshacer.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Reassign selector */}
+              {hasTasks && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-semibold" style={{ color: 'var(--tp-text-2)' }}>
+                    Reasignar tareas a:
+                  </p>
+                  <div className="relative">
+                    <select
+                      value={reassignTo}
+                      onChange={(e) => setReassignTo(e.target.value)}
+                      className="w-full appearance-none outline-none text-sm px-3 py-2.5 pr-8"
+                      style={{
+                        borderRadius: '12px',
+                        border: `1px solid ${reassignTo ? 'var(--tp-dark)' : 'var(--tp-border)'}`,
+                        backgroundColor: 'var(--tp-bg)',
+                        color: 'var(--tp-text)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="">— Selecciona un responsable —</option>
+                      {reassignOptions.map((u) => (
+                        <option key={u.id} value={u.name}>{u.name} ({u.role})</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--tp-text-2)' }}>
+                      ▾
+                    </div>
+                  </div>
+                  {reassignTo && (
+                    <p className="text-xs" style={{ color: '#10b981' }}>
+                      ✓ {pendingTasks.length} tarea{pendingTasks.length !== 1 ? 's' : ''} se moverán a {reassignTo}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => { setDeleteTarget(null); setReassignTo('') }}
+                  className="px-4 py-2 text-sm font-medium rounded-full transition-all hover:opacity-70"
+                  style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  disabled={hasTasks && !reassignTo}
+                  className="px-5 py-2 text-sm font-semibold rounded-full transition-all hover:opacity-85 disabled:opacity-40"
+                  style={{ backgroundColor: '#DC2626', color: '#FFFFFF' }}
+                >
+                  {hasTasks ? 'Reasignar y eliminar' : 'Sí, eliminar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </>
   )
 }

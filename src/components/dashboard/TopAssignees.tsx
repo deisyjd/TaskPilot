@@ -1,10 +1,13 @@
+'use client'
+
 import { Task } from '@/types'
-import { getUser } from '@/data/users'
+import { useUserStore } from '@/store/useUserStore'
 import { cn } from '@/lib/utils'
 
 interface Props { tasks: Task[] }
 
 export function TopAssignees({ tasks }: Props) {
+  const users = useUserStore((s) => s.users)
   const active = tasks.filter((t) => t.status !== 'done')
 
   const byAssignee = active.reduce<Record<string, { total: number; blocked: number; overdue: number }>>((acc, t) => {
@@ -29,7 +32,7 @@ export function TopAssignees({ tasks }: Props) {
 
       <div className="space-y-4">
         {sorted.map(([name, { total, blocked, overdue }]) => {
-          const user = getUser(name)
+          const user = users.find((u) => u.name === name)
           const pct = Math.round((total / max) * 100)
           return (
             <div key={name} className="flex items-center gap-3">
