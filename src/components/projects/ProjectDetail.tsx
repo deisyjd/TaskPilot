@@ -25,6 +25,7 @@ import {
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
 import { can } from '@/lib/permissions'
+import { TaskModal } from '@/components/board/TaskModal'
 import {
   Project,
   Attachment,
@@ -118,6 +119,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
   const [sessionLinks, setSessionLinks] = useState<ReferenceLink[]>([])
   const [linkForm, setLinkForm] = useState({ url: '', title: '' })
   const [showLinkForm, setShowLinkForm] = useState(false)
+  const [taskModalOpen, setTaskModalOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Derived data
@@ -234,22 +236,38 @@ export function ProjectDetail({ project, onEdit }: Props) {
             </span>
           </div>
 
-          {can(currentUser, 'edit_project') && (
-            <button
-              onClick={onEdit}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-80"
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.15)',
-                backdropFilter: 'blur(8px)',
-                color: '#FFFFFF',
-                borderRadius: 'var(--tp-r-btn)',
-                border: '1px solid rgba(255,255,255,0.25)',
-              }}
-            >
-              <Pencil className="w-3.5 h-3.5" />
-              Editar proyecto
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {can(currentUser, 'create_task') && (
+              <button
+                onClick={() => setTaskModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-90"
+                style={{
+                  backgroundColor: 'var(--tp-lime)',
+                  color: '#111318',
+                  borderRadius: 'var(--tp-r-btn)',
+                }}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Nueva tarea
+              </button>
+            )}
+            {can(currentUser, 'edit_project') && (
+              <button
+                onClick={onEdit}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-80"
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  backdropFilter: 'blur(8px)',
+                  color: '#FFFFFF',
+                  borderRadius: 'var(--tp-r-btn)',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                }}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Editar
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -329,14 +347,30 @@ export function ProjectDetail({ project, onEdit }: Props) {
               <h2 className="text-sm font-semibold" style={{ color: 'var(--tp-text-2)' }}>
                 Tareas del proyecto ({projectTasks.length})
               </h2>
-              <Link
-                href="/board"
-                className="flex items-center gap-1 text-xs font-medium transition-all hover:opacity-70"
-                style={{ color: project.color }}
-              >
-                Ver en tablero
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              <div className="flex items-center gap-2">
+                {can(currentUser, 'create_task') && (
+                  <button
+                    onClick={() => setTaskModalOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all hover:opacity-75"
+                    style={{
+                      backgroundColor: 'var(--tp-dark)',
+                      color: '#FFFFFF',
+                      borderRadius: 'var(--tp-r-btn)',
+                    }}
+                  >
+                    <Plus className="w-3 h-3" />
+                    Nueva tarea
+                  </button>
+                )}
+                <Link
+                  href="/board"
+                  className="flex items-center gap-1 text-xs font-medium transition-all hover:opacity-70"
+                  style={{ color: project.color }}
+                >
+                  Ver en tablero
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
 
             {projectTasks.length === 0 ? (
@@ -756,6 +790,13 @@ export function ProjectDetail({ project, onEdit }: Props) {
           </div>
         </div>
       </div>
+
+      <TaskModal
+        task={null}
+        defaultProject={project.name}
+        open={taskModalOpen}
+        onClose={() => setTaskModalOpen(false)}
+      />
     </div>
   )
 }

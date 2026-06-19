@@ -39,10 +39,10 @@ const PRIORITY_COLORS: Record<Priority, { bg: string; text: string }> = {
 
 function uid() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }
 
-function emptyTask(status: TaskStatus = 'pending'): Task {
+function emptyTask(status: TaskStatus = 'pending', project = 'Qenta'): Task {
   const now = new Date().toISOString()
   return {
-    id: `t-${uid()}`, title: '', project: 'Qenta', description: '', status,
+    id: `t-${uid()}`, title: '', project, description: '', status,
     assignee: USER_NAMES[0], dueDate: new Date().toISOString().split('T')[0],
     priority: 'medium', type: 'other', tags: [], checklist: [], comments: [],
     createdAt: now, updatedAt: now,
@@ -52,6 +52,7 @@ function emptyTask(status: TaskStatus = 'pending'): Task {
 interface Props {
   task: Task | null
   defaultStatus?: TaskStatus
+  defaultProject?: string
   open: boolean
   onClose: () => void
 }
@@ -102,21 +103,21 @@ const fieldInput: React.CSSProperties = {
   outline: 'none',
 }
 
-export function TaskModal({ task, defaultStatus = 'pending', open, onClose }: Props) {
+export function TaskModal({ task, defaultStatus = 'pending', defaultProject, open, onClose }: Props) {
   const { addTask, updateTask, deleteTask } = useTaskStore()
   const projects = useTaskStore((s) => s.projects)
   const isNew = !task
 
-  const [form, setForm] = useState<Task>(task ?? emptyTask(defaultStatus))
+  const [form, setForm] = useState<Task>(task ?? emptyTask(defaultStatus, defaultProject))
   const [tagInput, setTagInput] = useState('')
   const [checkInput, setCheckInput] = useState('')
   const [commentInput, setCommentInput] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   useEffect(() => {
-    setForm(task ?? emptyTask(defaultStatus))
+    setForm(task ?? emptyTask(defaultStatus, defaultProject))
     setTagInput(''); setCheckInput(''); setCommentInput('')
-  }, [task, defaultStatus, open])
+  }, [task, defaultStatus, defaultProject, open])
 
   const attachments: Attachment[] = form.attachments ?? []
   const links: ReferenceLink[] = form.links ?? []
