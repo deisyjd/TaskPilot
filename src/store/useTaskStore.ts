@@ -143,7 +143,7 @@ export const useTaskStore = create<TaskStore>()(
     }),
     {
       name: 'taskpilot-store',
-      version: 2,
+      version: 3,
       migrate: () => ({ tasks: MOCK_TASKS, history: MOCK_HISTORY, projects: PROJECTS }),
       storage: {
         getItem: (name) => {
