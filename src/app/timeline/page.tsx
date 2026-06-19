@@ -79,7 +79,10 @@ export default function TimelinePage() {
   const tasksByDay = useMemo(() => {
     return weekDays.map((day) => ({
       date: day,
-      tasks: filtered.filter((t) => isSameDay(new Date(t.dueDate), day)),
+      tasks: filtered.filter((t) => {
+        const [y, m, d] = t.dueDate.split('T')[0].split('-').map(Number)
+        return isSameDay(new Date(y, m - 1, d), day)
+      }),
     }))
   }, [weekDays, filtered])
 
