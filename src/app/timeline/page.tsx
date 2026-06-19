@@ -42,7 +42,7 @@ function getWeekDays(weekStart: Date): Date[] {
 
 export default function TimelinePage() {
   const tasks = useTaskStore((s) => s.tasks)
-  const projects = useTaskStore((s) => s.projects)
+  const projects = useTaskStore((s) => s.projects).filter((p) => p.status !== 'inactive')
 
   const [viewMode, setViewMode] = useState<ViewMode>('week')
   const [weekOffset, setWeekOffset] = useState(0)

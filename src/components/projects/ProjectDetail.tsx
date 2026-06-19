@@ -21,6 +21,8 @@ import {
   Upload,
   User,
   X,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
@@ -111,15 +113,17 @@ function UserAvatar({ name, users }: { name: string; users: import('@/types').Us
 export function ProjectDetail({ project, onEdit }: Props) {
   const tasks = useTaskStore((s) => s.tasks)
   const history = useTaskStore((s) => s.history)
+  const archiveProject = useTaskStore((s) => s.archiveProject)
+  const restoreProject = useTaskStore((s) => s.restoreProject)
   const users = useUserStore((s) => s.users)
   const currentUser = useCurrentUser()
 
-  // Local state for session-level additions (wired to store when updateProject is added)
   const [sessionAttachments, setSessionAttachments] = useState<Attachment[]>([])
   const [sessionLinks, setSessionLinks] = useState<ReferenceLink[]>([])
   const [linkForm, setLinkForm] = useState({ url: '', title: '' })
   const [showLinkForm, setShowLinkForm] = useState(false)
   const [taskModalOpen, setTaskModalOpen] = useState(false)
+  const [confirmArchive, setConfirmArchive] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Derived data
@@ -252,20 +256,72 @@ export function ProjectDetail({ project, onEdit }: Props) {
               </button>
             )}
             {can(currentUser, 'edit_project') && (
-              <button
-                onClick={onEdit}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-80"
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.15)',
-                  backdropFilter: 'blur(8px)',
-                  color: '#FFFFFF',
-                  borderRadius: 'var(--tp-r-btn)',
-                  border: '1px solid rgba(255,255,255,0.25)',
-                }}
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                Editar
-              </button>
+              <>
+                {project.status === 'inactive' ? (
+                  <button
+                    onClick={() => restoreProject(project.id)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-80"
+                    style={{
+                      backgroundColor: 'rgba(34,197,94,0.25)',
+                      backdropFilter: 'blur(8px)',
+                      color: '#FFFFFF',
+                      borderRadius: 'var(--tp-r-btn)',
+                      border: '1px solid rgba(34,197,94,0.4)',
+                    }}
+                  >
+                    <ArchiveRestore className="w-3.5 h-3.5" />
+                    Restaurar
+                  </button>
+                ) : confirmArchive ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-white/70">¿Archivar proyecto?</span>
+                    <button
+                      onClick={() => { archiveProject(project.id); setConfirmArchive(false) }}
+                      className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                      style={{ backgroundColor: 'rgba(220,38,38,0.7)', color: '#fff' }}
+                    >
+                      Sí
+                    </button>
+                    <button
+                      onClick={() => setConfirmArchive(false)}
+                      className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: '#fff' }}
+                    >
+                      No
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmArchive(true)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-80"
+                    style={{
+                      backgroundColor: 'rgba(255,255,255,0.12)',
+                      backdropFilter: 'blur(8px)',
+                      color: 'rgba(255,255,255,0.7)',
+                      borderRadius: 'var(--tp-r-btn)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                    }}
+                  >
+                    <Archive className="w-3.5 h-3.5" />
+                    Archivar
+                  </button>
+                )}
+
+                <button
+                  onClick={onEdit}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-80"
+                  style={{
+                    backgroundColor: 'rgba(255,255,255,0.15)',
+                    backdropFilter: 'blur(8px)',
+                    color: '#FFFFFF',
+                    borderRadius: 'var(--tp-r-btn)',
+                    border: '1px solid rgba(255,255,255,0.25)',
+                  }}
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Editar
+                </button>
+              </>
             )}
           </div>
         </div>

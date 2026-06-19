@@ -23,7 +23,7 @@ const inputBase: React.CSSProperties = {
 
 export default function BoardPage() {
   const tasks = useTaskStore((s) => s.tasks)
-  const projects = useTaskStore((s) => s.projects)
+  const projects = useTaskStore((s) => s.projects).filter((p) => p.status !== 'inactive')
   const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
 
   const [search, setSearch] = useState('')

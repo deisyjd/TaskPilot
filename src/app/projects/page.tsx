@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Plus, Search, FolderOpen, Users, CheckSquare, Star } from 'lucide-react'
+import { Plus, Search, FolderOpen, Users, CheckSquare, Star, Archive, ArchiveRestore } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useCurrentUser } from '@/store/useUserStore'
 import { can } from '@/lib/permissions'
@@ -21,11 +21,16 @@ interface CardProps {
   project: Project
   taskCount: number
   onToggleFeatured: (id: string, current: boolean) => void
+  onArchive: (id: string) => void
+  onRestore: (id: string) => void
+  canManage: boolean
 }
 
-function ProjectCard({ project, taskCount, onToggleFeatured }: CardProps) {
+function ProjectCard({ project, taskCount, onToggleFeatured, onArchive, onRestore, canManage }: CardProps) {
   const memberCount = project.members?.length ?? 0
   const featured = project.featured ?? false
+  const isInactive = project.status === 'inactive'
+  const [confirmArchive, setConfirmArchive] = useState(false)
 
   return (
     <div
@@ -153,6 +158,52 @@ function ProjectCard({ project, taskCount, onToggleFeatured }: CardProps) {
           )}
         </div>
       </Link>
+
+      {/* Archive / Restore footer — outside Link so button click doesn't navigate */}
+      {canManage && (
+        <div
+          className="px-4 pb-3 pt-1"
+          style={{ borderTop: '1px solid var(--tp-border)' }}
+        >
+          {isInactive ? (
+            <button
+              onClick={() => onRestore(project.id)}
+              className="flex items-center gap-1.5 text-xs font-medium transition-opacity hover:opacity-70 w-full justify-center py-1.5 rounded-lg"
+              style={{ backgroundColor: '#F0FDF4', color: '#16A34A' }}
+            >
+              <ArchiveRestore className="w-3.5 h-3.5" />
+              Restaurar proyecto
+            </button>
+          ) : confirmArchive ? (
+            <div className="flex items-center gap-2 justify-center">
+              <span className="text-xs" style={{ color: 'var(--tp-text-2)' }}>¿Archivar?</span>
+              <button
+                onClick={() => { onArchive(project.id); setConfirmArchive(false) }}
+                className="text-xs px-2.5 py-1 rounded-lg font-medium"
+                style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}
+              >
+                Sí, archivar
+              </button>
+              <button
+                onClick={() => setConfirmArchive(false)}
+                className="text-xs px-2.5 py-1 rounded-lg font-medium"
+                style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
+              >
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmArchive(true)}
+              className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70 w-full justify-center py-1.5 rounded-lg opacity-0 group-hover:opacity-100"
+              style={{ color: 'var(--tp-text-2)' }}
+            >
+              <Archive className="w-3 h-3" />
+              Archivar
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -160,11 +211,15 @@ function ProjectCard({ project, taskCount, onToggleFeatured }: CardProps) {
 export default function ProjectsPage() {
   const projects = useTaskStore((s) => s.projects)
   const updateProject = useTaskStore((s) => s.updateProject)
+  const archiveProject = useTaskStore((s) => s.archiveProject)
+  const restoreProject = useTaskStore((s) => s.restoreProject)
   const tasks = useTaskStore((s) => s.tasks)
   const currentUser = useCurrentUser()
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+
+  const canManage = can(currentUser, 'edit_project')
 
   const handleToggleFeatured = (id: string, current: boolean) => {
     updateProject(id, { featured: !current })
@@ -312,6 +367,9 @@ export default function ProjectsPage() {
               project={project}
               taskCount={taskCountByProject[project.name] ?? 0}
               onToggleFeatured={handleToggleFeatured}
+              onArchive={archiveProject}
+              onRestore={restoreProject}
+              canManage={canManage}
             />
           ))}
         </div>

@@ -35,6 +35,8 @@ interface TaskStore {
   addProject: (project: Project) => void
   updateProject: (id: string, updates: Partial<Project>) => void
   deleteProject: (id: string) => void
+  archiveProject: (id: string) => void
+  restoreProject: (id: string) => void
   addGenericHistory: (event: Omit<HistoryEvent, 'id'>) => void
   resetToMockData: () => void
 }
@@ -125,6 +127,14 @@ export const useTaskStore = create<TaskStore>()(
           _refreshProjectCache(updated)
           return { projects: updated }
         })
+      },
+
+      archiveProject: (id) => {
+        get().updateProject(id, { status: 'inactive', featured: false })
+      },
+
+      restoreProject: (id) => {
+        get().updateProject(id, { status: 'active' })
       },
 
       // Generic history entry for non-task events (user/project/chat actions)

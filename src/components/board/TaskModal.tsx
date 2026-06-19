@@ -106,7 +106,7 @@ const fieldInput: React.CSSProperties = {
 
 export function TaskModal({ task, defaultStatus = 'pending', defaultProject, defaultDueDate, open, onClose }: Props) {
   const { addTask, updateTask, deleteTask } = useTaskStore()
-  const projects = useTaskStore((s) => s.projects)
+  const projects = useTaskStore((s) => s.projects).filter((p) => p.status !== 'inactive')
   const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
   const isNew = !task
 
