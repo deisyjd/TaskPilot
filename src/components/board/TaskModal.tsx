@@ -5,8 +5,8 @@ import {
   Task, TaskStatus, Priority, TaskType,
   STATUS_LABELS, PRIORITY_LABELS, TYPE_LABELS, STATUS_DOT_COLORS,
 } from '@/types'
-import { USER_NAMES } from '@/data/users'
 import { useTaskStore } from '@/store/useTaskStore'
+import { useUserStore } from '@/store/useUserStore'
 import { formatDateTime } from '@/lib/dates'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -39,11 +39,11 @@ const PRIORITY_COLORS: Record<Priority, { bg: string; text: string }> = {
 
 function uid() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }
 
-function emptyTask(status: TaskStatus = 'pending', project = 'Qenta'): Task {
+function emptyTask(status: TaskStatus = 'pending', project = 'Qenta', assignee = ''): Task {
   const now = new Date().toISOString()
   return {
     id: `t-${uid()}`, title: '', project, description: '', status,
-    assignee: USER_NAMES[0], dueDate: new Date().toISOString().split('T')[0],
+    assignee, dueDate: new Date().toISOString().split('T')[0],
     priority: 'medium', type: 'other', tags: [], checklist: [], comments: [],
     createdAt: now, updatedAt: now,
   }
@@ -106,17 +106,20 @@ const fieldInput: React.CSSProperties = {
 export function TaskModal({ task, defaultStatus = 'pending', defaultProject, open, onClose }: Props) {
   const { addTask, updateTask, deleteTask } = useTaskStore()
   const projects = useTaskStore((s) => s.projects)
+  const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
   const isNew = !task
 
-  const [form, setForm] = useState<Task>(task ?? emptyTask(defaultStatus, defaultProject))
+  const defaultAssignee = users[0]?.name ?? ''
+  const [form, setForm] = useState<Task>(task ?? emptyTask(defaultStatus, defaultProject, defaultAssignee))
   const [tagInput, setTagInput] = useState('')
   const [checkInput, setCheckInput] = useState('')
   const [commentInput, setCommentInput] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   useEffect(() => {
-    setForm(task ?? emptyTask(defaultStatus, defaultProject))
+    setForm(task ?? emptyTask(defaultStatus, defaultProject, defaultAssignee))
     setTagInput(''); setCheckInput(''); setCommentInput('')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task, defaultStatus, defaultProject, open])
 
   const attachments: Attachment[] = form.attachments ?? []
@@ -475,7 +478,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, ope
                   onChange={(e) => setField('assignee', e.target.value)}
                   style={fieldSelect}
                 >
-                  {USER_NAMES.map((u) => <option key={u} value={u}>{u}</option>)}
+                  {users.map((u) => <option key={u.id} value={u.name}>{u.name}</option>)}
                 </select>
               </SelectWrapper>
             </div>

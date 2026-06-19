@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { Task, TaskStatus } from '@/types'
-import { PROJECT_NAMES } from '@/data/projects'
 import { isSameDay } from '@/lib/dates'
 import { DayColumn } from '@/components/timeline/DayColumn'
 import { TaskModal } from '@/components/board/TaskModal'
@@ -41,6 +40,7 @@ function getWeekDays(weekStart: Date): Date[] {
 
 export default function TimelinePage() {
   const tasks = useTaskStore((s) => s.tasks)
+  const projects = useTaskStore((s) => s.projects)
 
   const [weekOffset, setWeekOffset] = useState(0)
   const [projectFilter, setProjectFilter] = useState('all')
@@ -148,8 +148,8 @@ export default function TimelinePage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los proyectos</SelectItem>
-            {PROJECT_NAMES.map((p) => (
-              <SelectItem key={p} value={p}>{p}</SelectItem>
+            {projects.map((p) => (
+              <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>

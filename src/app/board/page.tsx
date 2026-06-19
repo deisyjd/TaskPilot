@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
+import { useUserStore } from '@/store/useUserStore'
 import { Task, TaskStatus } from '@/types'
-import { USER_NAMES } from '@/data/users'
 import { KanbanColumn } from '@/components/board/KanbanColumn'
 import { TaskModal } from '@/components/board/TaskModal'
 import { Search, SlidersHorizontal, Plus, ChevronDown } from 'lucide-react'
@@ -24,6 +24,7 @@ const inputBase: React.CSSProperties = {
 export default function BoardPage() {
   const tasks = useTaskStore((s) => s.tasks)
   const projects = useTaskStore((s) => s.projects)
+  const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
 
   const [search, setSearch] = useState('')
   const [projectFilter, setProjectFilter] = useState('all')
@@ -79,7 +80,7 @@ export default function BoardPage() {
           <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}
             style={{ ...inputBase, width: '160px', paddingRight: '28px', appearance: 'none', cursor: 'pointer' }}>
             <option value="all">Todos</option>
-            {USER_NAMES.map((u) => <option key={u} value={u}>{u}</option>)}
+            {users.map((u) => <option key={u.id} value={u.name}>{u.name}</option>)}
           </select>
           <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: 'var(--tp-text-2)' }} />
         </div>

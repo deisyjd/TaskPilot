@@ -3,9 +3,7 @@
 import { useMemo } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { Task, STATUS_LABELS, STATUS_DOT_COLORS } from '@/types'
-import { getProject } from '@/data/projects'
-import { getUser } from '@/data/users'
-import { USERS } from '@/data/users'
+import { useUserStore } from '@/store/useUserStore'
 import { getWeekDays, isSameDay, formatDate, isOverdue } from '@/lib/dates'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
@@ -45,8 +43,10 @@ function SectionCard({
 }
 
 function TaskRow({ task }: { task: Task }) {
-  const project = getProject(task.project)
-  const user = getUser(task.assignee)
+  const projects = useTaskStore((s) => s.projects)
+  const users = useUserStore((s) => s.users)
+  const project = projects.find((p) => p.name === task.project)
+  const user = users.find((u) => u.name === task.assignee)
   return (
     <div className="flex items-center gap-3 px-5 py-3">
       <div className={cn('w-2 h-2 rounded-full shrink-0', STATUS_DOT_COLORS[task.status])} />
@@ -76,6 +76,8 @@ function TaskRow({ task }: { task: Task }) {
 
 export default function WeeklyReviewPage() {
   const tasks = useTaskStore((s) => s.tasks)
+  const projects = useTaskStore((s) => s.projects)
+  const users = useUserStore((s) => s.users)
 
   const weekDays = getWeekDays()
   const weekStart = weekDays[0]
@@ -169,7 +171,7 @@ export default function WeeklyReviewPage() {
           <div className="space-y-3">
             {byProject.map(([project, { total, done: d }]) => {
               const pct = total === 0 ? 0 : Math.round((d / total) * 100)
-              const projectData = getProject(project)
+              const projectData = projects.find((p) => p.name === project)
               return (
                 <div key={project}>
                   <div className="flex items-center justify-between text-sm mb-1">
@@ -206,7 +208,7 @@ export default function WeeklyReviewPage() {
           <div className="space-y-3">
             {byUser.map(([name, { total, done: d, overdue: ov }]) => {
               const pct = total === 0 ? 0 : Math.round((d / total) * 100)
-              const user = getUser(name)
+              const user = users.find((u) => u.name === name)
               return (
                 <div key={name}>
                   <div className="flex items-center justify-between text-sm mb-1">

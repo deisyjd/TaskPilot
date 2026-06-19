@@ -3,8 +3,7 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useChatStore } from '@/store/useChatStore'
-import { useCurrentUser } from '@/store/useUserStore'
-import { USERS } from '@/data/users'
+import { useCurrentUser, useUserStore } from '@/store/useUserStore'
 import { cn } from '@/lib/utils'
 import { Conversation } from '@/types'
 
@@ -52,6 +51,7 @@ function UserAvatar({
 export function CreateConversationModal({ open, onClose }: Props) {
   const currentUser = useCurrentUser()
   const addConversation = useChatStore((s) => s.addConversation)
+  const allUsers = useUserStore((s) => s.users)
 
   const [type, setType] = useState<ChatType>('direct')
   const [selectedDirectUser, setSelectedDirectUser] = useState<string | null>(null)
@@ -60,7 +60,7 @@ export function CreateConversationModal({ open, onClose }: Props) {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
   const [error, setError] = useState('')
 
-  const otherUsers = USERS.filter((u) => u.id !== currentUser.id)
+  const otherUsers = allUsers.filter((u) => u.id !== currentUser.id && u.status !== 'inactive')
 
   function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
