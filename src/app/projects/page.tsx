@@ -78,19 +78,17 @@ function ProjectCard({ project, taskCount, onToggleFeatured }: CardProps) {
         </div>
       </Link>
 
-      {/* Star button — top right, above the card */}
+      {/* Star button — always visible; brighter on hover */}
       <button
         onClick={(e) => { e.stopPropagation(); onToggleFeatured(project.id, featured) }}
         title={featured ? 'Quitar del sidebar' : 'Destacar en sidebar'}
-        className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full transition-all"
+        className={`absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full transition-all ${
+          featured ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'
+        }`}
         style={{
-          backgroundColor: featured ? project.color : 'rgba(0,0,0,0.35)',
+          backgroundColor: featured ? project.color : 'rgba(0,0,0,0.40)',
           backdropFilter: 'blur(4px)',
-          opacity: featured ? 1 : 0,
-          // Show on hover even when not featured
         }}
-        onMouseEnter={(e) => { if (!featured) (e.currentTarget as HTMLElement).style.opacity = '1' }}
-        onMouseLeave={(e) => { if (!featured) (e.currentTarget as HTMLElement).style.opacity = '0' }}
       >
         <Star
           className="w-3.5 h-3.5"

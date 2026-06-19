@@ -24,6 +24,7 @@ interface Props {
 
 export function ProjectModal({ open, project: existingProject, onClose, onSave }: Props) {
   const addProject = useTaskStore((s) => s.addProject)
+  const updateProject = useTaskStore((s) => s.updateProject)
   const currentUser = useCurrentUser()
 
   // ─── Form state ────────────────────────────────────────────
@@ -87,9 +88,17 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
 
     if (onSave) {
       onSave(newProject)
+    } else if (isEditMode && existingProject) {
+      updateProject(existingProject.id, {
+        name: newProject.name,
+        color: newProject.color,
+        description: newProject.description,
+        coverImageUrl: newProject.coverImageUrl,
+        status: newProject.status,
+        members: newProject.members,
+        updatedAt: newProject.updatedAt,
+      })
     } else {
-      // TODO: when updateProject is added to the store, use it here for edit mode.
-      // For now, addProject handles creation. Edit mode should call updateProject instead.
       addProject(newProject)
     }
 

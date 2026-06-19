@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { MOCK_TASKS } from '@/data'
+import { useTaskStore } from '@/store/useTaskStore'
 import { isOverdue, isToday, getWeekDays } from '@/lib/dates'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { WeeklyCompliance } from '@/components/dashboard/WeeklyCompliance'
@@ -11,7 +11,7 @@ import { AlertsPanel } from '@/components/dashboard/AlertsPanel'
 import { ListTodo, AlertTriangle, Clock, Send, Briefcase } from 'lucide-react'
 
 export default function DashboardPage() {
-  const tasks = MOCK_TASKS
+  const tasks = useTaskStore((s) => s.tasks)
 
   const stats = useMemo(() => {
     const weekDays = getWeekDays()
