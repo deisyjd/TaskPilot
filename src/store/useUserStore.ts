@@ -63,23 +63,27 @@ export const useUserStore = create<UserStore>()(
     }),
     {
       name: 'wipli-users',
-      version: 2,
+      version: 3,
       migrate: () => ({ users: USERS, currentUser: CURRENT_USER }),
+      skipHydration: true,
       storage: {
         getItem: (name) => {
+          if (typeof window === 'undefined') return null
           const value = localStorage.getItem(name)
           return value ? JSON.parse(value) : null
         },
         setItem: (name, value) => {
+          if (typeof window === 'undefined') return
           try {
             localStorage.setItem(name, JSON.stringify(value))
           } catch {
-            // localStorage quota exceeded — avatars are compressed but large collections
-            // can still hit the limit. In production use S3/Supabase Storage.
             console.warn('[wipli-users] localStorage quota exceeded — avatar not saved.')
           }
         },
-        removeItem: (name) => localStorage.removeItem(name),
+        removeItem: (name) => {
+          if (typeof window === 'undefined') return
+          localStorage.removeItem(name)
+        },
       },
     }
   )

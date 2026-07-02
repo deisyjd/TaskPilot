@@ -63,46 +63,51 @@ export default function BoardPage() {
   return (
     <div className="flex flex-col h-full gap-4">
       {/* Filter bar */}
-      <div className="flex items-center gap-2.5 flex-wrap">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--tp-text-2)' }} />
-          <input
-            placeholder="Buscar tarea..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ ...inputBase, paddingLeft: '36px', width: '220px' }}
-          />
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">
+        <div className="flex gap-2 flex-1 sm:contents">
+          <div className="relative flex-1 sm:flex-none">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--tp-text-2)' }} />
+            <input
+              placeholder="Buscar tarea..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ ...inputBase, paddingLeft: '36px', width: '100%' }}
+              className="sm:w-[220px]"
+            />
+          </div>
+
+          <div className="relative flex-1 sm:flex-none">
+            <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}
+              style={{ ...inputBase, width: '100%', paddingRight: '28px', appearance: 'none', cursor: 'pointer' }}
+              className="sm:w-[180px]">
+              <option value="all">Todos los proyectos</option>
+              {projects.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: 'var(--tp-text-2)' }} />
+          </div>
+
+          <div className="relative flex-1 sm:flex-none">
+            <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}
+              style={{ ...inputBase, width: '100%', paddingRight: '28px', appearance: 'none', cursor: 'pointer' }}
+              className="sm:w-[160px]">
+              <option value="all">Todos</option>
+              {users.map((u) => <option key={u.id} value={u.name}>{u.name}</option>)}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: 'var(--tp-text-2)' }} />
+          </div>
         </div>
 
-        <div className="relative">
-          <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}
-            style={{ ...inputBase, width: '180px', paddingRight: '28px', appearance: 'none', cursor: 'pointer' }}>
-            <option value="all">Todos los proyectos</option>
-            {projects.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
-          </select>
-          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: 'var(--tp-text-2)' }} />
-        </div>
-
-        <div className="relative">
-          <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)}
-            style={{ ...inputBase, width: '160px', paddingRight: '28px', appearance: 'none', cursor: 'pointer' }}>
-            <option value="all">Todos</option>
-            {users.map((u) => <option key={u.id} value={u.name}>{u.name}</option>)}
-          </select>
-          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: 'var(--tp-text-2)' }} />
-        </div>
-
-        <div className="ml-auto flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 sm:ml-auto">
           <span className="text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>
             {filtered.length} tareas
           </span>
           <button
             onClick={() => openNew('pending')}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-88"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-88 ml-auto sm:ml-0"
             style={{ backgroundColor: 'var(--tp-dark)', color: '#FFFFFF', borderRadius: 'var(--tp-r-btn)' }}
           >
             <Plus className="w-4 h-4" />
-            Nueva tarea
+            <span className="hidden sm:inline">Nueva tarea</span>
           </button>
         </div>
       </div>

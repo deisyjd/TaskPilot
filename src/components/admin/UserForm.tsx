@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { User, UserRole } from '@/types'
 import { useUserStore } from '@/store/useUserStore'
 import { ImageUploader } from '@/components/shared/ImageUploader'
+import { Eye, EyeOff, ChevronDown } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -11,12 +12,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
-// TODO: add history tracking via useTaskStore once addGenericHistory is available on the store
-// useTaskStore.getState().addGenericHistory({ type: isNew ? 'user-created' : 'user-edited', ... })
-
 interface Props {
   open: boolean
-  user?: User | null   // null/undefined = create mode, User = edit mode
+  user?: User | null
   onClose: () => void
 }
 
@@ -51,7 +49,11 @@ const EMPTY_FORM = {
   userRole: 'member' as UserRole,
   avatarUrl: '',
   status: 'active' as 'active' | 'inactive',
+  password: '',
+  confirmPassword: '',
 }
+
+type FormErrors = Partial<Record<keyof typeof EMPTY_FORM, string>>
 
 export function UserForm({ open, user, onClose }: Props) {
   const addUser = useUserStore((s) => s.addUser)
@@ -60,9 +62,11 @@ export function UserForm({ open, user, onClose }: Props) {
   const isNew = !user
 
   const [form, setForm] = useState(EMPTY_FORM)
-  const [errors, setErrors] = useState<Partial<Record<keyof typeof EMPTY_FORM, string>>>({})
+  const [errors, setErrors] = useState<FormErrors>({})
+  const [showPasswordSection, setShowPasswordSection] = useState(false)
+  const [showPwd, setShowPwd] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
-  // Populate form when user changes or modal opens
   useEffect(() => {
     if (open) {
       if (user) {
@@ -73,21 +77,38 @@ export function UserForm({ open, user, onClose }: Props) {
           userRole: user.userRole ?? 'member',
           avatarUrl: user.avatarUrl ?? '',
           status: user.status ?? 'active',
+          password: '',
+          confirmPassword: '',
         })
       } else {
         setForm(EMPTY_FORM)
       }
       setErrors({})
+      setShowPasswordSection(false)
+      setShowPwd(false)
+      setShowConfirm(false)
     }
   }, [open, user])
 
   function validate(): boolean {
-    const errs: typeof errors = {}
+    const errs: FormErrors = {}
     if (!form.name.trim()) errs.name = 'El nombre es requerido.'
     if (!form.email.trim()) errs.email = 'El email es requerido.'
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       errs.email = 'Email no válido.'
     if (!form.role.trim()) errs.role = 'El cargo es requerido.'
+
+    if (isNew) {
+      if (!form.password) errs.password = 'La contraseña es requerida.'
+      else if (form.password.length < 6) errs.password = 'Mínimo 6 caracteres.'
+      if (form.password !== form.confirmPassword)
+        errs.confirmPassword = 'Las contraseñas no coinciden.'
+    } else if (showPasswordSection && form.password) {
+      if (form.password.length < 6) errs.password = 'Mínimo 6 caracteres.'
+      if (form.password !== form.confirmPassword)
+        errs.confirmPassword = 'Las contraseñas no coinciden.'
+    }
+
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -106,12 +127,13 @@ export function UserForm({ open, user, onClose }: Props) {
         color: randomColor(),
         avatarUrl: form.avatarUrl || undefined,
         status: 'active',
+        password: form.password,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
       addUser(newUser)
     } else if (user) {
-      updateUser(user.id, {
+      const updates: Partial<User> = {
         name: form.name.trim(),
         email: form.email.trim(),
         role: form.role.trim(),
@@ -119,7 +141,11 @@ export function UserForm({ open, user, onClose }: Props) {
         initials: generateInitials(form.name),
         avatarUrl: form.avatarUrl || undefined,
         status: form.status,
-      })
+      }
+      if (showPasswordSection && form.password) {
+        updates.password = form.password
+      }
+      updateUser(user.id, updates)
     }
 
     onClose()
@@ -128,8 +154,10 @@ export function UserForm({ open, user, onClose }: Props) {
   function field(id: keyof typeof EMPTY_FORM) {
     return {
       value: form[id] as string,
-      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-        setForm((f) => ({ ...f, [id]: e.target.value })),
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        setForm((f) => ({ ...f, [id]: e.target.value }))
+        setErrors((err) => ({ ...err, [id]: undefined }))
+      },
     }
   }
 
@@ -138,6 +166,9 @@ export function UserForm({ open, user, onClose }: Props) {
     borderColor: 'var(--tp-border)',
     color: 'var(--tp-text)',
   }
+
+  const inputClass =
+    'w-full px-3 py-2.5 text-sm rounded-[var(--tp-r-input)] border outline-none transition-all focus:border-[var(--tp-lime)]'
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
@@ -154,7 +185,7 @@ export function UserForm({ open, user, onClose }: Props) {
           <div className="flex items-center justify-between">
             <DialogTitle
               className="text-base font-semibold"
-              style={{ color: 'var(--tp-text)', fontFamily: 'Poppins, sans-serif' }}
+              style={{ color: 'var(--tp-text)' }}
             >
               {isNew ? 'Nuevo usuario' : 'Editar usuario'}
             </DialogTitle>
@@ -191,7 +222,7 @@ export function UserForm({ open, user, onClose }: Props) {
             <input
               type="text"
               placeholder="Ej. Ana García"
-              className="w-full px-3 py-2.5 text-sm rounded-[var(--tp-r-input)] border outline-none transition-all focus:border-[var(--tp-lime)]"
+              className={inputClass}
               style={{ ...inputStyle, borderColor: errors.name ? '#ef4444' : 'var(--tp-border)' }}
               {...field('name')}
             />
@@ -206,14 +237,14 @@ export function UserForm({ open, user, onClose }: Props) {
             <input
               type="email"
               placeholder="ana@empresa.com"
-              className="w-full px-3 py-2.5 text-sm rounded-[var(--tp-r-input)] border outline-none transition-all focus:border-[var(--tp-lime)]"
+              className={inputClass}
               style={{ ...inputStyle, borderColor: errors.email ? '#ef4444' : 'var(--tp-border)' }}
               {...field('email')}
             />
             {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
           </div>
 
-          {/* Role display title */}
+          {/* Cargo */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>
               Cargo / Título <span className="text-red-500">*</span>
@@ -221,20 +252,20 @@ export function UserForm({ open, user, onClose }: Props) {
             <input
               type="text"
               placeholder="Ej. Diseñadora, Director de Marketing"
-              className="w-full px-3 py-2.5 text-sm rounded-[var(--tp-r-input)] border outline-none transition-all focus:border-[var(--tp-lime)]"
+              className={inputClass}
               style={{ ...inputStyle, borderColor: errors.role ? '#ef4444' : 'var(--tp-border)' }}
               {...field('role')}
             />
             {errors.role && <p className="text-xs text-red-500">{errors.role}</p>}
           </div>
 
-          {/* User role */}
+          {/* Rol de acceso */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>
               Rol de acceso
             </label>
             <select
-              className="w-full px-3 py-2.5 text-sm rounded-[var(--tp-r-input)] border outline-none transition-all focus:border-[var(--tp-lime)] cursor-pointer"
+              className={inputClass + ' cursor-pointer'}
               style={inputStyle}
               value={form.userRole}
               onChange={(e) => setForm((f) => ({ ...f, userRole: e.target.value as UserRole }))}
@@ -247,7 +278,154 @@ export function UserForm({ open, user, onClose }: Props) {
             </select>
           </div>
 
-          {/* Status toggle — only in edit mode */}
+          {/* ── Contraseña — CREAR ── */}
+          {isNew && (
+            <div
+              className="flex flex-col gap-4 p-4 rounded-[var(--tp-r-inner)]"
+              style={{ background: 'var(--tp-surface)', border: '1px solid var(--tp-border)' }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--tp-text-2)' }}>
+                Contraseña de acceso
+              </p>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>
+                  Contraseña <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPwd ? 'text' : 'password'}
+                    placeholder="Mínimo 6 caracteres"
+                    className={inputClass}
+                    style={{ ...inputStyle, paddingRight: '40px', borderColor: errors.password ? '#ef4444' : 'var(--tp-border)' }}
+                    {...field('password')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd((v) => !v)}
+                    tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 hover:opacity-70 transition-opacity"
+                    style={{ color: 'var(--tp-text-2)' }}
+                  >
+                    {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>
+                  Confirmar contraseña <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirm ? 'text' : 'password'}
+                    placeholder="Repite la contraseña"
+                    className={inputClass}
+                    style={{ ...inputStyle, paddingRight: '40px', borderColor: errors.confirmPassword ? '#ef4444' : 'var(--tp-border)' }}
+                    {...field('confirmPassword')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm((v) => !v)}
+                    tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 hover:opacity-70 transition-opacity"
+                    style={{ color: 'var(--tp-text-2)' }}
+                  >
+                    {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {errors.confirmPassword && <p className="text-xs text-red-500">{errors.confirmPassword}</p>}
+              </div>
+            </div>
+          )}
+
+          {/* ── Contraseña — EDITAR (colapsable) ── */}
+          {!isNew && (
+            <div
+              className="rounded-[var(--tp-r-inner)] overflow-hidden"
+              style={{ border: '1px solid var(--tp-border)' }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPasswordSection((v) => !v)
+                  setForm((f) => ({ ...f, password: '', confirmPassword: '' }))
+                  setErrors((e) => ({ ...e, password: undefined, confirmPassword: undefined }))
+                }}
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:opacity-80"
+                style={{ background: 'var(--tp-surface)', color: 'var(--tp-text)' }}
+              >
+                <span>Cambiar contraseña</span>
+                <ChevronDown
+                  className="w-4 h-4 transition-transform"
+                  style={{
+                    color: 'var(--tp-text-2)',
+                    transform: showPasswordSection ? 'rotate(180deg)' : 'rotate(0deg)',
+                  }}
+                />
+              </button>
+
+              {showPasswordSection && (
+                <div
+                  className="flex flex-col gap-4 px-4 pb-4 pt-2"
+                  style={{ background: 'var(--tp-bg)' }}
+                >
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>
+                      Nueva contraseña
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPwd ? 'text' : 'password'}
+                        placeholder="Mínimo 6 caracteres"
+                        className={inputClass}
+                        style={{ ...inputStyle, paddingRight: '40px', borderColor: errors.password ? '#ef4444' : 'var(--tp-border)' }}
+                        {...field('password')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPwd((v) => !v)}
+                        tabIndex={-1}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 hover:opacity-70 transition-opacity"
+                        style={{ color: 'var(--tp-text-2)' }}
+                      >
+                        {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>
+                      Confirmar nueva contraseña
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirm ? 'text' : 'password'}
+                        placeholder="Repite la contraseña"
+                        className={inputClass}
+                        style={{ ...inputStyle, paddingRight: '40px', borderColor: errors.confirmPassword ? '#ef4444' : 'var(--tp-border)' }}
+                        {...field('confirmPassword')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirm((v) => !v)}
+                        tabIndex={-1}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 hover:opacity-70 transition-opacity"
+                        style={{ color: 'var(--tp-text-2)' }}
+                      >
+                        {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {errors.confirmPassword && <p className="text-xs text-red-500">{errors.confirmPassword}</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Estado — solo en edición */}
           {!isNew && (
             <div className="flex items-center justify-between py-3 px-4 rounded-[var(--tp-r-input)] border" style={{ borderColor: 'var(--tp-border)', background: 'var(--tp-surface)' }}>
               <div>
@@ -265,12 +443,10 @@ export function UserForm({ open, user, onClose }: Props) {
                   }))
                 }
                 className="relative w-12 h-6 rounded-full transition-all overflow-hidden shrink-0"
-                style={{
-                  background: form.status === 'active' ? 'var(--tp-lime)' : '#D1D5DB',
-                }}
+                style={{ background: form.status === 'active' ? 'var(--tp-lime)' : '#D1D5DB' }}
               >
                 <span
-                  className="absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-transform"
+                  className="absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm"
                   style={{
                     left: form.status === 'active' ? '26px' : '3px',
                     transition: 'left 0.2s ease',

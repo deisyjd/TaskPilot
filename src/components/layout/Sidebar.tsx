@@ -13,9 +13,12 @@ import {
   MessageSquare,
   ShieldCheck,
   FolderOpen,
+  LogOut,
 } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useCurrentUser } from '@/store/useUserStore'
+import { useMobileNavStore } from '@/store/useMobileNavStore'
+import { useAuthStore } from '@/store/useAuthStore'
 import { can } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 
@@ -31,11 +34,12 @@ const mainNav = [
   { label: 'Configuración',    href: '/settings',        icon: Settings },
 ]
 
-export function Sidebar() {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const projects = useTaskStore((s) => s.projects)
   const currentUser = useCurrentUser()
   const isAdmin = can(currentUser, 'create_user')
+  const logout = useAuthStore((s) => s.logout)
 
   const isActive = (href: string) => {
     if (href === '/projects') return pathname === '/projects' || pathname.startsWith('/projects/')
@@ -43,10 +47,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside
-      className="flex flex-col w-64 min-h-screen shrink-0"
-      style={{ backgroundColor: 'var(--tp-dark)' }}
-    >
+    <>
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 pt-6 pb-5">
         <img
@@ -73,6 +74,7 @@ export function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onNavigate}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
                 active ? 'text-[#111318]' : 'text-white/60 hover:text-white hover:bg-white/8'
@@ -85,10 +87,10 @@ export function Sidebar() {
           )
         })}
 
-        {/* Admin — solo visible para admin */}
         {isAdmin && (
           <Link
             href="/admin/users"
+            onClick={onNavigate}
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
               isActive('/admin') ? 'text-[#111318]' : 'text-white/60 hover:text-white hover:bg-white/8'
@@ -105,6 +107,7 @@ export function Sidebar() {
       <div className="px-4 py-4 flex-1">
         <Link
           href="/projects"
+          onClick={onNavigate}
           className="flex items-center justify-between px-1 mb-2 group"
         >
           <p className="text-xs font-semibold uppercase tracking-widest text-white/30 group-hover:text-white/50 transition-colors">
@@ -114,6 +117,7 @@ export function Sidebar() {
         {projects.filter((p) => p.featured).length === 0 ? (
           <Link
             href="/projects"
+            onClick={onNavigate}
             className="block text-xs text-white/25 px-2 py-2 hover:text-white/40 transition-colors"
           >
             Destaca proyectos en /proyectos →
@@ -129,6 +133,7 @@ export function Sidebar() {
                   <Link
                     key={project.id}
                     href={`/projects/${project.id}`}
+                    onClick={onNavigate}
                     className={cn(
                       'flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-xs transition-all',
                       active
@@ -148,10 +153,11 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* User card */}
-      <div className="px-3 pb-5">
+      {/* User card + logout */}
+      <div className="px-3 pb-5 space-y-1">
         <Link
           href="/admin/users"
+          onClick={onNavigate}
           className="flex items-center gap-3 px-3 py-3 rounded-xl transition-all hover:bg-white/8"
           style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
         >
@@ -177,7 +183,49 @@ export function Sidebar() {
             <ShieldCheck className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--tp-lime)' }} />
           )}
         </Link>
+        <button
+          onClick={() => { onNavigate?.(); logout() }}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all text-white/40 hover:text-white/70 hover:bg-white/5"
+        >
+          <LogOut className="w-4 h-4 shrink-0" />
+          Cerrar sesión
+        </button>
       </div>
-    </aside>
+    </>
+  )
+}
+
+export function Sidebar() {
+  const { isOpen, close } = useMobileNavStore()
+
+  return (
+    <>
+      {/* Mobile backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={close}
+        />
+      )}
+
+      {/* Mobile drawer */}
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex flex-col w-72 overflow-y-auto transition-transform duration-300 ease-in-out lg:hidden',
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+        style={{ backgroundColor: 'var(--tp-dark)' }}
+      >
+        <SidebarContent onNavigate={close} />
+      </aside>
+
+      {/* Desktop sidebar */}
+      <aside
+        className="hidden lg:flex flex-col w-64 min-h-screen shrink-0"
+        style={{ backgroundColor: 'var(--tp-dark)' }}
+      >
+        <SidebarContent />
+      </aside>
+    </>
   )
 }

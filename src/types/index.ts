@@ -99,6 +99,7 @@ export interface User {
   userRole?: UserRole
   avatarUrl?: string
   status?: UserStatus
+  password?: string
   createdAt?: string
   updatedAt?: string
 }

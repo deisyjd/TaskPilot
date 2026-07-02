@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { Bell, Plus, AlertTriangle, Clock, ChevronRight } from 'lucide-react'
+import { Bell, Plus, AlertTriangle, Clock, ChevronRight, Menu } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
+import { useMobileNavStore } from '@/store/useMobileNavStore'
 import { isOverdue } from '@/lib/dates'
 import { ProjectModal } from '@/components/projects/ProjectModal'
 import { Task } from '@/types'
@@ -78,6 +79,7 @@ export function Header() {
   const pathname = usePathname()
   const page = pageTitles[pathname] ?? { title: 'Wipli', sub: '' }
   const tasks = useTaskStore((s) => s.tasks)
+  const { toggle: toggleMobileNav } = useMobileNavStore()
   const [projectModalOpen, setProjectModalOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
@@ -115,24 +117,35 @@ export function Header() {
 
   return (
     <header
-      className="flex items-center justify-between px-6 py-4"
+      className="flex items-center justify-between px-4 py-3 lg:px-6 lg:py-4"
       style={{
         backgroundColor: 'var(--tp-bg)',
         borderBottom: '1px solid var(--tp-border)',
       }}
     >
-      <div>
-        <h1 className="text-xl font-semibold" style={{ color: 'var(--tp-text)' }}>
-          {page.title}
-        </h1>
-        {page.sub && (
-          <p className="text-sm mt-0.5" style={{ color: 'var(--tp-text-2)' }}>
-            {page.sub}
-          </p>
-        )}
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Hamburger — mobile only */}
+        <button
+          onClick={toggleMobileNav}
+          className="lg:hidden w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all hover:opacity-80"
+          style={{ backgroundColor: 'var(--tp-surface)', border: '1px solid var(--tp-border)' }}
+        >
+          <Menu className="w-4 h-4" style={{ color: 'var(--tp-text-2)' }} />
+        </button>
+
+        <div className="min-w-0">
+          <h1 className="text-base lg:text-xl font-semibold truncate" style={{ color: 'var(--tp-text)' }}>
+            {page.title}
+          </h1>
+          {page.sub && (
+            <p className="text-xs lg:text-sm mt-0.5 hidden sm:block" style={{ color: 'var(--tp-text-2)' }}>
+              {page.sub}
+            </p>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 shrink-0">
         {/* Notification bell */}
         <div className="relative" ref={notifRef}>
           <button
@@ -244,7 +257,7 @@ export function Header() {
         {/* New project button */}
         <button
           onClick={() => setProjectModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-88"
+          className="flex items-center gap-2 px-3 py-2 sm:px-4 text-sm font-medium transition-all hover:opacity-88"
           style={{
             backgroundColor: 'var(--tp-dark)',
             color: '#FFFFFF',
@@ -252,7 +265,7 @@ export function Header() {
           }}
         >
           <Plus className="w-4 h-4" />
-          Nuevo proyecto
+          <span className="hidden sm:inline">Nuevo proyecto</span>
         </button>
       </div>
 

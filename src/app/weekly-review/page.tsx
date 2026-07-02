@@ -1,10 +1,10 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
-import { Task, STATUS_LABELS, STATUS_DOT_COLORS } from '@/types'
+import { Task, STATUS_DOT_COLORS } from '@/types'
 import { useUserStore } from '@/store/useUserStore'
-import { getWeekDays, isSameDay, formatDate, isOverdue } from '@/lib/dates'
+import { getWeekDays, isOverdue } from '@/lib/dates'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import {
@@ -14,7 +14,8 @@ import {
   Ban,
   BarChart3,
   Users,
-  TrendingUp,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 
 function SectionCard({
@@ -79,7 +80,9 @@ export default function WeeklyReviewPage() {
   const projects = useTaskStore((s) => s.projects)
   const users = useUserStore((s) => s.users)
 
-  const weekDays = getWeekDays()
+  const [weekOffset, setWeekOffset] = useState(0)
+
+  const weekDays = getWeekDays(weekOffset)
   const weekStart = weekDays[0]
   const weekEnd = weekDays[6]
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -137,7 +140,30 @@ export default function WeeklyReviewPage() {
         <div className="flex items-start justify-between mb-4">
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">Semana del</p>
-            <h2 className="text-lg font-bold text-gray-900">{weekLabel}</h2>
+            <div className="flex items-center gap-2 mt-0.5">
+              <button
+                onClick={() => setWeekOffset((o) => o - 1)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <h2 className="text-base font-bold text-gray-900">{weekLabel}</h2>
+              <button
+                onClick={() => setWeekOffset((o) => o + 1)}
+                disabled={weekOffset >= 0}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              {weekOffset !== 0 && (
+                <button
+                  onClick={() => setWeekOffset(0)}
+                  className="text-xs text-violet-600 font-medium hover:text-violet-800 transition-colors ml-1"
+                >
+                  Esta semana
+                </button>
+              )}
+            </div>
           </div>
           <div className="text-right">
             <p className="text-xs text-gray-400 mb-1">Cumplimiento</p>

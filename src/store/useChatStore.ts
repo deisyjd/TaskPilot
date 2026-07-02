@@ -57,6 +57,8 @@ export const useChatStore = create<ChatStore>()(
     {
       name: 'wipli-chats',
       version: 2,
+      skipHydration: true,
+      migrate: () => ({ conversations: MOCK_CONVERSATIONS, messages: MOCK_MESSAGES }),
     }
   )
 )

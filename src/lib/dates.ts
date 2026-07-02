@@ -72,11 +72,11 @@ export function getDayLabel(dateStr: string): string {
   })
 }
 
-export function getWeekDays(): Date[] {
+export function getWeekDays(weekOffset = 0): Date[] {
   const today = new Date()
   const day = today.getDay()
   const monday = new Date(today)
-  monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1))
+  monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1) + weekOffset * 7)
   monday.setHours(0, 0, 0, 0)
 
   return Array.from({ length: 7 }, (_, i) => {
