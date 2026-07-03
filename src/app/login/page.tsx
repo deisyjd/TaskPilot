@@ -3,7 +3,6 @@
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/useAuthStore'
-import { useUserStore } from '@/store/useUserStore'
 import { Eye, EyeOff, ArrowRight, CheckCircle2 } from 'lucide-react'
 
 const features = [
@@ -16,7 +15,6 @@ const features = [
 export default function LoginPage() {
   const router = useRouter()
   const login = useAuthStore((s) => s.login)
-  const users = useUserStore((s) => s.users)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -24,7 +22,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
 
@@ -33,23 +31,28 @@ export default function LoginPage() {
       return
     }
 
-    const match = users.find(
-      (u) =>
-        u.email?.toLowerCase() === email.trim().toLowerCase() &&
-        u.status === 'active' &&
-        u.password === password
-    )
-
-    if (!match) {
-      setError('Correo o contraseña incorrectos.')
-      return
-    }
-
     setLoading(true)
-    setTimeout(() => {
-      login()
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error ?? 'Credenciales inválidas.')
+        return
+      }
+
+      login(data.user)
       router.replace('/dashboard')
-    }, 500)
+    } catch {
+      setError('Error de conexión. Intenta de nuevo.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

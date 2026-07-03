@@ -13,6 +13,7 @@ import { useAuthStore } from '@/store/useAuthStore'
 export function ClientShell({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false)
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const { login } = useAuthStore()
   const pathname = usePathname()
   const router = useRouter()
 
@@ -20,9 +21,16 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
     useTaskStore.persist.rehydrate()
     useUserStore.persist.rehydrate()
     useChatStore.persist.rehydrate()
-    useAuthStore.persist.rehydrate()
-    setReady(true)
-  }, [])
+
+    // Verify session with server
+    fetch('/api/auth/me')
+      .then((r) => r.ok ? r.json() : null)
+      .then((user) => {
+        if (user) login(user)
+      })
+      .catch(() => {})
+      .finally(() => setReady(true))
+  }, [login])
 
   useEffect(() => {
     if (!ready) return
@@ -30,17 +38,14 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
     if (isLoggedIn && pathname === '/login') router.replace('/dashboard')
   }, [ready, isLoggedIn, pathname, router])
 
-  // Blank screen while stores hydrate (< 100ms in practice)
   if (!ready) {
     return <div className="h-screen" style={{ backgroundColor: 'var(--tp-bg)' }} />
   }
 
-  // Login page — no sidebar/header
   if (pathname === '/login') {
     return <>{children}</>
   }
 
-  // Guard: redirecting to /login (already triggered above)
   if (!isLoggedIn) {
     return <div className="h-screen" style={{ backgroundColor: 'var(--tp-bg)' }} />
   }
