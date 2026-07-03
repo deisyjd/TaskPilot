@@ -8,26 +8,63 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+model Company {
   id        String   @id @default(cuid())
   name      String
-  email     String   @unique
-  password  String
-  role      String
-  userRole  String   @default("member")
-  initials  String
-  color     String   @default("bg-violet-500")
-  avatarUrl String?  @db.Text
-  status    String   @default("active")
+  slug      String   @unique
+  color     String   @default("#8B5CF6")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  memberships       CompanyMembership[]
+  projects          Project[]
+  tasks             Task[]
+  historyEvents     HistoryEvent[]
+  lastActiveForUser User[]              @relation("UserLastActiveCompany")
+
+  @@map("companies")
+}
+
+model CompanyMembership {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  role      String   @default("member")
+  createdAt DateTime @default(now())
+
+  @@unique([userId, companyId])
+  @@index([companyId])
+  @@map("company_memberships")
+}
+
+model User {
+  id                  String   @id @default(cuid())
+  name                String
+  email               String   @unique
+  password            String
+  role                String
+  userRole            String   @default("member")
+  initials            String
+  color               String   @default("bg-violet-500")
+  avatarUrl           String?  @db.Text
+  status              String   @default("active")
+  lastActiveCompanyId String?
+  lastActiveCompany   Company? @relation("UserLastActiveCompany", fields: [lastActiveCompanyId], references: [id], onDelete: SetNull)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  memberships CompanyMembership[]
 
   @@map("users")
 }
 
 model Project {
   id            String   @id @default(cuid())
-  name          String   @unique
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name          String
   description   String?  @db.Text
   color         String   @default("#8B5CF6")
   status        String   @default("active")
@@ -39,14 +76,17 @@ model Project {
   tasks Task[]
   notes Note[]
 
+  @@unique([companyId, name])
   @@map("projects")
 }
 
 model Task {
   id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   title       String
-  projectName String
-  project     Project  @relation(fields: [projectName], references: [name])
   description String?  @db.Text
   status      String   @default("pending")
   assignee    String
@@ -60,6 +100,8 @@ model Task {
   checklist ChecklistItem[]
   comments  Comment[]
 
+  @@index([companyId])
+  @@index([projectId])
   @@map("tasks")
 }
 
@@ -86,6 +128,8 @@ model Comment {
 
 model HistoryEvent {
   id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   type        String
   taskId      String?
   taskTitle   String?
@@ -95,6 +139,7 @@ model HistoryEvent {
   timestamp   DateTime @default(now())
   meta        Json?
 
+  @@index([companyId])
   @@map("history_events")
 }
 

@@ -70,7 +70,8 @@ export interface ReferenceLink {
 export interface Task {
   id: string
   title: string
-  project: string
+  projectId: string
+  companyId?: string
   description: string
   status: TaskStatus
   assignee: string
@@ -104,6 +105,26 @@ export interface User {
   updatedAt?: string
 }
 
+// ─── Company / multi-tenancy ────────────────────────────────────
+export interface Company {
+  id: string
+  name: string
+  slug: string
+  color: string
+  role?: UserRole   // the current user's role within this company
+}
+
+export interface AuthUser {
+  id: string
+  name: string
+  email: string
+  role: string
+  userRole: string
+  initials: string
+  color: string
+  avatarUrl?: string | null
+}
+
 export interface Note {
   id: string
   title: string
@@ -118,6 +139,7 @@ export interface Project {
   id: string
   name: string
   color: string
+  companyId?: string
   // Extended fields
   description?: string
   coverImageUrl?: string
@@ -138,6 +160,7 @@ export interface HistoryEvent {
   taskId?: string
   taskTitle?: string
   project?: string
+  companyId?: string
   description: string
   user: string
   timestamp: string

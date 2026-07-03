@@ -6,76 +6,77 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('Seeding database...')
 
+  // Companies
+  await prisma.company.upsert({
+    where: { id: 'legacy-co' },
+    update: {},
+    create: { id: 'legacy-co', name: 'Wipli (Legacy)', slug: 'legacy', color: '#8B5CF6' },
+  })
+
+  await prisma.company.upsert({
+    where: { id: 'acme-co' },
+    update: {},
+    create: { id: 'acme-co', name: 'Acme Studio', slug: 'acme', color: '#0ea5e9' },
+  })
+
+  console.log('✓ Companies created')
+
   // Users
   const hashedPassword = await bcrypt.hash('wipli2024', 12)
 
+  const users = [
+    { id: 'deisy', name: 'Deisy', email: 'deisy@wipli.app', role: 'Directora', userRole: 'admin', initials: 'D', color: 'bg-violet-500' },
+    { id: 'diego', name: 'Diego', email: 'diego@wipli.app', role: 'Diseñador', userRole: 'member', initials: 'Di', color: 'bg-blue-500' },
+    { id: 'karol', name: 'Karol', email: 'karol@wipli.app', role: 'Redactora', userRole: 'member', initials: 'K', color: 'bg-pink-500' },
+    { id: 'julian', name: 'Julian', email: 'julian@wipli.app', role: 'Desarrollador', userRole: 'member', initials: 'J', color: 'bg-emerald-500' },
+  ]
+
+  for (const u of users) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: {},
+      create: { ...u, password: hashedPassword, status: 'active', lastActiveCompanyId: 'legacy-co' },
+    })
+    await prisma.companyMembership.upsert({
+      where: { userId_companyId: { userId: u.id, companyId: 'legacy-co' } },
+      update: {},
+      create: { userId: u.id, companyId: 'legacy-co', role: u.userRole },
+    })
+  }
+
+  // Deisy also belongs to Acme (as a regular member), to demo the company switcher
+  await prisma.companyMembership.upsert({
+    where: { userId_companyId: { userId: 'deisy', companyId: 'acme-co' } },
+    update: {},
+    create: { userId: 'deisy', companyId: 'acme-co', role: 'member' },
+  })
+
+  // A user that only exists in Acme, to prove Legacy data is never visible to it
   await prisma.user.upsert({
-    where: { email: 'deisy@wipli.app' },
+    where: { email: 'admin@acme.test' },
     update: {},
     create: {
-      id: 'deisy',
-      name: 'Deisy',
-      email: 'deisy@wipli.app',
+      id: 'acme-admin',
+      name: 'Acme Admin',
+      email: 'admin@acme.test',
       password: hashedPassword,
-      role: 'Directora',
+      role: 'Administradora',
       userRole: 'admin',
-      initials: 'D',
-      color: 'bg-violet-500',
+      initials: 'A',
+      color: 'bg-sky-500',
       status: 'active',
+      lastActiveCompanyId: 'acme-co',
     },
   })
-
-  await prisma.user.upsert({
-    where: { email: 'diego@wipli.app' },
+  await prisma.companyMembership.upsert({
+    where: { userId_companyId: { userId: 'acme-admin', companyId: 'acme-co' } },
     update: {},
-    create: {
-      id: 'diego',
-      name: 'Diego',
-      email: 'diego@wipli.app',
-      password: hashedPassword,
-      role: 'Diseñador',
-      userRole: 'member',
-      initials: 'Di',
-      color: 'bg-blue-500',
-      status: 'active',
-    },
+    create: { userId: 'acme-admin', companyId: 'acme-co', role: 'admin' },
   })
 
-  await prisma.user.upsert({
-    where: { email: 'karol@wipli.app' },
-    update: {},
-    create: {
-      id: 'karol',
-      name: 'Karol',
-      email: 'karol@wipli.app',
-      password: hashedPassword,
-      role: 'Redactora',
-      userRole: 'member',
-      initials: 'K',
-      color: 'bg-pink-500',
-      status: 'active',
-    },
-  })
+  console.log('✓ Users and memberships created')
 
-  await prisma.user.upsert({
-    where: { email: 'julian@wipli.app' },
-    update: {},
-    create: {
-      id: 'julian',
-      name: 'Julian',
-      email: 'julian@wipli.app',
-      password: hashedPassword,
-      role: 'Desarrollador',
-      userRole: 'member',
-      initials: 'J',
-      color: 'bg-emerald-500',
-      status: 'active',
-    },
-  })
-
-  console.log('✓ Users created')
-
-  // Projects
+  // Projects (Legacy)
   const projects = [
     { id: 'qenta', name: 'Qenta', color: '#6366f1', featured: true },
     { id: 'wigilabs', name: 'Wigilabs', color: '#0ea5e9', featured: true },
@@ -88,17 +89,26 @@ async function main() {
     { id: 'otros', name: 'Otros', color: '#94a3b8', featured: false },
   ]
 
+  const projectIdByName: Record<string, string> = {}
   for (const p of projects) {
-    await prisma.project.upsert({
-      where: { name: p.name },
+    const project = await prisma.project.upsert({
+      where: { companyId_name: { companyId: 'legacy-co', name: p.name } },
       update: {},
-      create: p,
+      create: { ...p, companyId: 'legacy-co' },
     })
+    projectIdByName[p.name] = project.id
   }
+
+  // A same-named project in Acme — proves company-scoped uniqueness works
+  const acmeQenta = await prisma.project.upsert({
+    where: { companyId_name: { companyId: 'acme-co', name: 'Qenta' } },
+    update: {},
+    create: { id: 'acme-qenta', name: 'Qenta', color: '#0ea5e9', featured: true, companyId: 'acme-co' },
+  })
 
   console.log('✓ Projects created')
 
-  // Tasks
+  // Tasks (Legacy)
   const tasks = [
     {
       id: 'task-001',
@@ -139,12 +149,32 @@ async function main() {
   ]
 
   for (const t of tasks) {
+    const { projectName, ...rest } = t
     await prisma.task.upsert({
       where: { id: t.id },
       update: {},
-      create: { ...t, tags: JSON.stringify(t.tags) },
+      create: { ...rest, tags: JSON.stringify(t.tags), companyId: 'legacy-co', projectId: projectIdByName[projectName] },
     })
   }
+
+  // One task in Acme, owned by the Acme-only user
+  await prisma.task.upsert({
+    where: { id: 'acme-task-001' },
+    update: {},
+    create: {
+      id: 'acme-task-001',
+      title: 'Preparar propuesta de marca',
+      description: 'Brief inicial de identidad visual para Acme.',
+      status: 'pending',
+      assignee: 'Acme Admin',
+      dueDate: '2026-07-18',
+      priority: 'medium',
+      type: 'design',
+      tags: JSON.stringify(['branding']),
+      companyId: 'acme-co',
+      projectId: acmeQenta.id,
+    },
+  })
 
   console.log('✓ Tasks created')
   console.log('Seeding complete!')

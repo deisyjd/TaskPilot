@@ -5,7 +5,7 @@ import { Conversation } from '@/types'
 import { cn } from '@/lib/utils'
 import { formatDateTime } from '@/lib/dates'
 import { useChatStore } from '@/store/useChatStore'
-import { useUserStore } from '@/store/useUserStore'
+import { useUserStore, useCurrentUser } from '@/store/useUserStore'
 
 interface Props {
   conversations: Conversation[]
@@ -77,7 +77,7 @@ export function ChatList({ conversations, activeId, onSelect, onNew }: Props) {
   const [search, setSearch] = useState('')
   const messages = useChatStore((s) => s.messages)
   const users = useUserStore((s) => s.users)
-  const currentUser = useUserStore((s) => s.currentUser)
+  const currentUser = useCurrentUser()
 
   const filtered = conversations.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase())
@@ -165,7 +165,7 @@ export function ChatList({ conversations, activeId, onSelect, onNew }: Props) {
                     : 'hover:bg-[var(--tp-bg-2)] border-l-[3px] border-transparent'
                 )}
               >
-                <ConvAvatar conv={conv} users={users} currentUserId={currentUser.id} />
+                <ConvAvatar conv={conv} users={users} currentUserId={currentUser?.id ?? ''} />
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1 mb-0.5">

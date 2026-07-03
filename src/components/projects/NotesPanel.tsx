@@ -93,7 +93,7 @@ export function NotesPanel({ project }: Props) {
       title: '',
       content: '',
       color: NOTE_COLORS[1],
-      createdBy: currentUser.name,
+      createdBy: currentUser?.name ?? '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }

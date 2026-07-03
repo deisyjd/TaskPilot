@@ -39,10 +39,10 @@ const PRIORITY_COLORS: Record<Priority, { bg: string; text: string }> = {
 
 function uid() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }
 
-function emptyTask(status: TaskStatus = 'pending', project = 'Qenta', assignee = '', dueDate = ''): Task {
+function emptyTask(status: TaskStatus = 'pending', projectId = '', assignee = '', dueDate = ''): Task {
   const now = new Date().toISOString()
   return {
-    id: `t-${uid()}`, title: '', project, description: '', status,
+    id: `t-${uid()}`, title: '', projectId, description: '', status,
     assignee, dueDate: dueDate || new Date().toISOString().split('T')[0],
     priority: 'medium', type: 'other', tags: [], checklist: [], comments: [],
     createdAt: now, updatedAt: now,
@@ -111,17 +111,18 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
   const isNew = !task
 
   const defaultAssignee = users[0]?.name ?? ''
-  const [form, setForm] = useState<Task>(task ?? emptyTask(defaultStatus, defaultProject, defaultAssignee, defaultDueDate))
+  const resolvedDefaultProject = defaultProject ?? projects[0]?.id ?? ''
+  const [form, setForm] = useState<Task>(task ?? emptyTask(defaultStatus, resolvedDefaultProject, defaultAssignee, defaultDueDate))
   const [tagInput, setTagInput] = useState('')
   const [checkInput, setCheckInput] = useState('')
   const [commentInput, setCommentInput] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   useEffect(() => {
-    setForm(task ?? emptyTask(defaultStatus, defaultProject, defaultAssignee, defaultDueDate))
+    setForm(task ?? emptyTask(defaultStatus, resolvedDefaultProject, defaultAssignee, defaultDueDate))
     setTagInput(''); setCheckInput(''); setCommentInput('')
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task, defaultStatus, defaultProject, defaultDueDate, open])
+  }, [task, defaultStatus, resolvedDefaultProject, defaultDueDate, open])
 
   const attachments: Attachment[] = form.attachments ?? []
   const links: ReferenceLink[] = form.links ?? []
@@ -195,7 +196,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                 className="text-xs font-semibold px-2.5 py-1 rounded-full"
                 style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
               >
-                {form.project}
+                {projects.find((p) => p.id === form.projectId)?.name ?? 'Sin proyecto'}
               </span>
               {!isNew && (
                 <span className="text-xs font-mono" style={{ color: 'var(--tp-text-2)', opacity: 0.5 }}>
@@ -461,11 +462,11 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
               <FieldLabel>Proyecto</FieldLabel>
               <SelectWrapper>
                 <select
-                  value={form.project}
-                  onChange={(e) => setField('project', e.target.value)}
+                  value={form.projectId}
+                  onChange={(e) => setField('projectId', e.target.value)}
                   style={fieldSelect}
                 >
-                  {projects.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
+                  {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </SelectWrapper>
             </div>

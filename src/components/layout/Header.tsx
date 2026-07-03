@@ -33,6 +33,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 function NotifItem({ task }: { task: Task & { reason: string } }) {
   const color = PRIORITY_COLORS[task.priority] ?? '#6B7280'
+  const projectName = useTaskStore((s) => s.projects.find((p) => p.id === task.projectId)?.name) ?? 'Sin proyecto'
   return (
     <div
       className="flex items-start gap-3 px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-[var(--tp-bg)]"
@@ -60,7 +61,7 @@ function NotifItem({ task }: { task: Task & { reason: string } }) {
           </span>
           <span className="text-[10px]" style={{ color: 'var(--tp-text-2)' }}>·</span>
           <span className="text-[10px]" style={{ color: 'var(--tp-text-2)' }}>
-            {task.project}
+            {projectName}
           </span>
         </div>
         {task.dueDate && (

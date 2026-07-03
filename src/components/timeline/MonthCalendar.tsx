@@ -199,7 +199,7 @@ export function MonthCalendar({ tasks, onTaskClick, onAddTask }: Props) {
                 {/* Task pills */}
                 <div className="flex flex-col gap-0.5 flex-1 overflow-hidden">
                   {visible.map((task) => {
-                    const proj = projects.find((p) => p.name === task.project)
+                    const proj = projects.find((p) => p.id === task.projectId)
                     const overdue = isOverdue(task.dueDate, task.status)
                     const done = task.status === 'done'
 

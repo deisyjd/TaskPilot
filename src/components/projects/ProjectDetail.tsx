@@ -127,7 +127,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Derived data
-  const projectTasks = tasks.filter((t) => t.project === project.name)
+  const projectTasks = tasks.filter((t) => t.projectId === project.id)
   const projectHistory = history.filter((e) => e.project === project.name).slice(0, 8)
   const allAttachments: Attachment[] = [...(project.attachments ?? []), ...sessionAttachments]
   const allLinks: ReferenceLink[] = [...(project.links ?? []), ...sessionLinks]
@@ -151,7 +151,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
         type: file.type,
         size: file.size,
         url: reader.result as string, // base64; in production: upload to Supabase/S3
-        uploadedBy: currentUser.name,
+        uploadedBy: currentUser?.name ?? '',
         uploadedAt: new Date().toISOString(),
       }
       // TODO: call useTaskStore.getState().updateProject(project.id, { attachments: [...allAttachments, attachment] })
@@ -170,7 +170,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
       id: `link-${Date.now()}`,
       title: linkForm.title.trim() || getDomain(linkForm.url),
       url: linkForm.url.trim(),
-      createdBy: currentUser.name,
+      createdBy: currentUser?.name ?? '',
       createdAt: new Date().toISOString(),
     }
     // TODO: call useTaskStore.getState().updateProject(project.id, { links: [...allLinks, link] })
@@ -849,7 +849,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
 
       <TaskModal
         task={null}
-        defaultProject={project.name}
+        defaultProject={project.id}
         open={taskModalOpen}
         onClose={() => setTaskModalOpen(false)}
       />

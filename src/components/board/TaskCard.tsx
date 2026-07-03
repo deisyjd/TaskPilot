@@ -2,10 +2,9 @@
 
 import { useState } from 'react'
 import { Task, STATUS_DOT_COLORS, TaskStatus } from '@/types'
-import { getProject } from '@/data/projects'
-import { getUser } from '@/data/users'
 import { isOverdue, isToday, formatDate } from '@/lib/dates'
 import { useTaskStore } from '@/store/useTaskStore'
+import { useUserStore } from '@/store/useUserStore'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -38,8 +37,8 @@ interface Props {
 
 export function TaskCard({ task, onClick }: Props) {
   const moveTask = useTaskStore((s) => s.moveTask)
-  const project = getProject(task.project)
-  const user = getUser(task.assignee)
+  const project = useTaskStore((s) => s.projects.find((p) => p.id === task.projectId))
+  const user = useUserStore((s) => s.users.find((u) => u.name === task.assignee))
   const overdue = isOverdue(task.dueDate, task.status)
   const dueToday = isToday(task.dueDate)
   const checklistDone = task.checklist.filter((c) => c.done).length
@@ -76,7 +75,7 @@ export function TaskCard({ task, onClick }: Props) {
               style={{ color: 'var(--tp-text-2)' }}
             />
             <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: project?.color ?? '#94a3b8' }} />
-            <span className="text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>{task.project}</span>
+            <span className="text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>{project?.name ?? 'Sin proyecto'}</span>
           </div>
           <div onClick={(e) => e.stopPropagation()}>
             <DropdownMenu>

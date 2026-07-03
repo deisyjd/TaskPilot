@@ -3,37 +3,50 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+type Params = { params: Promise<{ id: string }> }
+
+export async function PATCH(req: NextRequest, { params }: Params) {
   const session = await getSession()
   if (!session || session.userRole !== 'admin') {
     return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
   }
 
   const { id } = await params
-  const body = await req.json()
-  const { password, ...rest } = body
+  const membership = await prisma.companyMembership.findUnique({
+    where: { userId_companyId: { userId: id, companyId: session.activeCompanyId } },
+  })
+  if (!membership) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
 
-  const data: Record<string, unknown> = { ...rest }
-  if (password) {
-    data.password = await bcrypt.hash(password, 12)
-  }
+  const body = await req.json()
+  const { password, userRole, companyId: _drop, ...rest } = body
+
+  const userData: Record<string, unknown> = { ...rest }
+  if (password) userData.password = await bcrypt.hash(password, 12)
 
   const user = await prisma.user.update({
     where: { id },
-    data,
-    select: { id: true, name: true, email: true, role: true, userRole: true, initials: true, color: true, avatarUrl: true, status: true, createdAt: true, updatedAt: true },
+    data: userData,
+    select: { id: true, name: true, email: true, role: true, initials: true, color: true, avatarUrl: true, status: true, createdAt: true, updatedAt: true },
   })
 
-  return NextResponse.json(user)
+  let finalRole = membership.role
+  if (userRole) {
+    const updated = await prisma.companyMembership.update({ where: { id: membership.id }, data: { role: userRole } })
+    finalRole = updated.role
+  }
+
+  return NextResponse.json({ ...user, userRole: finalRole })
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, { params }: Params) {
   const session = await getSession()
   if (!session || session.userRole !== 'admin') {
     return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
   }
 
   const { id } = await params
-  await prisma.user.delete({ where: { id } })
+  const result = await prisma.companyMembership.deleteMany({ where: { userId: id, companyId: session.activeCompanyId } })
+  if (result.count === 0) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+
   return NextResponse.json({ ok: true })
 }

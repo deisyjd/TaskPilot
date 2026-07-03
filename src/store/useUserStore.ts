@@ -1,94 +1,102 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { User, UserRole, UserStatus } from '@/types'
-import { USERS } from '@/data/users'
+import { useMemo } from 'react'
+import { User, UserRole } from '@/types'
+import { useAuthStore } from './useAuthStore'
 
-// Mock current user — replace with real auth in production
-export const CURRENT_USER: User = {
-  id: 'deisy',
-  name: 'Deisy',
-  role: 'Directora',
-  initials: 'D',
-  color: 'bg-violet-500',
-  email: 'deisy@wipli.app',
-  userRole: 'admin',
-  status: 'active',
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
+async function api<T>(url: string, opts?: RequestInit): Promise<T> {
+  const res = await fetch(url, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...(opts?.headers ?? {}) },
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error ?? `Solicitud fallida (${res.status})`)
+  }
+  if (res.status === 204) return undefined as T
+  return res.json()
 }
 
 interface UserStore {
   users: User[]
-  // In production: replace with real auth session
-  currentUser: User
-  addUser: (user: User) => void
-  updateUser: (id: string, updates: Partial<User>) => void
-  deleteUser: (id: string) => void
-  deactivateUser: (id: string) => void
-  activateUser: (id: string) => void
+  loading: boolean
+  error: string | null
+  fetchUsers: () => Promise<void>
+  addUser: (user: Partial<User>) => Promise<User | null>
+  updateUser: (id: string, updates: Partial<User>) => Promise<void>
+  deleteUser: (id: string) => Promise<void>
+  deactivateUser: (id: string) => Promise<void>
+  activateUser: (id: string) => Promise<void>
 }
 
-export const useUserStore = create<UserStore>()(
-  persist(
-    (set) => ({
-      users: USERS,
-      currentUser: CURRENT_USER,
+export const useUserStore = create<UserStore>()((set, get) => ({
+  users: [],
+  loading: false,
+  error: null,
 
-      addUser: (user) =>
-        set((s) => ({ users: [...s.users, user] })),
-
-      updateUser: (id, updates) =>
-        set((s) => ({
-          users: s.users.map((u) =>
-            u.id === id ? { ...u, ...updates, updatedAt: new Date().toISOString() } : u
-          ),
-        })),
-
-      deleteUser: (id) =>
-        set((s) => ({ users: s.users.filter((u) => u.id !== id) })),
-
-      deactivateUser: (id) =>
-        set((s) => ({
-          users: s.users.map((u) =>
-            u.id === id ? { ...u, status: 'inactive' as UserStatus, updatedAt: new Date().toISOString() } : u
-          ),
-        })),
-
-      activateUser: (id) =>
-        set((s) => ({
-          users: s.users.map((u) =>
-            u.id === id ? { ...u, status: 'active' as UserStatus, updatedAt: new Date().toISOString() } : u
-          ),
-        })),
-    }),
-    {
-      name: 'wipli-users',
-      version: 3,
-      migrate: () => ({ users: USERS, currentUser: CURRENT_USER }),
-      skipHydration: true,
-      storage: {
-        getItem: (name) => {
-          if (typeof window === 'undefined') return null
-          const value = localStorage.getItem(name)
-          return value ? JSON.parse(value) : null
-        },
-        setItem: (name, value) => {
-          if (typeof window === 'undefined') return
-          try {
-            localStorage.setItem(name, JSON.stringify(value))
-          } catch {
-            console.warn('[wipli-users] localStorage quota exceeded — avatar not saved.')
-          }
-        },
-        removeItem: (name) => {
-          if (typeof window === 'undefined') return
-          localStorage.removeItem(name)
-        },
-      },
+  fetchUsers: async () => {
+    set({ loading: true, error: null })
+    try {
+      const users = await api<User[]>('/api/users')
+      set({ users })
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al cargar usuarios' })
+    } finally {
+      set({ loading: false })
     }
-  )
-)
+  },
 
-export function useCurrentUser() {
-  return useUserStore((s) => s.currentUser)
+  addUser: async (user) => {
+    try {
+      const created = await api<User>('/api/users', { method: 'POST', body: JSON.stringify(user) })
+      set((s) => ({ users: [...s.users, created] }))
+      return created
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al crear usuario' })
+      return null
+    }
+  },
+
+  updateUser: async (id, updates) => {
+    try {
+      const updated = await api<User>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(updates) })
+      set((s) => ({ users: s.users.map((u) => (u.id === id ? updated : u)) }))
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al actualizar usuario' })
+    }
+  },
+
+  deleteUser: async (id) => {
+    try {
+      await api(`/api/users/${id}`, { method: 'DELETE' })
+      set((s) => ({ users: s.users.filter((u) => u.id !== id) }))
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al eliminar usuario' })
+    }
+  },
+
+  deactivateUser: async (id) => {
+    await get().updateUser(id, { status: 'inactive' })
+  },
+
+  activateUser: async (id) => {
+    await get().updateUser(id, { status: 'active' })
+  },
+}))
+
+export function useCurrentUser(): User | null {
+  const authUser = useAuthStore((s) => s.user)
+  return useMemo(() => {
+    if (!authUser) return null
+    return {
+      id: authUser.id,
+      name: authUser.name,
+      role: authUser.role,
+      initials: authUser.initials,
+      color: authUser.color,
+      email: authUser.email,
+      userRole: authUser.userRole as UserRole,
+      avatarUrl: authUser.avatarUrl ?? undefined,
+      status: 'active',
+    }
+  }, [authUser])
 }

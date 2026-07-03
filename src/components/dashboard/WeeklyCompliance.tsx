@@ -1,10 +1,11 @@
 import { Task } from '@/types'
-import { getProject } from '@/data/projects'
+import { useTaskStore } from '@/store/useTaskStore'
 import { getWeekDays } from '@/lib/dates'
 
 interface Props { tasks: Task[] }
 
 export function WeeklyCompliance({ tasks }: Props) {
+  const projects = useTaskStore((s) => s.projects)
   const weekDays = getWeekDays()
   const weekStart = weekDays[0]
   const weekEnd = weekDays[6]
@@ -19,9 +20,9 @@ export function WeeklyCompliance({ tasks }: Props) {
   const pct = total === 0 ? 0 : Math.round((done / total) * 100)
 
   const byProject = weekTasks.reduce<Record<string, { total: number; done: number }>>((acc, t) => {
-    if (!acc[t.project]) acc[t.project] = { total: 0, done: 0 }
-    acc[t.project].total++
-    if (t.status === 'done' || t.status === 'scheduled') acc[t.project].done++
+    if (!acc[t.projectId]) acc[t.projectId] = { total: 0, done: 0 }
+    acc[t.projectId].total++
+    if (t.status === 'done' || t.status === 'scheduled') acc[t.projectId].done++
     return acc
   }, {})
 
@@ -52,15 +53,15 @@ export function WeeklyCompliance({ tasks }: Props) {
       </div>
 
       <div className="space-y-3.5">
-        {Object.entries(byProject).map(([project, { total, done: d }]) => {
-          const p = getProject(project)
+        {Object.entries(byProject).map(([projectId, { total, done: d }]) => {
+          const p = projects.find((pr) => pr.id === projectId)
           const ppct = total === 0 ? 0 : Math.round((d / total) * 100)
           return (
-            <div key={project}>
+            <div key={projectId}>
               <div className="flex items-center justify-between text-sm mb-1.5">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p?.color ?? '#94a3b8' }} />
-                  <span className="font-medium" style={{ color: 'var(--tp-text)' }}>{project}</span>
+                  <span className="font-medium" style={{ color: 'var(--tp-text)' }}>{p?.name ?? 'Sin proyecto'}</span>
                 </div>
                 <span className="text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>{d}/{total}</span>
               </div>

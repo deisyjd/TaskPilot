@@ -3,6 +3,8 @@
 import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/useAuthStore'
+import { useTaskStore } from '@/store/useTaskStore'
+import { useUserStore } from '@/store/useUserStore'
 import { Eye, EyeOff, ArrowRight, CheckCircle2 } from 'lucide-react'
 
 const features = [
@@ -15,6 +17,8 @@ const features = [
 export default function LoginPage() {
   const router = useRouter()
   const login = useAuthStore((s) => s.login)
+  const fetchAll = useTaskStore((s) => s.fetchAll)
+  const fetchUsers = useUserStore((s) => s.fetchUsers)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -46,7 +50,9 @@ export default function LoginPage() {
         return
       }
 
-      login(data.user)
+      login(data)
+      fetchAll()
+      fetchUsers()
       router.replace('/dashboard')
     } catch {
       setError('Error de conexión. Intenta de nuevo.')

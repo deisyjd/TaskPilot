@@ -21,6 +21,7 @@ import { useMobileNavStore } from '@/store/useMobileNavStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { can } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
+import { CompanySwitcher } from '@/components/layout/CompanySwitcher'
 
 const mainNav = [
   { label: 'Dashboard',        href: '/dashboard',      icon: LayoutDashboard },
@@ -161,7 +162,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         )}
       </div>
 
-      {/* User card + logout */}
+      {/* Company switcher + user card + logout */}
+      <div className="pb-2">
+        <CompanySwitcher />
+      </div>
       <div className="px-3 pb-5 space-y-1">
         <Link
           href="/admin/users"

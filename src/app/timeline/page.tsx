@@ -64,7 +64,7 @@ export default function TimelinePage() {
   // Week view also filters by date range; month view passes all to MonthCalendar
   const filtered = useMemo(() => {
     return tasks.filter((t) => {
-      if (projectFilter !== 'all' && t.project !== projectFilter) return false
+      if (projectFilter !== 'all' && t.projectId !== projectFilter) return false
       if (!showDone && t.status === 'done') return false
       if (viewMode === 'week') {
         const [y, m, d] = t.dueDate.split('T')[0].split('-').map(Number)
@@ -195,7 +195,7 @@ export default function TimelinePage() {
           <SelectContent>
             <SelectItem value="all">Todos los proyectos</SelectItem>
             {projects.map((p) => (
-              <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>

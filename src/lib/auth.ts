@@ -12,6 +12,7 @@ export interface SessionPayload {
   userId: string
   email: string
   userRole: string
+  activeCompanyId: string
 }
 
 export async function signToken(payload: SessionPayload) {

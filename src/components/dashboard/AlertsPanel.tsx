@@ -3,6 +3,7 @@ import { isOverdue, isToday, formatDate } from '@/lib/dates'
 import { AlertTriangle, Clock, Ban, CalendarClock } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { useTaskStore } from '@/store/useTaskStore'
 
 interface Props { tasks: Task[] }
 
@@ -17,6 +18,7 @@ const config: Record<AlertKind, { label: string; icon: React.ReactNode; dot: str
 }
 
 export function AlertsPanel({ tasks }: Props) {
+  const projects = useTaskStore((s) => s.projects)
   const alerts: AlertItem[] = []
   for (const task of tasks) {
     if (task.status === 'done') continue
@@ -64,7 +66,7 @@ export function AlertsPanel({ tasks }: Props) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: 'var(--tp-text)' }}>{task.title}</p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--tp-text-2)' }}>
-                    {task.project} · {formatDate(task.dueDate)}
+                    {projects.find((p) => p.id === task.projectId)?.name ?? 'Sin proyecto'} · {formatDate(task.dueDate)}
                   </p>
                 </div>
                 <span className="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full" style={{ backgroundColor: c.dot + '22', color: c.text }}>

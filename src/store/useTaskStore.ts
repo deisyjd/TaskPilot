@@ -1,183 +1,167 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { Task, TaskStatus, HistoryEvent, HistoryEventType, Project } from '@/types'
-import { MOCK_TASKS } from '@/data/tasks'
-import { MOCK_HISTORY } from '@/data/history'
-import { PROJECTS, _refreshProjectCache } from '@/data/projects'
+import { Task, TaskStatus, HistoryEvent, Project } from '@/types'
 
-function newHistoryEvent(
-  type: HistoryEventType,
-  task: Task,
-  description: string,
-  meta?: Record<string, string>
-): HistoryEvent {
-  return {
-    id: `h-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    type,
-    taskId: task.id,
-    taskTitle: task.title,
-    project: task.project,
-    description,
-    user: 'Deisy',
-    timestamp: new Date().toISOString(),
-    meta,
+async function api<T>(url: string, opts?: RequestInit): Promise<T> {
+  const res = await fetch(url, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...(opts?.headers ?? {}) },
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error ?? `Solicitud fallida (${res.status})`)
   }
+  if (res.status === 204) return undefined as T
+  return res.json()
 }
 
 interface TaskStore {
   tasks: Task[]
   history: HistoryEvent[]
   projects: Project[]
-  addTask: (task: Task) => void
-  updateTask: (id: string, updates: Partial<Task>) => void
-  moveTask: (id: string, status: TaskStatus) => void
-  deleteTask: (id: string) => void
-  addProject: (project: Project) => void
-  updateProject: (id: string, updates: Partial<Project>) => void
-  deleteProject: (id: string) => void
-  archiveProject: (id: string) => void
-  restoreProject: (id: string) => void
-  addGenericHistory: (event: Omit<HistoryEvent, 'id'>) => void
-  resetToMockData: () => void
+  tasksLoading: boolean
+  projectsLoading: boolean
+  historyLoading: boolean
+  error: string | null
+
+  fetchTasks: () => Promise<void>
+  fetchProjects: () => Promise<void>
+  fetchHistory: () => Promise<void>
+  fetchAll: () => Promise<void>
+
+  addTask: (task: Partial<Task> & { title: string; projectId: string }) => Promise<Task | null>
+  updateTask: (id: string, updates: Partial<Task>) => Promise<void>
+  moveTask: (id: string, status: TaskStatus) => Promise<void>
+  deleteTask: (id: string) => Promise<void>
+
+  addProject: (project: Partial<Project> & { name: string }) => Promise<Project | null>
+  updateProject: (id: string, updates: Partial<Project>) => Promise<void>
+  deleteProject: (id: string) => Promise<void>
+  archiveProject: (id: string) => Promise<void>
+  restoreProject: (id: string) => Promise<void>
+
+  getProjectById: (id: string) => Project | undefined
 }
 
-export const useTaskStore = create<TaskStore>()(
-  persist(
-    (set, get) => ({
-      tasks: MOCK_TASKS,
-      history: MOCK_HISTORY,
-      projects: PROJECTS,
+export const useTaskStore = create<TaskStore>()((set, get) => ({
+  tasks: [],
+  history: [],
+  projects: [],
+  tasksLoading: false,
+  projectsLoading: false,
+  historyLoading: false,
+  error: null,
 
-      addTask: (task) => {
-        const event = newHistoryEvent('task-created', task, 'Tarea creada')
-        set((s) => ({ tasks: [...s.tasks, task], history: [event, ...s.history] }))
-      },
-
-      updateTask: (id, updates) => {
-        const task = get().tasks.find((t) => t.id === id)
-        if (!task) return
-        const updated = { ...task, ...updates, updatedAt: new Date().toISOString() }
-        const events: HistoryEvent[] = []
-
-        if (updates.status && updates.status !== task.status) {
-          events.push(
-            newHistoryEvent(
-              updates.status === 'done' ? 'task-completed' : 'status-changed',
-              updated,
-              `Estado cambiado de ${task.status} a ${updates.status}`,
-              { from: task.status, to: updates.status }
-            )
-          )
-        }
-        if (updates.assignee && updates.assignee !== task.assignee) {
-          events.push(
-            newHistoryEvent('assignee-changed', updated, `Responsable cambiado a ${updates.assignee}`, {
-              from: task.assignee,
-              to: updates.assignee,
-            })
-          )
-        }
-        if (updates.dueDate && updates.dueDate !== task.dueDate) {
-          events.push(
-            newHistoryEvent('date-changed', updated, 'Fecha límite actualizada', {
-              from: task.dueDate,
-              to: updates.dueDate,
-            })
-          )
-        }
-        if (events.length === 0) {
-          events.push(newHistoryEvent('task-edited', updated, 'Tarea editada'))
-        }
-
-        set((s) => ({
-          tasks: s.tasks.map((t) => (t.id === id ? updated : t)),
-          history: [...events, ...s.history],
-        }))
-      },
-
-      moveTask: (id, status) => {
-        get().updateTask(id, { status })
-      },
-
-      deleteTask: (id) => {
-        set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }))
-      },
-
-      addProject: (project) => {
-        set((s) => {
-          const updated = [...s.projects, project]
-          _refreshProjectCache(updated)
-          return { projects: updated }
-        })
-      },
-
-      updateProject: (id, updates) => {
-        set((s) => {
-          const updated = s.projects.map((p) =>
-            p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
-          )
-          _refreshProjectCache(updated)
-          return { projects: updated }
-        })
-      },
-
-      deleteProject: (id) => {
-        set((s) => {
-          const updated = s.projects.filter((p) => p.id !== id)
-          _refreshProjectCache(updated)
-          return { projects: updated }
-        })
-      },
-
-      archiveProject: (id) => {
-        get().updateProject(id, { status: 'inactive', featured: false })
-      },
-
-      restoreProject: (id) => {
-        get().updateProject(id, { status: 'active' })
-      },
-
-      // Generic history entry for non-task events (user/project/chat actions)
-      addGenericHistory: (event) => {
-        const entry: HistoryEvent = {
-          ...event,
-          id: `h-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        }
-        set((s) => ({ history: [entry, ...s.history] }))
-      },
-
-      resetToMockData: () => {
-        _refreshProjectCache(PROJECTS)
-        set({ tasks: MOCK_TASKS, history: MOCK_HISTORY, projects: PROJECTS })
-      },
-    }),
-    {
-      name: 'taskpilot-store',
-      version: 5,
-      migrate: () => ({ tasks: MOCK_TASKS, history: MOCK_HISTORY, projects: PROJECTS }),
-      skipHydration: true,
-      storage: {
-        getItem: (name) => {
-          if (typeof window === 'undefined') return null
-          const value = localStorage.getItem(name)
-          return value ? JSON.parse(value) : null
-        },
-        setItem: (name, value) => {
-          if (typeof window === 'undefined') return
-          try {
-            localStorage.setItem(name, JSON.stringify(value))
-          } catch {
-            console.warn('[taskpilot-store] localStorage quota exceeded — state not persisted.')
-          }
-        },
-        removeItem: (name) => {
-          if (typeof window === 'undefined') return
-          localStorage.removeItem(name)
-        },
-      },
-      onRehydrateStorage: () => (state) => {
-        if (state?.projects) _refreshProjectCache(state.projects)
-      },
+  fetchTasks: async () => {
+    set({ tasksLoading: true, error: null })
+    try {
+      const tasks = await api<Task[]>('/api/tasks')
+      set({ tasks })
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al cargar tareas' })
+    } finally {
+      set({ tasksLoading: false })
     }
-  )
-)
+  },
+
+  fetchProjects: async () => {
+    set({ projectsLoading: true, error: null })
+    try {
+      const projects = await api<Project[]>('/api/projects')
+      set({ projects })
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al cargar proyectos' })
+    } finally {
+      set({ projectsLoading: false })
+    }
+  },
+
+  fetchHistory: async () => {
+    set({ historyLoading: true, error: null })
+    try {
+      const history = await api<HistoryEvent[]>('/api/history')
+      set({ history })
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al cargar historial' })
+    } finally {
+      set({ historyLoading: false })
+    }
+  },
+
+  fetchAll: async () => {
+    await Promise.all([get().fetchProjects(), get().fetchTasks(), get().fetchHistory()])
+  },
+
+  addTask: async (task) => {
+    try {
+      const created = await api<Task>('/api/tasks', { method: 'POST', body: JSON.stringify(task) })
+      set((s) => ({ tasks: [created, ...s.tasks] }))
+      get().fetchHistory()
+      return created
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al crear tarea' })
+      return null
+    }
+  },
+
+  updateTask: async (id, updates) => {
+    try {
+      const updated = await api<Task>(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(updates) })
+      set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? updated : t)) }))
+      get().fetchHistory()
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al actualizar tarea' })
+    }
+  },
+
+  moveTask: async (id, status) => {
+    await get().updateTask(id, { status })
+  },
+
+  deleteTask: async (id) => {
+    try {
+      await api(`/api/tasks/${id}`, { method: 'DELETE' })
+      set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }))
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al eliminar tarea' })
+    }
+  },
+
+  addProject: async (project) => {
+    try {
+      const created = await api<Project>('/api/projects', { method: 'POST', body: JSON.stringify(project) })
+      set((s) => ({ projects: [...s.projects, created] }))
+      return created
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al crear proyecto' })
+      return null
+    }
+  },
+
+  updateProject: async (id, updates) => {
+    try {
+      const updated = await api<Project>(`/api/projects/${id}`, { method: 'PATCH', body: JSON.stringify(updates) })
+      set((s) => ({ projects: s.projects.map((p) => (p.id === id ? updated : p)) }))
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al actualizar proyecto' })
+    }
+  },
+
+  deleteProject: async (id) => {
+    try {
+      await api(`/api/projects/${id}`, { method: 'DELETE' })
+      set((s) => ({ projects: s.projects.filter((p) => p.id !== id) }))
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al eliminar proyecto' })
+    }
+  },
+
+  archiveProject: async (id) => {
+    await get().updateProject(id, { status: 'inactive', featured: false })
+  },
+
+  restoreProject: async (id) => {
+    await get().updateProject(id, { status: 'active' })
+  },
+
+  getProjectById: (id) => get().projects.find((p) => p.id === id),
+}))

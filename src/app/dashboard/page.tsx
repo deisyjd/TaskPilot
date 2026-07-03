@@ -22,7 +22,7 @@ export default function DashboardPage() {
     const overdue = tasks.filter((t) => isOverdue(t.dueDate, t.status))
     const todayTasks = tasks.filter((t) => isToday(t.dueDate) && t.status !== 'done')
     const pendingPublications = tasks.filter((t) => t.type === 'publication' && t.status !== 'done')
-    const activeProjects = new Set(active.map((t) => t.project)).size
+    const activeProjects = new Set(active.map((t) => t.projectId)).size
 
     const weekTasks = tasks.filter((t) => {
       const d = new Date(t.dueDate)

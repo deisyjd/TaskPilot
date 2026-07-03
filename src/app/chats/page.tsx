@@ -25,6 +25,8 @@ export default function ChatsPage() {
     setCreateOpen(true)
   }
 
+  if (!currentUser) return null
+
   return (
     <div className="flex h-[calc(100vh-80px)] overflow-hidden rounded-[var(--tp-r-card)] border border-[var(--tp-border)] shadow-sm bg-[var(--tp-surface)]">
       {/* Left sidebar — conversation list */}

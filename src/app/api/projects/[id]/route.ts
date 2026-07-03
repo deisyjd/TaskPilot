@@ -11,8 +11,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   const { id } = await params
-  const body = await req.json()
-  const project = await prisma.project.update({ where: { id }, data: body })
+  const { companyId: _drop, ...data } = await req.json()
+
+  const result = await prisma.project.updateMany({ where: { id, companyId: session.activeCompanyId }, data })
+  if (result.count === 0) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+
+  const project = await prisma.project.findUnique({ where: { id } })
   return NextResponse.json(project)
 }
 
@@ -23,6 +27,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   }
 
   const { id } = await params
-  await prisma.project.delete({ where: { id } })
+  const result = await prisma.project.deleteMany({ where: { id, companyId: session.activeCompanyId } })
+  if (result.count === 0) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+
   return NextResponse.json({ ok: true })
 }

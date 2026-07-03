@@ -60,7 +60,7 @@ export function CreateConversationModal({ open, onClose }: Props) {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
   const [error, setError] = useState('')
 
-  const otherUsers = allUsers.filter((u) => u.id !== currentUser.id && u.status !== 'inactive')
+  const otherUsers = allUsers.filter((u) => u.id !== currentUser?.id && u.status !== 'inactive')
 
   function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -92,6 +92,7 @@ export function CreateConversationModal({ open, onClose }: Props) {
 
   function handleSave() {
     setError('')
+    if (!currentUser) return
 
     if (type === 'direct') {
       if (!selectedDirectUser) {

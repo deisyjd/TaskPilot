@@ -13,24 +13,30 @@ import { useAuthStore } from '@/store/useAuthStore'
 export function ClientShell({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false)
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const companies = useAuthStore((s) => s.companies)
   const { login } = useAuthStore()
+  const fetchAll = useTaskStore((s) => s.fetchAll)
+  const fetchUsers = useUserStore((s) => s.fetchUsers)
   const pathname = usePathname()
   const router = useRouter()
 
   useEffect(() => {
-    useTaskStore.persist.rehydrate()
-    useUserStore.persist.rehydrate()
     useChatStore.persist.rehydrate()
 
     // Verify session with server
     fetch('/api/auth/me')
-      .then((r) => r.ok ? r.json() : null)
-      .then((user) => {
-        if (user) login(user)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) {
+          login(data)
+          fetchAll()
+          fetchUsers()
+        }
       })
       .catch(() => {})
       .finally(() => setReady(true))
-  }, [login])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (!ready) return
@@ -48,6 +54,19 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
 
   if (!isLoggedIn) {
     return <div className="h-screen" style={{ backgroundColor: 'var(--tp-bg)' }} />
+  }
+
+  if (isLoggedIn && companies.length === 0) {
+    return (
+      <div
+        className="h-screen flex items-center justify-center text-center p-6"
+        style={{ backgroundColor: 'var(--tp-bg)', color: 'var(--tp-text)' }}
+      >
+        <p className="text-sm max-w-sm" style={{ color: 'var(--tp-text-2)' }}>
+          No tienes ninguna empresa asignada. Contacta a un administrador para que te agregue a una empresa.
+        </p>
+      </div>
+    )
   }
 
   return (

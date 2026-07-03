@@ -46,7 +46,7 @@ function SectionCard({
 function TaskRow({ task }: { task: Task }) {
   const projects = useTaskStore((s) => s.projects)
   const users = useUserStore((s) => s.users)
-  const project = projects.find((p) => p.name === task.project)
+  const project = projects.find((p) => p.id === task.projectId)
   const user = users.find((u) => u.name === task.assignee)
   return (
     <div className="flex items-center gap-3 px-5 py-3">
@@ -60,7 +60,7 @@ function TaskRow({ task }: { task: Task }) {
             className="w-1.5 h-1.5 rounded-full"
             style={{ backgroundColor: project?.color ?? '#94a3b8' }}
           />
-          <span className="text-xs text-gray-400">{task.project}</span>
+          <span className="text-xs text-gray-400">{project?.name ?? 'Sin proyecto'}</span>
         </div>
         <div
           className={cn(
@@ -106,9 +106,9 @@ export default function WeeklyReviewPage() {
   const byProject = useMemo(() => {
     const map: Record<string, { total: number; done: number }> = {}
     weekTasks.forEach((t) => {
-      if (!map[t.project]) map[t.project] = { total: 0, done: 0 }
-      map[t.project].total++
-      if (t.status === 'done') map[t.project].done++
+      if (!map[t.projectId]) map[t.projectId] = { total: 0, done: 0 }
+      map[t.projectId].total++
+      if (t.status === 'done') map[t.projectId].done++
     })
     return Object.entries(map).sort((a, b) => b[1].total - a[1].total)
   }, [weekTasks])
@@ -195,15 +195,15 @@ export default function WeeklyReviewPage() {
             <h3 className="font-semibold text-gray-900">Cumplimiento por proyecto</h3>
           </div>
           <div className="space-y-3">
-            {byProject.map(([project, { total, done: d }]) => {
+            {byProject.map(([projectId, { total, done: d }]) => {
               const pct = total === 0 ? 0 : Math.round((d / total) * 100)
-              const projectData = projects.find((p) => p.name === project)
+              const projectData = projects.find((p) => p.id === projectId)
               return (
-                <div key={project}>
+                <div key={projectId}>
                   <div className="flex items-center justify-between text-sm mb-1">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: projectData?.color ?? '#94a3b8' }} />
-                      <span className="text-gray-700 font-medium">{project}</span>
+                      <span className="text-gray-700 font-medium">{projectData?.name ?? 'Sin proyecto'}</span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-gray-400">
                       <span>{d}/{total}</span>

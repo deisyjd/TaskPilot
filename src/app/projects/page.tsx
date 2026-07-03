@@ -229,7 +229,7 @@ export default function ProjectsPage() {
     const counts: Record<string, number> = {}
     for (const t of tasks) {
       if (t.status !== 'done') {
-        counts[t.project] = (counts[t.project] ?? 0) + 1
+        counts[t.projectId] = (counts[t.projectId] ?? 0) + 1
       }
     }
     return counts
@@ -365,7 +365,7 @@ export default function ProjectsPage() {
             <ProjectCard
               key={project.id}
               project={project}
-              taskCount={taskCountByProject[project.name] ?? 0}
+              taskCount={taskCountByProject[project.id] ?? 0}
               onToggleFeatured={handleToggleFeatured}
               onArchive={archiveProject}
               onRestore={restoreProject}

@@ -3,8 +3,6 @@
 import { useMemo, useState } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { HistoryEvent, HistoryEventType } from '@/types'
-import { getProject } from '@/data/projects'
-import { getUser } from '@/data/users'
 import { formatDateTime } from '@/lib/dates'
 import {
   Plus, Edit3, ArrowRightLeft, UserCheck, Calendar,
@@ -43,8 +41,8 @@ const ALL_TYPES = Object.keys(EVENT_CONFIG) as HistoryEventType[]
 
 function EventRow({ event }: { event: HistoryEvent }) {
   const cfg = EVENT_CONFIG[event.type]
-  const project = event.project ? getProject(event.project) : undefined
-  const user = getUser(event.user)
+  const projects = useTaskStore((s) => s.projects)
+  const project = event.project ? projects.find((p) => p.name === event.project) : undefined
 
   return (
     <div className="flex items-start gap-3.5 px-5 py-3.5 hover:bg-[var(--tp-bg)] transition-colors">

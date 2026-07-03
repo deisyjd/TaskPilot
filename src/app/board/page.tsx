@@ -36,7 +36,7 @@ export default function BoardPage() {
   const filtered = useMemo(() => {
     return tasks.filter((t) => {
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false
-      if (projectFilter !== 'all' && t.project !== projectFilter) return false
+      if (projectFilter !== 'all' && t.projectId !== projectFilter) return false
       if (assigneeFilter !== 'all' && t.assignee !== assigneeFilter) return false
       return true
     })
@@ -81,7 +81,7 @@ export default function BoardPage() {
               style={{ ...inputBase, width: '100%', paddingRight: '28px', appearance: 'none', cursor: 'pointer' }}
               className="sm:w-[180px]">
               <option value="all">Todos los proyectos</option>
-              {projects.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: 'var(--tp-text-2)' }} />
           </div>

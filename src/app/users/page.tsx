@@ -157,7 +157,7 @@ function UserCard({ userName }: { userName: string }) {
             </p>
             <div className="space-y-1.5">
               {visibleTasks.map((task) => {
-                const project = projects.find((p) => p.name === task.project)
+                const project = projects.find((p) => p.id === task.projectId)
                 const overdue = isOverdue(task.dueDate, task.status)
                 const dueToday = isToday(task.dueDate)
                 return (

@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
-import { useCurrentUser } from '@/store/useUserStore'
-import { USERS } from '@/data/users'
+import { useCurrentUser, useUserStore } from '@/store/useUserStore'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Project } from '@/types'
 import { FolderPlus } from 'lucide-react'
@@ -26,6 +25,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
   const addProject = useTaskStore((s) => s.addProject)
   const updateProject = useTaskStore((s) => s.updateProject)
   const currentUser = useCurrentUser()
+  const users = useUserStore((s) => s.users)
 
   // ─── Form state ────────────────────────────────────────────
   const [name, setName] = useState('')
@@ -79,7 +79,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
       coverImageUrl: coverPreview ?? undefined,
       status,
       members: selectedMembers.length > 0 ? selectedMembers : undefined,
-      createdBy: existingProject?.createdBy ?? currentUser.name,
+      createdBy: existingProject?.createdBy ?? currentUser?.name ?? '',
       createdAt: existingProject?.createdAt ?? new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       attachments: existingProject?.attachments,
@@ -266,7 +266,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
               Miembros del equipo
             </p>
             <div className="flex flex-col gap-2">
-              {USERS.map((user) => {
+              {users.map((user) => {
                 const checked = selectedMembers.includes(user.name)
                 return (
                   <label
