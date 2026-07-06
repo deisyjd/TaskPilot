@@ -11,7 +11,7 @@ Tablero digital de operaciones para gestión de clientes, proyectos, publicacion
 | Estilos | Tailwind CSS v4 + design tokens `--tp-*` |
 | Componentes | shadcn/ui |
 | Estado | Zustand v5 (caché cliente) |
-| Base de datos | MySQL 8+ con Prisma ORM v5 |
+| Base de datos | PostgreSQL 15+ con Prisma ORM v5 |
 | Autenticación | JWT via `jose` + cookies httpOnly |
 | Tipografía | Sora (títulos) · Plus Jakarta Sans (UI) |
 | Íconos | Lucide Icons |
@@ -21,7 +21,7 @@ Tablero digital de operaciones para gestión de clientes, proyectos, publicacion
 ## Requisitos previos
 
 - Node.js 18+
-- MySQL 8+ corriendo localmente (o en servidor)
+- PostgreSQL 15+ corriendo localmente (o en servidor)
 - npm
 
 ---
@@ -41,25 +41,25 @@ npm install
 Crear el archivo `.env` en la raíz del proyecto:
 
 ```env
-DATABASE_URL="mysql://root@localhost:3306/wipli"
+DATABASE_URL="postgresql://tu_usuario@localhost:5432/wipli"
 JWT_SECRET="cambia-esto-por-una-clave-secreta-larga"
 ```
 
-> Reemplaza `root` y el host si tu MySQL usa usuario/contraseña diferente.  
-> Ejemplo con contraseña: `mysql://usuario:contraseña@localhost:3306/wipli`
+> Reemplaza `tu_usuario` y el host según tu instalación de PostgreSQL.  
+> Ejemplo con contraseña: `postgresql://usuario:contraseña@localhost:5432/wipli`
 
 ### 3. Crear la base de datos
 
 ```bash
-mysql -u root -e "CREATE DATABASE IF NOT EXISTS wipli;"
+createdb wipli
 ```
 
-> Si tu MySQL tiene contraseña: `mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS wipli;"`
+> O con psql: `psql -d postgres -c "CREATE DATABASE wipli;"`
 
 ### 4. Crear las tablas
 
 ```bash
-npx prisma db push
+npx prisma migrate dev
 ```
 
 ### 5. Cargar datos iniciales
@@ -163,7 +163,7 @@ prisma/
 ## Módulos
 
 ### Autenticación
-- Login con email y contraseña verificados contra MySQL
+- Login con email y contraseña verificados contra PostgreSQL
 - Contraseñas hasheadas con bcrypt (factor 12)
 - Sesión via cookie httpOnly con JWT firmado (7 días)
 - Protección de rutas en el cliente (ClientShell)
@@ -223,7 +223,9 @@ La imagen (`Dockerfile`) corre `docker-entrypoint.sh` al arrancar, que aplica
 las migraciones y siembra los usuarios iniciales automáticamente — no hace
 falta ejecutar nada a mano salvo configurar las variables de entorno:
 
-- `DATABASE_URL` con la URL de MySQL de producción
+- `DATABASE_URL` con la URL de PostgreSQL de producción
+  (formato `postgresql://usuario:contraseña@host:5432/base`; en Dokploy,
+  crea un servicio de PostgreSQL y usa su URL interna)
 - `JWT_SECRET` con una clave larga y segura (mínimo 32 caracteres)
 - `SEED_USER_PASSWORD` con una contraseña temporal fuerte — **solo se usa
   si la base de datos todavía no tiene ningún usuario** (primer arranque).
