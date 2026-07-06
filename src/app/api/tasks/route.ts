@@ -21,7 +21,8 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json()
-  const { checklist, comments, companyId: _drop, projectId, ...data } = body
+  // Whitelist: el cliente envía campos que no son columnas (attachments, links, coverImageUrl, …)
+  const { checklist, projectId, title, description, status, assignee, dueDate, priority, type, tags } = body
 
   if (!projectId) return NextResponse.json({ error: 'projectId requerido' }, { status: 400 })
 
@@ -32,10 +33,16 @@ export async function POST(req: NextRequest) {
 
   const task = await prisma.task.create({
     data: {
-      ...data,
+      title,
+      description,
+      status,
+      assignee,
+      dueDate,
+      priority,
+      type,
       projectId,
       companyId: session.activeCompanyId,
-      tags: JSON.stringify(data.tags ?? []),
+      tags: JSON.stringify(tags ?? []),
       checklist: checklist?.length
         ? { create: checklist.map(({ id: _id, ...c }: { id?: string; text: string; done: boolean }) => c) }
         : undefined,

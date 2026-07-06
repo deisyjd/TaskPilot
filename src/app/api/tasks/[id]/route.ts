@@ -28,12 +28,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!existing) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
 
   const body = await req.json()
-  const { checklist, comments, companyId: _drop, ...data } = body
+
+  // Whitelist: el cliente envía campos que no son columnas (attachments, links, coverImageUrl, …)
+  const data: Record<string, unknown> = {}
+  for (const key of ['title', 'description', 'status', 'assignee', 'dueDate', 'priority', 'type', 'projectId', 'tags']) {
+    if (key in body) data[key] = body[key]
+  }
 
   if (data.tags) data.tags = JSON.stringify(data.tags)
 
   if (data.projectId) {
-    const project = await prisma.project.findUnique({ where: { id: data.projectId } })
+    const project = await prisma.project.findUnique({ where: { id: data.projectId as string } })
     if (!project || project.companyId !== session.activeCompanyId) {
       return NextResponse.json({ error: 'Proyecto inválido' }, { status: 400 })
     }
@@ -49,25 +54,26 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const userName = actor?.name ?? session.email
   const events: Array<{ type: string; description: string; meta?: Record<string, string> }> = []
 
-  if (data.status && data.status !== existing.status) {
+  const { status, assignee, dueDate } = data as { status?: string; assignee?: string; dueDate?: string }
+  if (status && status !== existing.status) {
     events.push({
-      type: data.status === 'done' ? 'task-completed' : 'status-changed',
-      description: `Estado cambiado de ${existing.status} a ${data.status}`,
-      meta: { from: existing.status, to: data.status },
+      type: status === 'done' ? 'task-completed' : 'status-changed',
+      description: `Estado cambiado de ${existing.status} a ${status}`,
+      meta: { from: existing.status, to: status },
     })
   }
-  if (data.assignee && data.assignee !== existing.assignee) {
+  if (assignee && assignee !== existing.assignee) {
     events.push({
       type: 'assignee-changed',
-      description: `Responsable cambiado a ${data.assignee}`,
-      meta: { from: existing.assignee, to: data.assignee },
+      description: `Responsable cambiado a ${assignee}`,
+      meta: { from: existing.assignee, to: assignee },
     })
   }
-  if (data.dueDate && data.dueDate !== existing.dueDate) {
+  if (dueDate && dueDate !== existing.dueDate) {
     events.push({
       type: 'date-changed',
       description: 'Fecha límite actualizada',
-      meta: { from: existing.dueDate, to: data.dueDate },
+      meta: { from: existing.dueDate, to: dueDate },
     })
   }
   if (events.length === 0) {

@@ -11,7 +11,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   const { id } = await params
-  const { companyId: _drop, ...data } = await req.json()
+  const body = await req.json()
+
+  // Whitelist: el cliente envía campos que no son columnas (members, createdBy, …)
+  const data: Record<string, unknown> = {}
+  for (const key of ['name', 'description', 'color', 'status', 'featured', 'coverImageUrl']) {
+    if (key in body) data[key] = body[key]
+  }
 
   const result = await prisma.project.updateMany({ where: { id, companyId: session.activeCompanyId }, data })
   if (result.count === 0) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })

@@ -19,7 +19,11 @@ export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  const { companyId: _drop, ...body } = await req.json()
-  const event = await prisma.historyEvent.create({ data: { ...body, companyId: session.activeCompanyId } })
+  const body = await req.json()
+  // Whitelist: se ignoran id/companyId y cualquier campo que no sea columna
+  const { type, taskId, taskTitle, project, description, user, timestamp, meta } = body
+  const event = await prisma.historyEvent.create({
+    data: { type, taskId, taskTitle, project, description, user, ...(timestamp ? { timestamp } : {}), meta, companyId: session.activeCompanyId },
+  })
   return NextResponse.json(event, { status: 201 })
 }

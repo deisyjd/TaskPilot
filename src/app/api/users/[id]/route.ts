@@ -18,9 +18,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!membership) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
 
   const body = await req.json()
-  const { password, userRole, companyId: _drop, ...rest } = body
+  const { password, userRole } = body
 
-  const userData: Record<string, unknown> = { ...rest }
+  // Whitelist: el cliente envía campos que no son columnas del modelo User
+  const userData: Record<string, unknown> = {}
+  for (const key of ['name', 'role', 'initials', 'color', 'avatarUrl', 'status']) {
+    if (key in body) userData[key] = body[key]
+  }
+  if (body.email) userData.email = body.email.toLowerCase()
   if (password) userData.password = await bcrypt.hash(password, 12)
 
   const user = await prisma.user.update({
