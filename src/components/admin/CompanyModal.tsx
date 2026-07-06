@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore } from '@/store/useUserStore'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { Company } from '@/types'
 import { Building2 } from 'lucide-react'
 
 const PRESET_COLORS = [
@@ -14,18 +15,33 @@ const PRESET_COLORS = [
 
 interface Props {
   open: boolean
+  company?: Company | null   // null/undefined = create mode, Company = edit mode
   onClose: () => void
 }
 
-export function CompanyModal({ open, onClose }: Props) {
+export function CompanyModal({ open, company: existingCompany, onClose }: Props) {
   const addCompany = useAuthStore((s) => s.addCompany)
+  const updateCompany = useAuthStore((s) => s.updateCompany)
   const fetchAll = useTaskStore((s) => s.fetchAll)
   const fetchUsers = useUserStore((s) => s.fetchUsers)
+
+  const isEditMode = Boolean(existingCompany)
 
   const [name, setName] = useState('')
   const [color, setColor] = useState(PRESET_COLORS[0])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (existingCompany) {
+      setName(existingCompany.name)
+      setColor(existingCompany.color)
+    } else {
+      setName('')
+      setColor(PRESET_COLORS[0])
+    }
+    setError('')
+  }, [existingCompany, open])
 
   const handleClose = () => {
     setName('')
@@ -38,6 +54,18 @@ export function CompanyModal({ open, onClose }: Props) {
     if (!name.trim() || saving) return
     setSaving(true)
     setError('')
+
+    if (isEditMode && existingCompany) {
+      const ok = await updateCompany(existingCompany.id, { name: name.trim(), color })
+      setSaving(false)
+      if (!ok) {
+        setError('No se pudo guardar los cambios. Intenta de nuevo.')
+        return
+      }
+      handleClose()
+      return
+    }
+
     const ok = await addCompany(name.trim(), color)
     setSaving(false)
     if (!ok) {
@@ -84,10 +112,10 @@ export function CompanyModal({ open, onClose }: Props) {
           </div>
           <div>
             <h2 className="text-base font-semibold" style={{ color: 'var(--tp-text)' }}>
-              Nueva empresa
+              {isEditMode ? 'Editar empresa' : 'Nueva empresa'}
             </h2>
             <p className="text-xs mt-0.5" style={{ color: 'var(--tp-text-2)' }}>
-              Serás administrador/a de esta empresa
+              {isEditMode ? 'Cambia el nombre o el color' : 'Serás administrador/a de esta empresa'}
             </p>
           </div>
         </div>
@@ -151,7 +179,7 @@ export function CompanyModal({ open, onClose }: Props) {
             className="px-6 py-2.5 text-sm font-semibold rounded-full transition-all hover:opacity-85 disabled:opacity-40"
             style={{ backgroundColor: 'var(--tp-dark)', color: '#FFFFFF' }}
           >
-            {saving ? 'Creando...' : 'Crear empresa'}
+            {saving ? 'Guardando...' : isEditMode ? 'Guardar cambios' : 'Crear empresa'}
           </button>
         </div>
       </DialogContent>

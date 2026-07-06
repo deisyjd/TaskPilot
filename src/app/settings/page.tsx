@@ -1,12 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useCurrentUser } from '@/store/useUserStore'
 import { can } from '@/lib/permissions'
-import { Database, TriangleAlert } from 'lucide-react'
+import { Database, TriangleAlert, Pencil, Users } from 'lucide-react'
 import { DeleteCompanyModal } from '@/components/admin/DeleteCompanyModal'
+import { CompanyModal } from '@/components/admin/CompanyModal'
 
 export default function SettingsPage() {
   const tasks = useTaskStore((s) => s.tasks)
@@ -15,8 +17,10 @@ export default function SettingsPage() {
   const activeCompanyId = useAuthStore((s) => s.activeCompanyId)
   const activeCompany = companies.find((c) => c.id === activeCompanyId)
   const currentUser = useCurrentUser()
+  const canEditCompany = can(currentUser, 'edit_company')
   const canDeleteCompany = can(currentUser, 'delete_company')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
 
   return (
     <div className="max-w-xl space-y-5">
@@ -28,9 +32,21 @@ export default function SettingsPage() {
           border: '1px solid var(--tp-border)',
         }}
       >
-        <h2 className="font-semibold text-base mb-1" style={{ color: 'var(--tp-text)' }}>
-          Datos de la empresa
-        </h2>
+        <div className="flex items-start justify-between mb-1">
+          <h2 className="font-semibold text-base" style={{ color: 'var(--tp-text)' }}>
+            Datos de la empresa
+          </h2>
+          {canEditCompany && activeCompany && (
+            <button
+              onClick={() => setShowEditModal(true)}
+              className="flex items-center gap-1.5 text-xs font-medium transition-all hover:opacity-70"
+              style={{ color: 'var(--tp-text-2)' }}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Editar
+            </button>
+          )}
+        </div>
         <p className="text-xs mb-5" style={{ color: 'var(--tp-text-2)' }}>
           Los datos se guardan en la base de datos, aislados por empresa.
         </p>
@@ -48,6 +64,17 @@ export default function SettingsPage() {
             </p>
           </div>
         </div>
+
+        {canEditCompany && (
+          <Link
+            href="/admin/users"
+            className="mt-3 flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-medium transition-all hover:opacity-80"
+            style={{ backgroundColor: 'var(--tp-bg)', color: 'var(--tp-text)' }}
+          >
+            <Users className="w-4 h-4" style={{ color: 'var(--tp-text-2)' }} />
+            Gestionar integrantes
+          </Link>
+        )}
       </div>
 
       <div
@@ -65,7 +92,7 @@ export default function SettingsPage() {
           v1.0 · Gestión de clientes, publicaciones y operación semanal
         </p>
         <div className="mt-4 space-y-2 text-xs" style={{ color: 'var(--tp-text-2)' }}>
-          <p>Stack: Next.js · TypeScript · Tailwind CSS · shadcn/ui · Zustand · Prisma · MySQL</p>
+          <p>Stack: Next.js · TypeScript · Tailwind CSS · shadcn/ui · Zustand · Prisma · PostgreSQL</p>
         </div>
       </div>
 
@@ -102,11 +129,18 @@ export default function SettingsPage() {
       )}
 
       {activeCompany && (
-        <DeleteCompanyModal
-          open={showDeleteModal}
-          company={activeCompany}
-          onClose={() => setShowDeleteModal(false)}
-        />
+        <>
+          <CompanyModal
+            open={showEditModal}
+            company={activeCompany}
+            onClose={() => setShowEditModal(false)}
+          />
+          <DeleteCompanyModal
+            open={showDeleteModal}
+            company={activeCompany}
+            onClose={() => setShowDeleteModal(false)}
+          />
+        </>
       )}
     </div>
   )

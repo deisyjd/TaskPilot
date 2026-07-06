@@ -2,15 +2,30 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 
+export function serializeProject<T extends { members: { userId: string }[] }>(project: T) {
+  return { ...project, members: project.members.map((m) => m.userId) }
+}
+
 export async function GET() {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
+  const isAdmin = session.userRole === 'admin'
+
   const projects = await prisma.project.findMany({
-    where: { companyId: session.activeCompanyId },
+    where: {
+      companyId: session.activeCompanyId,
+      ...(isAdmin
+        ? {}
+        : { OR: [{ members: { none: {} } }, { members: { some: { userId: session.userId } } }] }),
+    },
+    include: {
+      notes: { orderBy: { updatedAt: 'desc' } },
+      members: { select: { userId: true } },
+    },
     orderBy: { name: 'asc' },
   })
-  return NextResponse.json(projects)
+  return NextResponse.json(projects.map(serializeProject))
 }
 
 export async function POST(req: NextRequest) {
@@ -19,15 +34,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
   }
 
-  // Whitelist: el cliente envía campos que no son columnas (members, createdBy, …)
-  const { name, description, color, status, featured, coverImageUrl } = await req.json()
+  // Whitelist: el cliente envía campos que no son columnas (createdBy, …)
+  const { name, description, color, status, featured, coverImageUrl, memberIds } = await req.json()
   if (!name) return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 })
 
   try {
     const project = await prisma.project.create({
-      data: { name, description, color, status, featured, coverImageUrl, companyId: session.activeCompanyId },
+      data: {
+        name,
+        description,
+        color,
+        status,
+        featured,
+        coverImageUrl,
+        companyId: session.activeCompanyId,
+        members:
+          Array.isArray(memberIds) && memberIds.length > 0
+            ? { createMany: { data: memberIds.map((userId: string) => ({ userId })) } }
+            : undefined,
+      },
+      include: { notes: true, members: { select: { userId: true } } },
     })
-    return NextResponse.json(project, { status: 201 })
+    return NextResponse.json(serializeProject(project), { status: 201 })
   } catch (e) {
     if (typeof e === 'object' && e !== null && 'code' in e && e.code === 'P2002') {
       return NextResponse.json({ error: 'Ya existe un proyecto con ese nombre' }, { status: 409 })

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Task, TaskStatus, HistoryEvent, Project } from '@/types'
+import { Task, TaskStatus, HistoryEvent, Project, Note } from '@/types'
 
 async function api<T>(url: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -33,13 +33,21 @@ interface TaskStore {
   moveTask: (id: string, status: TaskStatus) => Promise<void>
   deleteTask: (id: string) => Promise<void>
 
-  addProject: (project: Partial<Project> & { name: string }) => Promise<Project | null>
-  updateProject: (id: string, updates: Partial<Project>) => Promise<void>
+  addProject: (project: Partial<Project> & { name: string; memberIds?: string[] }) => Promise<Project | null>
+  updateProject: (id: string, updates: Partial<Project> & { memberIds?: string[] }) => Promise<void>
   deleteProject: (id: string) => Promise<void>
   archiveProject: (id: string) => Promise<void>
   restoreProject: (id: string) => Promise<void>
 
+  addNote: (projectId: string, note: { title?: string; content?: string; color?: string }) => Promise<Note | null>
+  updateNote: (id: string, updates: { title?: string; content?: string; color?: string }) => Promise<boolean>
+  deleteNote: (id: string) => Promise<boolean>
+
   getProjectById: (id: string) => Project | undefined
+}
+
+function replaceProjectNotes(projects: Project[], noteId: string, apply: (notes: Note[]) => Note[]) {
+  return projects.map((p) => (p.notes?.some((n) => n.id === noteId) ? { ...p, notes: apply(p.notes ?? []) } : p))
 }
 
 export const useTaskStore = create<TaskStore>()((set, get) => ({
@@ -161,6 +169,43 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
 
   restoreProject: async (id) => {
     await get().updateProject(id, { status: 'active' })
+  },
+
+  addNote: async (projectId, note) => {
+    try {
+      const created = await api<Note>('/api/notes', { method: 'POST', body: JSON.stringify({ projectId, ...note }) })
+      set((s) => ({
+        projects: s.projects.map((p) =>
+          p.id === projectId ? { ...p, notes: [created, ...(p.notes ?? [])] } : p
+        ),
+      }))
+      return created
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al crear nota' })
+      return null
+    }
+  },
+
+  updateNote: async (id, updates) => {
+    try {
+      const updated = await api<Note>(`/api/notes/${id}`, { method: 'PATCH', body: JSON.stringify(updates) })
+      set((s) => ({ projects: replaceProjectNotes(s.projects, id, (notes) => notes.map((n) => (n.id === id ? updated : n))) }))
+      return true
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al actualizar nota' })
+      return false
+    }
+  },
+
+  deleteNote: async (id) => {
+    try {
+      await api(`/api/notes/${id}`, { method: 'DELETE' })
+      set((s) => ({ projects: replaceProjectNotes(s.projects, id, (notes) => notes.filter((n) => n.id !== id)) }))
+      return true
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al eliminar nota' })
+      return false
+    }
   },
 
   getProjectById: (id) => get().projects.find((p) => p.id === id),

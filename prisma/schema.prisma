@@ -20,6 +20,7 @@ model Company {
   projects          Project[]
   tasks             Task[]
   historyEvents     HistoryEvent[]
+  notes             Note[]
   lastActiveForUser User[]              @relation("UserLastActiveCompany")
 
   @@map("companies")
@@ -55,7 +56,8 @@ model User {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  memberships CompanyMembership[]
+  memberships        CompanyMembership[]
+  projectMemberships ProjectMember[]
 
   @@map("users")
 }
@@ -73,8 +75,9 @@ model Project {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  tasks Task[]
-  notes Note[]
+  tasks   Task[]
+  notes   Note[]
+  members ProjectMember[]
 
   @@unique([companyId, name])
   @@map("projects")
@@ -169,12 +172,32 @@ model Message {
 
 model Note {
   id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   title     String
   content   String?  @db.Text
+  color     String?
+  createdBy String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([companyId])
+  @@index([projectId])
   @@map("notes")
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+  @@map("project_members")
 }

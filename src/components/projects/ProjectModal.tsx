@@ -57,11 +57,11 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
   }, [existingProject, open])
 
   // ─── Member toggle ─────────────────────────────────────────
-  const toggleMember = (memberName: string) => {
+  const toggleMember = (userId: string) => {
     setSelectedMembers((prev) =>
-      prev.includes(memberName)
-        ? prev.filter((m) => m !== memberName)
-        : [...prev, memberName]
+      prev.includes(userId)
+        ? prev.filter((m) => m !== userId)
+        : [...prev, userId]
     )
   }
 
@@ -96,10 +96,11 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
         coverImageUrl: newProject.coverImageUrl,
         status: newProject.status,
         members: newProject.members,
+        memberIds: selectedMembers,
         updatedAt: newProject.updatedAt,
       })
     } else {
-      addProject(newProject)
+      addProject({ ...newProject, memberIds: selectedMembers })
     }
 
     handleClose()
@@ -262,12 +263,17 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
 
           {/* Member selector */}
           <div>
-            <p className="text-xs font-semibold mb-2.5" style={{ color: 'var(--tp-text-2)' }}>
+            <p className="text-xs font-semibold mb-1" style={{ color: 'var(--tp-text-2)' }}>
               Miembros del equipo
+            </p>
+            <p className="text-xs mb-2.5" style={{ color: 'var(--tp-text-2)' }}>
+              {selectedMembers.length === 0
+                ? 'Sin seleccionar nadie: visible para toda la empresa.'
+                : 'Solo las personas seleccionadas y los administradores podrán verlo.'}
             </p>
             <div className="flex flex-col gap-2">
               {users.map((user) => {
-                const checked = selectedMembers.includes(user.name)
+                const checked = selectedMembers.includes(user.id)
                 return (
                   <label
                     key={user.id}
@@ -293,7 +299,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
                     <input
                       type="checkbox"
                       checked={checked}
-                      onChange={() => toggleMember(user.name)}
+                      onChange={() => toggleMember(user.id)}
                       className="w-4 h-4 rounded"
                       style={{ accentColor: color }}
                     />

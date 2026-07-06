@@ -17,6 +17,7 @@ interface AuthStore {
   login: (payload: MePayload) => void
   setActiveCompany: (companyId: string) => Promise<boolean>
   addCompany: (name: string, color?: string) => Promise<boolean>
+  updateCompany: (companyId: string, updates: { name?: string; color?: string }) => Promise<boolean>
   deleteCompany: (companyId: string) => Promise<{ ok: boolean; error?: string }>
   logout: () => void
 }
@@ -70,6 +71,23 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
       return true
     } finally {
       set({ switchingCompany: false })
+    }
+  },
+  updateCompany: async (companyId, updates) => {
+    try {
+      const res = await fetch(`/api/companies/${companyId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      if (!res.ok) return false
+      const updated = await res.json()
+      set((state) => ({
+        companies: state.companies.map((c) => (c.id === companyId ? { ...c, ...updated } : c)),
+      }))
+      return true
+    } catch {
+      return false
     }
   },
   deleteCompany: async (companyId) => {

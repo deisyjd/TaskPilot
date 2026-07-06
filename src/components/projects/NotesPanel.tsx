@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Plus, Trash2, StickyNote, Save, Check } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
-import { useCurrentUser } from '@/store/useUserStore'
 import { Note, Project } from '@/types'
 
 // ─── Pastel color palette ─────────────────────────────────────
@@ -36,8 +35,9 @@ interface Props {
 }
 
 export function NotesPanel({ project }: Props) {
-  const updateProject = useTaskStore((s) => s.updateProject)
-  const currentUser = useCurrentUser()
+  const addNote = useTaskStore((s) => s.addNote)
+  const updateNote = useTaskStore((s) => s.updateNote)
+  const deleteNoteAction = useTaskStore((s) => s.deleteNote)
 
   const notes: Note[] = project.notes ?? []
 
@@ -48,6 +48,7 @@ export function NotesPanel({ project }: Props) {
   const [isDirty, setIsDirty]       = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
+  const [error, setError] = useState('')
   const contentRef = useRef<HTMLTextAreaElement>(null)
 
   const selectedNote = notes.find((n) => n.id === selectedId) ?? null
@@ -61,14 +62,14 @@ export function NotesPanel({ project }: Props) {
   }, [editContent])
 
   // ─── Save helper ─────────────────────────────────────────────
-  function saveCurrentNote(id: string | null = selectedId) {
+  async function saveCurrentNote(id: string | null = selectedId) {
     if (!id) return
-    const updated = notes.map((n) =>
-      n.id === id
-        ? { ...n, title: editTitle, content: editContent, color: editColor, updatedAt: new Date().toISOString() }
-        : n
-    )
-    updateProject(project.id, { notes: updated })
+    const ok = await updateNote(id, { title: editTitle, content: editContent, color: editColor })
+    if (!ok) {
+      setError('No se pudo guardar la nota. Intenta de nuevo.')
+      return
+    }
+    setError('')
     setIsDirty(false)
     setSavedFlash(true)
     setTimeout(() => setSavedFlash(false), 1500)
@@ -83,23 +84,19 @@ export function NotesPanel({ project }: Props) {
     setEditColor(note.color ?? NOTE_COLORS[0])
     setConfirmDelete(false)
     setIsDirty(false)
+    setError('')
   }
 
   // ─── Create note ─────────────────────────────────────────────
-  function handleCreate() {
-    if (isDirty && selectedId) saveCurrentNote(selectedId)
-    const newNote: Note = {
-      id: `note-${Date.now()}`,
-      title: '',
-      content: '',
-      color: NOTE_COLORS[1],
-      createdBy: currentUser?.name ?? '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+  async function handleCreate() {
+    if (isDirty && selectedId) await saveCurrentNote(selectedId)
+    const created = await addNote(project.id, { title: '', content: '', color: NOTE_COLORS[1] })
+    if (!created) {
+      setError('No se pudo crear la nota. Intenta de nuevo.')
+      return
     }
-    const updated = [newNote, ...notes]
-    updateProject(project.id, { notes: updated })
-    setSelectedId(newNote.id)
+    setError('')
+    setSelectedId(created.id)
     setEditTitle('')
     setEditContent('')
     setEditColor(NOTE_COLORS[1])
@@ -109,10 +106,15 @@ export function NotesPanel({ project }: Props) {
   }
 
   // ─── Delete note ─────────────────────────────────────────────
-  function handleDelete() {
+  async function handleDelete() {
     if (!selectedId) return
+    const ok = await deleteNoteAction(selectedId)
+    if (!ok) {
+      setError('No se pudo eliminar la nota. Intenta de nuevo.')
+      return
+    }
+    setError('')
     const updated = notes.filter((n) => n.id !== selectedId)
-    updateProject(project.id, { notes: updated })
     const next = updated[0] ?? null
     if (next) {
       setSelectedId(next.id)
@@ -139,10 +141,19 @@ export function NotesPanel({ project }: Props) {
 
   return (
     <div
-      className="flex gap-5"
+      className="flex flex-col gap-3"
       style={{ minHeight: '520px' }}
       onKeyDown={handleKeyDown}
     >
+      {error && (
+        <div
+          className="text-xs font-medium px-4 py-2.5 rounded-xl"
+          style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
+        >
+          {error}
+        </div>
+      )}
+      <div className="flex gap-5">
       {/* ── Left: list ─────────────────────────────────────────── */}
       <div
         className="flex flex-col gap-3 shrink-0"
@@ -401,6 +412,7 @@ export function NotesPanel({ project }: Props) {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }
