@@ -69,7 +69,7 @@ npm run seed
 ```
 
 Esto crea:
-- 4 usuarios (Deisy, Diego, Karol, Julian) — contraseña: `wipli2024`
+- 4 usuarios (Deisy, Diego, Karol, Julian) — ver credenciales en `prisma/seed.ts`
 - 9 proyectos de muestra
 - 3 tareas de prueba
 
@@ -84,12 +84,14 @@ npm run dev
 
 ## Credenciales de acceso
 
-| Usuario | Email | Contraseña | Rol |
-|---------|-------|------------|-----|
-| Deisy | deisy@wipli.app | wipli2024 | Admin |
-| Diego | diego@wipli.app | wipli2024 | Member |
-| Karol | karol@wipli.app | wipli2024 | Member |
-| Julian | julian@wipli.app | wipli2024 | Member |
+Los usuarios de prueba y su contraseña se definen en `prisma/seed.ts` (no se publican aquí para evitar exponer credenciales). Tras correr `npm run seed`, usa el email de cualquiera de los usuarios creados y la contraseña definida en ese archivo.
+
+| Usuario | Email | Rol |
+|---------|-------|-----|
+| Deisy | deisy@wipli.app | Admin |
+| Diego | diego@wipli.app | Member |
+| Karol | karol@wipli.app | Member |
+| Julian | julian@wipli.app | Member |
 
 ---
 
@@ -215,12 +217,16 @@ npm run seed     # Cargar datos iniciales a la base de datos
 
 ---
 
-## Despliegue en producción
+## Despliegue en producción (Docker / Dokploy)
 
-1. Asegurarse de tener MySQL accesible desde el servidor
-2. Configurar las variables de entorno en el hosting:
-   - `DATABASE_URL` con la URL de producción
-   - `JWT_SECRET` con una clave larga y segura (mínimo 32 caracteres)
-3. Ejecutar `npx prisma db push` para crear las tablas
-4. Ejecutar `npm run seed` para los datos iniciales (solo primera vez)
-5. Ejecutar `npm run build && npm run start`
+La imagen (`Dockerfile`) corre `docker-entrypoint.sh` al arrancar, que aplica
+las migraciones y siembra los usuarios iniciales automáticamente — no hace
+falta ejecutar nada a mano salvo configurar las variables de entorno:
+
+- `DATABASE_URL` con la URL de MySQL de producción
+- `JWT_SECRET` con una clave larga y segura (mínimo 32 caracteres)
+- `SEED_USER_PASSWORD` con una contraseña temporal fuerte — **solo se usa
+  si la base de datos todavía no tiene ningún usuario** (primer arranque).
+  No reutilicen la contraseña de `prisma/seed.ts` (esa es solo de desarrollo
+  y está en el repo público). Cambien la contraseña desde el panel apenas
+  puedan entrar.
