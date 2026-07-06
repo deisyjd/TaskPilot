@@ -213,7 +213,24 @@ npm run dev      # Servidor de desarrollo (puerto 3000)
 npm run build    # Build de producción
 npm run start    # Servidor de producción
 npm run seed     # Cargar datos iniciales a la base de datos
+npm test         # Todas las pruebas (unitarias + funcionales)
 ```
+
+---
+
+## Pruebas
+
+```bash
+npm run test:unit        # Unitarias: lib/auth (JWT) y lib/permissions
+npm run test:functional  # Funcionales: CRUD completo de cada API contra el servidor real
+```
+
+Las funcionales cubren auth (login/me/logout), projects, tasks, users,
+companies (incluido el aislamiento multi-tenant y switch-company) e history,
+validando permisos por rol y que los campos extra del cliente no rompan la API.
+Requieren la base de datos con el seed de desarrollo (`npm run seed`) y un
+build previo (`npm run build`); si no hay servidor corriendo en el puerto
+3000, la suite lo levanta y lo apaga sola.
 
 ---
 
