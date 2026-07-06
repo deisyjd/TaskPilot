@@ -17,6 +17,7 @@ export type ConversationType = 'direct' | 'group'
 
 // ─── Permissions ──────────────────────────────────────────────
 export type PermissionAction =
+  | 'create_company' | 'delete_company'
   | 'create_project' | 'edit_project' | 'delete_project'
   | 'create_user' | 'edit_user' | 'deactivate_user'
   | 'create_task' | 'edit_task' | 'delete_task'

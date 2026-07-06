@@ -1,8 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useAuthStore } from '@/store/useAuthStore'
-import { Database } from 'lucide-react'
+import { useCurrentUser } from '@/store/useUserStore'
+import { can } from '@/lib/permissions'
+import { Database, TriangleAlert } from 'lucide-react'
+import { DeleteCompanyModal } from '@/components/admin/DeleteCompanyModal'
 
 export default function SettingsPage() {
   const tasks = useTaskStore((s) => s.tasks)
@@ -10,6 +14,9 @@ export default function SettingsPage() {
   const companies = useAuthStore((s) => s.companies)
   const activeCompanyId = useAuthStore((s) => s.activeCompanyId)
   const activeCompany = companies.find((c) => c.id === activeCompanyId)
+  const currentUser = useCurrentUser()
+  const canDeleteCompany = can(currentUser, 'delete_company')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
 
   return (
     <div className="max-w-xl space-y-5">
@@ -61,6 +68,46 @@ export default function SettingsPage() {
           <p>Stack: Next.js · TypeScript · Tailwind CSS · shadcn/ui · Zustand · Prisma · MySQL</p>
         </div>
       </div>
+
+      {canDeleteCompany && activeCompany && (
+        <div
+          className="p-6"
+          style={{
+            backgroundColor: 'var(--tp-surface)',
+            borderRadius: 'var(--tp-r-card)',
+            border: '1px solid rgba(239,68,68,0.3)',
+          }}
+        >
+          <h2 className="font-semibold text-base mb-1 flex items-center gap-2" style={{ color: 'var(--tp-text)' }}>
+            <TriangleAlert className="w-4 h-4" style={{ color: '#ef4444' }} />
+            Zona de peligro
+          </h2>
+          <p className="text-xs mb-5" style={{ color: 'var(--tp-text-2)' }}>
+            Eliminar la empresa activa borra permanentemente sus proyectos, tareas e historial.
+          </p>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            disabled={companies.length <= 1}
+            className="px-5 py-2.5 text-sm font-semibold rounded-full transition-all hover:opacity-85 disabled:opacity-40"
+            style={{ backgroundColor: 'rgba(239,68,68,0.12)', color: '#ef4444' }}
+          >
+            Eliminar &quot;{activeCompany.name}&quot;
+          </button>
+          {companies.length <= 1 && (
+            <p className="text-xs mt-2.5" style={{ color: 'var(--tp-text-2)' }}>
+              No puedes eliminar tu única empresa.
+            </p>
+          )}
+        </div>
+      )}
+
+      {activeCompany && (
+        <DeleteCompanyModal
+          open={showDeleteModal}
+          company={activeCompany}
+          onClose={() => setShowDeleteModal(false)}
+        />
+      )}
     </div>
   )
 }
