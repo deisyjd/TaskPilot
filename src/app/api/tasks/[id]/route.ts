@@ -54,16 +54,36 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     await prisma.task.update({ where: { id }, data })
   }
 
+  const oldIds = existing.assignees.map((a) => a.userId)
+  let newIds = oldIds
+  let assigneeChanged = false
+
+  if (Array.isArray(body.assigneeIds)) {
+    newIds = await validAssigneeIds(session.activeCompanyId, body.assigneeIds)
+    assigneeChanged = JSON.stringify([...oldIds].sort()) !== JSON.stringify([...newIds].sort())
+    if (assigneeChanged) {
+      await prisma.$transaction([
+        prisma.taskAssignee.deleteMany({ where: { taskId: id } }),
+        ...(newIds.length > 0
+          ? [prisma.taskAssignee.createMany({ data: newIds.map((userId) => ({ taskId: id, userId })) })]
+          : []),
+      ])
+    }
+  }
+
   if (Array.isArray(body.checklist)) {
+    // Un ítem del checklist solo puede etiquetar a alguien que sea
+    // responsable de la tarea (con el set de responsables ya actualizado).
     await prisma.$transaction([
       prisma.checklistItem.deleteMany({ where: { taskId: id } }),
       ...(body.checklist.length > 0
         ? [
             prisma.checklistItem.createMany({
-              data: body.checklist.map((c: { text: string; done?: boolean }) => ({
+              data: body.checklist.map((c: { text: string; done?: boolean; assigneeId?: string | null }) => ({
                 taskId: id,
                 text: c.text,
                 done: Boolean(c.done),
+                assigneeId: c.assigneeId && newIds.includes(c.assigneeId) ? c.assigneeId : null,
               })),
             }),
           ]
@@ -87,23 +107,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           text: c.text,
         })),
       })
-    }
-  }
-
-  const oldIds = existing.assignees.map((a) => a.userId)
-  let newIds = oldIds
-  let assigneeChanged = false
-
-  if (Array.isArray(body.assigneeIds)) {
-    newIds = await validAssigneeIds(session.activeCompanyId, body.assigneeIds)
-    assigneeChanged = JSON.stringify([...oldIds].sort()) !== JSON.stringify([...newIds].sort())
-    if (assigneeChanged) {
-      await prisma.$transaction([
-        prisma.taskAssignee.deleteMany({ where: { taskId: id } }),
-        ...(newIds.length > 0
-          ? [prisma.taskAssignee.createMany({ data: newIds.map((userId) => ({ taskId: id, userId })) })]
-          : []),
-      ])
     }
   }
 

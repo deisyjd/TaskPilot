@@ -140,13 +140,15 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
 
   const addChecklist = () => {
     if (!checkInput.trim()) return
-    setField('checklist', [...form.checklist, { id: uid(), text: checkInput.trim(), done: false }])
+    setField('checklist', [...form.checklist, { id: uid(), text: checkInput.trim(), done: false, assigneeId: null }])
     setCheckInput('')
   }
   const toggleChecklist = (id: string) =>
     setField('checklist', form.checklist.map((c) => (c.id === id ? { ...c, done: !c.done } : c)))
   const removeChecklist = (id: string) =>
     setField('checklist', form.checklist.filter((c) => c.id !== id))
+  const tagChecklist = (id: string, assigneeId: string | null) =>
+    setField('checklist', form.checklist.map((c) => (c.id === id ? { ...c, assigneeId } : c)))
 
   const addTag = () => {
     const tag = tagInput.trim().toLowerCase()
@@ -179,6 +181,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
 
   const checklistDone = form.checklist.filter((c) => c.done).length
   const checklistPct = form.checklist.length > 0 ? Math.round((checklistDone / form.checklist.length) * 100) : 0
+  const taggableUsers = users.filter((u) => form.assigneeIds.includes(u.id))
   const statusCfg = STATUS_COLORS[form.status]
   const priorityCfg = PRIORITY_COLORS[form.priority]
 
@@ -296,6 +299,19 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                         >
                           {item.text}
                         </span>
+                        <select
+                          value={item.assigneeId ?? ''}
+                          onChange={(e) => tagChecklist(item.id, e.target.value || null)}
+                          disabled={taggableUsers.length === 0}
+                          title={taggableUsers.length === 0 ? 'Asigna responsables a la tarea para poder etiquetar' : undefined}
+                          className="text-xs rounded-full px-2 py-1 border outline-none cursor-pointer shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
+                          style={{ borderColor: 'var(--tp-border)', backgroundColor: 'var(--tp-bg)', color: 'var(--tp-text-2)' }}
+                        >
+                          <option value="">Sin etiquetar</option>
+                          {taggableUsers.map((u) => (
+                            <option key={u.id} value={u.id}>{u.name}</option>
+                          ))}
+                        </select>
                         <button
                           onClick={() => removeChecklist(item.id)}
                           className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"

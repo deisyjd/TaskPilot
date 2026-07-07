@@ -63,6 +63,7 @@ model User {
   messages                 Message[]
   conversationParticipants ConversationParticipant[]
   createdProjects          Project[]                  @relation("ProjectCreator")
+  taggedChecklistItems     ChecklistItem[]
 
   @@map("users")
 }
@@ -143,11 +144,13 @@ model TaskAssignee {
 }
 
 model ChecklistItem {
-  id     String  @id @default(cuid())
-  taskId String
-  task   Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  text   String
-  done   Boolean @default(false)
+  id         String  @id @default(cuid())
+  taskId     String
+  task       Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  text       String
+  done       Boolean @default(false)
+  assigneeId String?
+  assignee   User?   @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
 
   @@map("checklist_items")
 }

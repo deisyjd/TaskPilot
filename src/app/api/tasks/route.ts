@@ -83,7 +83,13 @@ export async function POST(req: NextRequest) {
       recurrenceInterval: hasRecurrence ? (recurrenceInterval || 1) : null,
       recurrenceUntil: hasRecurrence ? (recurrenceUntil || null) : null,
       checklist: checklist?.length
-        ? { create: checklist.map(({ id: _id, ...c }: { id?: string; text: string; done: boolean }) => c) }
+        ? {
+            create: checklist.map((c: { text: string; done?: boolean; assigneeId?: string | null }) => ({
+              text: c.text,
+              done: Boolean(c.done),
+              assigneeId: c.assigneeId && validIds.includes(c.assigneeId) ? c.assigneeId : null,
+            })),
+          }
         : undefined,
       comments: comments?.length
         ? { create: comments.map((c: { text: string }) => ({ author: authorName, text: c.text })) }
