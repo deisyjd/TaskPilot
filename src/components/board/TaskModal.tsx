@@ -11,7 +11,7 @@ import { formatDateTime } from '@/lib/dates'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cn } from '@/lib/utils'
-import { Trash2, Plus, X, Send, CheckSquare, MessageSquare, Tag, ChevronDown, Image, Copy } from 'lucide-react'
+import { Trash2, Plus, X, Send, CheckSquare, MessageSquare, Tag, ChevronDown, Image, Copy, Link2, Check } from 'lucide-react'
 import { ImageUploader } from '@/components/shared/ImageUploader'
 import { FileUploader } from '@/components/shared/FileUploader'
 import { ReferenceLinks } from '@/components/shared/ReferenceLinks'
@@ -119,6 +119,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
   const [checkInput, setCheckInput] = useState('')
   const [commentInput, setCommentInput] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
 
   useEffect(() => {
     setForm(task ?? emptyTask(defaultStatus, resolvedDefaultProject, defaultAssigneeIds, defaultDueDate))
@@ -179,6 +180,18 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
     if (task) { duplicateTask(task.id); onClose() }
   }
 
+  const handleCopyLink = async () => {
+    if (!task) return
+    const url = `${window.location.origin}/board?task=${task.id}`
+    try {
+      await navigator.clipboard.writeText(url)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 1500)
+    } catch {
+      // Sin acceso al portapapeles (permisos del navegador) — no bloquea la UI.
+    }
+  }
+
   const checklistDone = form.checklist.filter((c) => c.done).length
   const checklistPct = form.checklist.length > 0 ? Math.round((checklistDone / form.checklist.length) * 100) : 0
   const taggableUsers = users.filter((u) => form.assigneeIds.includes(u.id))
@@ -217,6 +230,20 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                 <span className="text-xs font-mono" style={{ color: 'var(--tp-text-2)', opacity: 0.5 }}>
                   #{task?.id.slice(0, 18)}
                 </span>
+              )}
+              {!isNew && (
+                <button
+                  onClick={handleCopyLink}
+                  className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full transition-all hover:opacity-80"
+                  style={{
+                    backgroundColor: linkCopied ? 'rgba(34,197,94,0.12)' : 'var(--tp-bg-2)',
+                    color: linkCopied ? '#16A34A' : 'var(--tp-text-2)',
+                  }}
+                  title="Copiar enlace de esta tarea"
+                >
+                  {linkCopied ? <Check className="w-3 h-3" /> : <Link2 className="w-3 h-3" />}
+                  {linkCopied ? 'Copiado' : 'Copiar enlace'}
+                </button>
               )}
             </div>
             <input

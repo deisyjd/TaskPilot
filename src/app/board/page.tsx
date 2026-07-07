@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { Suspense, useState, useMemo, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore } from '@/store/useUserStore'
 import { Task, TaskStatus } from '@/types'
@@ -21,10 +22,13 @@ const inputBase: React.CSSProperties = {
   outline: 'none',
 }
 
-export default function BoardPage() {
+function BoardPageContent() {
   const tasks = useTaskStore((s) => s.tasks)
+  const tasksLoading = useTaskStore((s) => s.tasksLoading)
   const projects = useTaskStore((s) => s.projects).filter((p) => p.status !== 'inactive')
   const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
+  const searchParams = useSearchParams()
+  const router = useRouter()
 
   const [search, setSearch] = useState('')
   const [projectFilter, setProjectFilter] = useState('all')
@@ -32,6 +36,8 @@ export default function BoardPage() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus>('pending')
+  const [handledSharedId, setHandledSharedId] = useState<string | null>(null)
+  const [sharedTaskNotFound, setSharedTaskNotFound] = useState(false)
 
   const filtered = useMemo(() => {
     return tasks.filter((t) => {
@@ -53,7 +59,28 @@ export default function BoardPage() {
 
   const openEdit = (task: Task) => { setSelectedTask(task); setModalOpen(true) }
   const openNew = (status: TaskStatus) => { setSelectedTask(null); setNewTaskStatus(status); setModalOpen(true) }
-  const closeModal = () => { setModalOpen(false); setSelectedTask(null) }
+  const closeModal = () => {
+    setModalOpen(false)
+    setSelectedTask(null)
+    if (searchParams.get('task')) router.replace('/board')
+  }
+
+  // Enlace compartido: /board?task=<id> abre esa tarea directamente.
+  useEffect(() => {
+    const sharedTaskId = searchParams.get('task')
+    if (!sharedTaskId || sharedTaskId === handledSharedId) return
+
+    const found = tasks.find((t) => t.id === sharedTaskId)
+    if (found) {
+      setSelectedTask(found)
+      setModalOpen(true)
+      setHandledSharedId(sharedTaskId)
+    } else if (!tasksLoading && tasks.length > 0) {
+      // Ya cargaron las tareas visibles y no está — no existe o no hay acceso.
+      setSharedTaskNotFound(true)
+      setHandledSharedId(sharedTaskId)
+    }
+  }, [searchParams, tasks, tasksLoading, handledSharedId])
 
   const handleDrop = (taskId: string, targetStatus: TaskStatus) => {
     const task = tasks.find((t) => t.id === taskId)
@@ -62,6 +89,15 @@ export default function BoardPage() {
 
   return (
     <div className="flex flex-col h-full gap-4">
+      {sharedTaskNotFound && (
+        <div
+          className="px-4 py-2.5 rounded-xl text-xs font-medium"
+          style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
+        >
+          El enlace que abriste no corresponde a ninguna tarea visible para ti.
+        </div>
+      )}
+
       {/* Filter bar */}
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">
         <div className="flex gap-2 flex-1 sm:contents">
@@ -128,5 +164,13 @@ export default function BoardPage() {
 
       <TaskModal open={modalOpen} task={selectedTask} defaultStatus={newTaskStatus} onClose={closeModal} />
     </div>
+  )
+}
+
+export default function BoardPage() {
+  return (
+    <Suspense fallback={<div className="flex flex-col h-full gap-4" />}>
+      <BoardPageContent />
+    </Suspense>
   )
 }
