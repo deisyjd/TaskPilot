@@ -10,6 +10,7 @@ const ROLE_PERMISSIONS: Record<UserRole, PermissionAction[]> = {
     'create_chat', 'send_message',
   ],
   member: [
+    'create_project',
     'create_task', 'edit_task',
     'upload_file',
     'create_chat', 'send_message',
@@ -27,4 +28,15 @@ export function can(user: User | null | undefined, action: PermissionAction): bo
 
 export function usePermission(user: User | null | undefined) {
   return (action: PermissionAction) => can(user, action)
+}
+
+// Editar/eliminar un proyecto: los admins pueden con cualquiera; un
+// member solo con los que él mismo creó.
+export function canManageProject(
+  user: User | null | undefined,
+  project: { createdById?: string | null } | null | undefined
+): boolean {
+  if (!user) return false
+  if (user.userRole === 'admin') return true
+  return Boolean(project?.createdById && project.createdById === user.id)
 }

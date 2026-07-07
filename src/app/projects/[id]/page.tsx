@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, FolderOpen, LayoutDashboard, StickyNote } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useCurrentUser } from '@/store/useUserStore'
-import { can } from '@/lib/permissions'
+import { canManageProject } from '@/lib/permissions'
 import { ProjectDetail } from '@/components/projects/ProjectDetail'
 import { ProjectModal } from '@/components/projects/ProjectModal'
 import { NotesPanel } from '@/components/projects/NotesPanel'
@@ -141,7 +141,7 @@ export default function ProjectPage({
       )}
 
       {/* Edit modal — only rendered when user has permission */}
-      {can(currentUser, 'edit_project') && (
+      {canManageProject(currentUser, project) && (
         <ProjectModal
           open={editOpen}
           project={project}

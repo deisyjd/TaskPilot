@@ -153,6 +153,7 @@ export interface Project {
   status?: ProjectStatus
   featured?: boolean
   createdBy?: string
+  createdById?: string | null
   members?: string[]
   createdAt?: string
   updatedAt?: string

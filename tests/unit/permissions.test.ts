@@ -23,11 +23,11 @@ describe('lib/permissions', () => {
     expect(can(admin, 'create_company')).toBe(true)
   })
 
-  it('member puede gestionar tareas pero no proyectos ni usuarios', () => {
+  it('member puede gestionar tareas y crear proyectos, pero no usuarios ni borrar proyectos ajenos', () => {
     const member = userWithRole('member')
     expect(can(member, 'create_task')).toBe(true)
     expect(can(member, 'edit_task')).toBe(true)
-    expect(can(member, 'create_project')).toBe(false)
+    expect(can(member, 'create_project')).toBe(true)
     expect(can(member, 'delete_project')).toBe(false)
     expect(can(member, 'create_user')).toBe(false)
     expect(can(member, 'delete_task')).toBe(false)

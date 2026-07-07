@@ -7,15 +7,18 @@ type Params = { params: Promise<{ id: string }> }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const session = await getSession()
-  if (!session || session.userRole !== 'admin') {
-    return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
-  }
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { id } = await params
   const body = await req.json()
 
   const exists = await prisma.project.findFirst({ where: { id, companyId: session.activeCompanyId } })
   if (!exists) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+
+  const isOwner = exists.createdById === session.userId
+  if (session.userRole !== 'admin' && !isOwner) {
+    return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
+  }
 
   // Whitelist: el cliente envía campos que no son columnas (createdBy, …)
   const data: Record<string, unknown> = {}
@@ -49,13 +52,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 export async function DELETE(req: NextRequest, { params }: Params) {
   const session = await getSession()
-  if (!session || session.userRole !== 'admin') {
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+
+  const { id } = await params
+  const exists = await prisma.project.findFirst({ where: { id, companyId: session.activeCompanyId } })
+  if (!exists) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+
+  const isOwner = exists.createdById === session.userId
+  if (session.userRole !== 'admin' && !isOwner) {
     return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
   }
 
-  const { id } = await params
-  const result = await prisma.project.deleteMany({ where: { id, companyId: session.activeCompanyId } })
-  if (result.count === 0) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
-
+  await prisma.project.delete({ where: { id } })
   return NextResponse.json({ ok: true })
 }

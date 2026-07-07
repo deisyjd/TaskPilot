@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
-import { can } from '@/lib/permissions'
+import { can, canManageProject } from '@/lib/permissions'
 import { TaskModal } from '@/components/board/TaskModal'
 import {
   Project,
@@ -255,7 +255,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
                 Nueva tarea
               </button>
             )}
-            {can(currentUser, 'edit_project') && (
+            {canManageProject(currentUser, project) && (
               <>
                 {project.status === 'inactive' ? (
                   <button

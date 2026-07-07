@@ -5,6 +5,7 @@ describe('API /api/projects (CRUD)', () => {
   const admin = new Client()
   const name = uniqueName('proyecto-test')
   let projectId = ''
+  let memberProjectId = ''
 
   beforeAll(async () => {
     await admin.login(ADMIN)
@@ -12,6 +13,7 @@ describe('API /api/projects (CRUD)', () => {
 
   afterAll(async () => {
     if (projectId) await admin.request(`/api/projects/${projectId}`, { method: 'DELETE' })
+    if (memberProjectId) await admin.request(`/api/projects/${memberProjectId}`, { method: 'DELETE' })
   })
 
   it('CREATE: acepta el payload del cliente aunque traiga campos extra (regresión 500)', async () => {
@@ -47,14 +49,37 @@ describe('API /api/projects (CRUD)', () => {
     expect(res.status).toBe(409)
   })
 
-  it('CREATE: un member no puede crear proyectos', async () => {
+  it('CREATE: un member puede crear su propio proyecto', async () => {
     const member = new Client()
     await member.login(MEMBER)
     const res = await member.request('/api/projects', {
       method: 'POST',
-      body: { name: uniqueName('no-debe-existir') },
+      body: { name: uniqueName('proyecto-de-member') },
+    })
+    expect(res.status).toBe(201)
+    const project = await res.json()
+    memberProjectId = project.id
+    expect(project.createdById).toBeTruthy()
+  })
+
+  it('UPDATE: un member no puede editar un proyecto que no creó', async () => {
+    const member = new Client()
+    await member.login(MEMBER)
+    const res = await member.request(`/api/projects/${projectId}`, {
+      method: 'PATCH',
+      body: { description: 'no debería poder' },
     })
     expect(res.status).toBe(403)
+  })
+
+  it('UPDATE: un member sí puede editar el proyecto que él mismo creó', async () => {
+    const member = new Client()
+    await member.login(MEMBER)
+    const res = await member.request(`/api/projects/${memberProjectId}`, {
+      method: 'PATCH',
+      body: { description: 'editado por su creador' },
+    })
+    expect(res.status).toBe(200)
   })
 
   it('READ: el listado incluye el proyecto creado', async () => {

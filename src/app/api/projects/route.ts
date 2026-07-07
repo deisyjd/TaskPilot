@@ -30,7 +30,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const session = await getSession()
-  if (!session || session.userRole !== 'admin') {
+  // Solo 'viewer' no puede crear proyectos — admin y member sí.
+  if (!session || session.userRole === 'viewer') {
     return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
   }
 
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
         featured,
         coverImageUrl,
         companyId: session.activeCompanyId,
+        createdById: session.userId,
         members:
           Array.isArray(memberIds) && memberIds.length > 0
             ? { createMany: { data: memberIds.map((userId: string) => ({ userId })) } }

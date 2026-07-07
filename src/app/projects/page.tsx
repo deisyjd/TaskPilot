@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Plus, Search, FolderOpen, Users, CheckSquare, Star, Archive, ArchiveRestore } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useCurrentUser } from '@/store/useUserStore'
-import { can } from '@/lib/permissions'
+import { can, canManageProject } from '@/lib/permissions'
 import { ProjectModal } from '@/components/projects/ProjectModal'
 import { Project } from '@/types'
 
@@ -219,8 +219,6 @@ export default function ProjectsPage() {
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
 
-  const canManage = can(currentUser, 'edit_project')
-
   const handleToggleFeatured = (id: string, current: boolean) => {
     updateProject(id, { featured: !current })
   }
@@ -369,7 +367,7 @@ export default function ProjectsPage() {
               onToggleFeatured={handleToggleFeatured}
               onArchive={archiveProject}
               onRestore={restoreProject}
-              canManage={canManage}
+              canManage={canManageProject(currentUser, project)}
             />
           ))}
         </div>
