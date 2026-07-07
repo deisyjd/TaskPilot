@@ -45,6 +45,7 @@ export function TaskCard({ task, onClick }: Props) {
   const dueToday = isToday(task.dueDate)
   const checklistDone = task.checklist.filter((c) => c.done).length
   const checklistTotal = task.checklist.length
+  const checklistPct = checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : null
   const badge = PRIORITY_BADGES[task.priority]
   const [dragging, setDragging] = useState(false)
 
@@ -109,6 +110,19 @@ export function TaskCard({ task, onClick }: Props) {
           {task.title}
         </p>
 
+        {/* Checklist progress */}
+        {checklistPct !== null && (
+          <div className="h-1 rounded-full overflow-hidden mb-3" style={{ backgroundColor: 'var(--tp-bg-2)' }}>
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${checklistPct}%`,
+                backgroundColor: checklistPct === 100 ? '#22C55E' : 'var(--tp-dark)',
+              }}
+            />
+          </div>
+        )}
+
         {/* Footer */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -118,10 +132,10 @@ export function TaskCard({ task, onClick }: Props) {
               <span>{formatDate(task.dueDate)}</span>
             </div>
             {/* Checklist */}
-            {checklistTotal > 0 && (
-              <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--tp-text-2)' }}>
+            {checklistPct !== null && (
+              <div className="flex items-center gap-1 text-xs" style={{ color: checklistPct === 100 ? '#16A34A' : 'var(--tp-text-2)' }}>
                 <CheckSquare className="w-3 h-3" />
-                <span>{checklistDone}/{checklistTotal}</span>
+                <span>{checklistDone}/{checklistTotal} · {checklistPct}%</span>
               </div>
             )}
           </div>
