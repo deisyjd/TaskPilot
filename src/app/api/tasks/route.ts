@@ -15,6 +15,11 @@ export async function validAssigneeIds(companyId: string, ids: unknown): Promise
   return memberships.map((m) => m.userId)
 }
 
+export function taskVisibilityFilter(session: { userRole: string; userId: string }) {
+  if (session.userRole === 'admin') return {}
+  return { OR: [{ assignees: { none: {} } }, { assignees: { some: { userId: session.userId } } }] }
+}
+
 export function serializeTask<T extends { assignees: { userId: string }[]; tags: unknown }>(task: T) {
   return {
     ...task,
@@ -30,7 +35,7 @@ export async function GET() {
   await generateDueRecurrences(session.activeCompanyId)
 
   const tasks = await prisma.task.findMany({
-    where: { companyId: session.activeCompanyId },
+    where: { companyId: session.activeCompanyId, ...taskVisibilityFilter(session) },
     include: { checklist: true, comments: true, assignees: { select: { userId: true } } },
     orderBy: { createdAt: 'desc' },
   })
