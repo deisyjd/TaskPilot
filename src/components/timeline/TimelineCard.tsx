@@ -16,7 +16,7 @@ interface Props { task: Task; onClick: () => void }
 
 export function TimelineCard({ task, onClick }: Props) {
   const project = useTaskStore((s) => s.projects.find((p) => p.id === task.projectId))
-  const user = useUserStore((s) => s.users.find((u) => u.name === task.assignee))
+  const user = useUserStore((s) => s.users.find((u) => u.id === task.assigneeIds[0]))
   const overdue = isOverdue(task.dueDate, task.status)
   const done = task.status === 'done'
 
@@ -51,9 +51,11 @@ export function TimelineCard({ task, onClick }: Props) {
           <span className="text-xs truncate max-w-[70px]" style={{ color: 'var(--tp-text-2)' }}>{project?.name ?? 'Sin proyecto'}</span>
           <div className={cn('w-1.5 h-1.5 rounded-full', STATUS_DOT_COLORS[task.status])} />
         </div>
-        <div className={cn('w-5 h-5 rounded-lg flex items-center justify-center text-white text-xs font-semibold shrink-0', user?.color ?? 'bg-gray-400')}>
-          {user?.initials?.[0] ?? task.assignee[0]}
-        </div>
+        {user && (
+          <div className={cn('w-5 h-5 rounded-lg flex items-center justify-center text-white text-xs font-semibold shrink-0', user.color)}>
+            {user.initials?.[0]}
+          </div>
+        )}
       </div>
     </button>
   )

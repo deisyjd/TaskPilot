@@ -47,7 +47,7 @@ function TaskRow({ task }: { task: Task }) {
   const projects = useTaskStore((s) => s.projects)
   const users = useUserStore((s) => s.users)
   const project = projects.find((p) => p.id === task.projectId)
-  const user = users.find((u) => u.name === task.assignee)
+  const user = users.find((u) => u.id === task.assigneeIds[0])
   return (
     <div className="flex items-center gap-3 px-5 py-3">
       <div className={cn('w-2 h-2 rounded-full shrink-0', STATUS_DOT_COLORS[task.status])} />
@@ -62,14 +62,16 @@ function TaskRow({ task }: { task: Task }) {
           />
           <span className="text-xs text-gray-400">{project?.name ?? 'Sin proyecto'}</span>
         </div>
-        <div
-          className={cn(
-            'w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-semibold',
-            user?.color ?? 'bg-gray-400'
-          )}
-        >
-          {user?.initials?.[0] ?? task.assignee[0]}
-        </div>
+        {user && (
+          <div
+            className={cn(
+              'w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-semibold',
+              user.color
+            )}
+          >
+            {user.initials?.[0]}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -113,14 +115,16 @@ export default function WeeklyReviewPage() {
     return Object.entries(map).sort((a, b) => b[1].total - a[1].total)
   }, [weekTasks])
 
-  // Compliance by user
+  // Compliance by user (una tarea con varios responsables cuenta para cada uno)
   const byUser = useMemo(() => {
     const map: Record<string, { total: number; done: number; overdue: number }> = {}
     weekTasks.forEach((t) => {
-      if (!map[t.assignee]) map[t.assignee] = { total: 0, done: 0, overdue: 0 }
-      map[t.assignee].total++
-      if (t.status === 'done') map[t.assignee].done++
-      if (isOverdue(t.dueDate, t.status)) map[t.assignee].overdue++
+      t.assigneeIds.forEach((userId) => {
+        if (!map[userId]) map[userId] = { total: 0, done: 0, overdue: 0 }
+        map[userId].total++
+        if (t.status === 'done') map[userId].done++
+        if (isOverdue(t.dueDate, t.status)) map[userId].overdue++
+      })
     })
     return Object.entries(map).sort((a, b) => b[1].total - a[1].total)
   }, [weekTasks])
@@ -232,11 +236,12 @@ export default function WeeklyReviewPage() {
             <h3 className="font-semibold text-gray-900">Cumplimiento por responsable</h3>
           </div>
           <div className="space-y-3">
-            {byUser.map(([name, { total, done: d, overdue: ov }]) => {
+            {byUser.map(([userId, { total, done: d, overdue: ov }]) => {
               const pct = total === 0 ? 0 : Math.round((d / total) * 100)
-              const user = users.find((u) => u.name === name)
+              const user = users.find((u) => u.id === userId)
+              const name = user?.name ?? 'Desconocido'
               return (
-                <div key={name}>
+                <div key={userId}>
                   <div className="flex items-center justify-between text-sm mb-1">
                     <div className="flex items-center gap-2">
                       <div className={cn('w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-semibold', user?.color ?? 'bg-gray-400')}>

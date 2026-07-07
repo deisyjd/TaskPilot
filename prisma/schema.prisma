@@ -58,6 +58,7 @@ model User {
 
   memberships        CompanyMembership[]
   projectMemberships ProjectMember[]
+  taskAssignments    TaskAssignee[]
 
   @@map("users")
 }
@@ -92,7 +93,6 @@ model Task {
   title       String
   description String?  @db.Text
   status      String   @default("pending")
-  assignee    String
   dueDate     String
   priority    String   @default("medium")
   type        String   @default("other")
@@ -100,12 +100,37 @@ model Task {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Recurrencia: la tarea original (parentTaskId = null, recurrence definido)
+  // es la plantilla; cada ocurrencia generada apunta a ella.
+  recurrence         String?
+  recurrenceInterval Int?
+  recurrenceUntil    String?
+  parentTaskId       String?
+  parentTask         Task?   @relation("TaskRecurrence", fields: [parentTaskId], references: [id], onDelete: SetNull)
+  occurrences        Task[]  @relation("TaskRecurrence")
+
   checklist ChecklistItem[]
   comments  Comment[]
+  assignees TaskAssignee[]
 
   @@index([companyId])
   @@index([projectId])
+  @@index([parentTaskId])
   @@map("tasks")
+}
+
+model TaskAssignee {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([taskId, userId])
+  @@index([taskId])
+  @@index([userId])
+  @@map("task_assignees")
 }
 
 model ChecklistItem {

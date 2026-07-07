@@ -39,13 +39,14 @@ const PRIORITY_COLORS: Record<Priority, { bg: string; text: string }> = {
 
 function uid() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }
 
-function emptyTask(status: TaskStatus = 'pending', projectId = '', assignee = '', dueDate = ''): Task {
+function emptyTask(status: TaskStatus = 'pending', projectId = '', assigneeIds: string[] = [], dueDate = ''): Task {
   const now = new Date().toISOString()
   return {
     id: `t-${uid()}`, title: '', projectId, description: '', status,
-    assignee, dueDate: dueDate || new Date().toISOString().split('T')[0],
+    assigneeIds, dueDate: dueDate || new Date().toISOString().split('T')[0],
     priority: 'medium', type: 'other', tags: [], checklist: [], comments: [],
     createdAt: now, updatedAt: now,
+    recurrence: null, recurrenceInterval: null, recurrenceUntil: null,
   }
 }
 
@@ -110,19 +111,25 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
   const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
   const isNew = !task
 
-  const defaultAssignee = users[0]?.name ?? ''
+  const defaultAssigneeIds = users[0] ? [users[0].id] : []
   const resolvedDefaultProject = defaultProject ?? projects[0]?.id ?? ''
-  const [form, setForm] = useState<Task>(task ?? emptyTask(defaultStatus, resolvedDefaultProject, defaultAssignee, defaultDueDate))
+  const [form, setForm] = useState<Task>(task ?? emptyTask(defaultStatus, resolvedDefaultProject, defaultAssigneeIds, defaultDueDate))
   const [tagInput, setTagInput] = useState('')
   const [checkInput, setCheckInput] = useState('')
   const [commentInput, setCommentInput] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   useEffect(() => {
-    setForm(task ?? emptyTask(defaultStatus, resolvedDefaultProject, defaultAssignee, defaultDueDate))
+    setForm(task ?? emptyTask(defaultStatus, resolvedDefaultProject, defaultAssigneeIds, defaultDueDate))
     setTagInput(''); setCheckInput(''); setCommentInput('')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task, defaultStatus, resolvedDefaultProject, defaultDueDate, open])
+
+  const toggleAssignee = (userId: string) => {
+    setField('assigneeIds', form.assigneeIds.includes(userId)
+      ? form.assigneeIds.filter((id) => id !== userId)
+      : [...form.assigneeIds, userId])
+  }
 
   const attachments: Attachment[] = form.attachments ?? []
   const links: ReferenceLink[] = form.links ?? []
@@ -471,18 +478,38 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
               </SelectWrapper>
             </div>
 
-            {/* Assignee */}
+            {/* Assignees */}
             <div>
-              <FieldLabel>Responsable</FieldLabel>
-              <SelectWrapper>
-                <select
-                  value={form.assignee}
-                  onChange={(e) => setField('assignee', e.target.value)}
-                  style={fieldSelect}
-                >
-                  {users.map((u) => <option key={u.id} value={u.name}>{u.name}</option>)}
-                </select>
-              </SelectWrapper>
+              <FieldLabel>Responsables</FieldLabel>
+              <div className="flex flex-col gap-1.5">
+                {users.map((u) => {
+                  const checked = form.assigneeIds.includes(u.id)
+                  return (
+                    <label
+                      key={u.id}
+                      className="flex items-center gap-2 px-2.5 py-2 rounded-xl cursor-pointer transition-all hover:opacity-80"
+                      style={{
+                        backgroundColor: checked ? 'var(--tp-bg-2)' : 'transparent',
+                        border: '1px solid var(--tp-border)',
+                      }}
+                    >
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0 ${u.color}`}
+                      >
+                        {u.initials}
+                      </div>
+                      <span className="text-xs flex-1 truncate" style={{ color: 'var(--tp-text)' }}>{u.name}</span>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleAssignee(u.id)}
+                        className="w-3.5 h-3.5 rounded"
+                        style={{ accentColor: 'var(--tp-dark)' }}
+                      />
+                    </label>
+                  )
+                })}
+              </div>
             </div>
 
             {/* Divider */}
@@ -498,6 +525,51 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                 style={{ ...fieldInput, backgroundColor: 'var(--tp-surface)' }}
               />
             </div>
+
+            {/* Recurrence — only for new tasks or editing a template (not a generated occurrence) */}
+            {!form.parentTaskId && (
+              <div>
+                <FieldLabel>Repetir</FieldLabel>
+                <SelectWrapper>
+                  <select
+                    value={form.recurrence ?? ''}
+                    onChange={(e) => setField('recurrence', (e.target.value || null) as Task['recurrence'])}
+                    style={fieldSelect}
+                  >
+                    <option value="">No se repite</option>
+                    <option value="daily">Diaria</option>
+                    <option value="weekly">Semanal</option>
+                    <option value="monthly">Mensual</option>
+                  </select>
+                </SelectWrapper>
+                {form.recurrence && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs" style={{ color: 'var(--tp-text-2)' }}>Cada</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={form.recurrenceInterval ?? 1}
+                      onChange={(e) => setField('recurrenceInterval', Math.max(1, Number(e.target.value) || 1))}
+                      style={{ ...fieldInput, width: '56px', height: '32px', padding: '0 8px', backgroundColor: 'var(--tp-surface)' }}
+                    />
+                    <span className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
+                      {{ daily: 'día(s)', weekly: 'semana(s)', monthly: 'mes(es)' }[form.recurrence]}
+                    </span>
+                  </div>
+                )}
+                {form.recurrence && (
+                  <div className="mt-2">
+                    <p className="text-xs mb-1" style={{ color: 'var(--tp-text-2)' }}>Hasta (opcional)</p>
+                    <input
+                      type="date"
+                      value={form.recurrenceUntil ?? ''}
+                      onChange={(e) => setField('recurrenceUntil', e.target.value || null)}
+                      style={{ ...fieldInput, height: '32px', backgroundColor: 'var(--tp-surface)' }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Tags */}
             <div>

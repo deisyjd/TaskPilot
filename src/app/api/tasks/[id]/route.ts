@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { recordHistoryEvent } from '@/lib/history'
+import { serializeTask, validAssigneeIds } from '../route'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { id } = await params
   const task = await prisma.task.findFirst({
     where: { id, companyId: session.activeCompanyId },
-    include: { checklist: true, comments: true },
+    include: { checklist: true, comments: true, assignees: { select: { userId: true } } },
   })
 
   if (!task) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
@@ -24,14 +25,20 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { id } = await params
-  const existing = await prisma.task.findFirst({ where: { id, companyId: session.activeCompanyId } })
+  const existing = await prisma.task.findFirst({
+    where: { id, companyId: session.activeCompanyId },
+    include: { assignees: { select: { userId: true } } },
+  })
   if (!existing) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
 
   const body = await req.json()
 
   // Whitelist: el cliente envía campos que no son columnas (attachments, links, coverImageUrl, …)
   const data: Record<string, unknown> = {}
-  for (const key of ['title', 'description', 'status', 'assignee', 'dueDate', 'priority', 'type', 'projectId', 'tags']) {
+  for (const key of [
+    'title', 'description', 'status', 'dueDate', 'priority', 'type', 'projectId', 'tags',
+    'recurrence', 'recurrenceInterval', 'recurrenceUntil',
+  ]) {
     if (key in body) data[key] = body[key]
   }
 
@@ -44,17 +51,37 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
   }
 
-  const task = await prisma.task.update({
+  if (Object.keys(data).length > 0) {
+    await prisma.task.update({ where: { id }, data })
+  }
+
+  const oldIds = existing.assignees.map((a) => a.userId)
+  let newIds = oldIds
+  let assigneeChanged = false
+
+  if (Array.isArray(body.assigneeIds)) {
+    newIds = await validAssigneeIds(session.activeCompanyId, body.assigneeIds)
+    assigneeChanged = JSON.stringify([...oldIds].sort()) !== JSON.stringify([...newIds].sort())
+    if (assigneeChanged) {
+      await prisma.$transaction([
+        prisma.taskAssignee.deleteMany({ where: { taskId: id } }),
+        ...(newIds.length > 0
+          ? [prisma.taskAssignee.createMany({ data: newIds.map((userId) => ({ taskId: id, userId })) })]
+          : []),
+      ])
+    }
+  }
+
+  const task = await prisma.task.findUnique({
     where: { id },
-    data,
-    include: { checklist: true, comments: true },
+    include: { checklist: true, comments: true, assignees: { select: { userId: true } } },
   })
 
   const actor = await prisma.user.findUnique({ where: { id: session.userId } })
   const userName = actor?.name ?? session.email
   const events: Array<{ type: string; description: string; meta?: Record<string, string> }> = []
 
-  const { status, assignee, dueDate } = data as { status?: string; assignee?: string; dueDate?: string }
+  const { status, dueDate } = data as { status?: string; dueDate?: string }
   if (status && status !== existing.status) {
     events.push({
       type: status === 'done' ? 'task-completed' : 'status-changed',
@@ -62,11 +89,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       meta: { from: existing.status, to: status },
     })
   }
-  if (assignee && assignee !== existing.assignee) {
+  if (assigneeChanged) {
+    const [oldUsers, newUsers] = await Promise.all([
+      prisma.user.findMany({ where: { id: { in: oldIds } }, select: { name: true } }),
+      prisma.user.findMany({ where: { id: { in: newIds } }, select: { name: true } }),
+    ])
     events.push({
       type: 'assignee-changed',
-      description: `Responsable cambiado a ${assignee}`,
-      meta: { from: existing.assignee, to: assignee },
+      description: `Responsables actualizados: ${newUsers.map((u) => u.name).join(', ') || 'sin asignar'}`,
+      meta: {
+        from: JSON.stringify(oldUsers.map((u) => u.name)),
+        to: JSON.stringify(newUsers.map((u) => u.name)),
+      },
     })
   }
   if (dueDate && dueDate !== existing.dueDate) {
@@ -84,15 +118,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     await recordHistoryEvent({
       companyId: session.activeCompanyId,
       type: e.type,
-      taskId: task.id,
-      taskTitle: task.title,
+      taskId: task!.id,
+      taskTitle: task!.title,
       description: e.description,
       user: userName,
       meta: e.meta,
     })
   }
 
-  return NextResponse.json(serializeTask(task))
+  return NextResponse.json(serializeTask(task!))
 }
 
 export async function DELETE(req: NextRequest, { params }: Params) {
@@ -104,11 +138,4 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (result.count === 0) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
 
   return NextResponse.json({ ok: true })
-}
-
-function serializeTask(task: Record<string, unknown> & { tags: unknown }) {
-  return {
-    ...task,
-    tags: typeof task.tags === 'string' ? JSON.parse(task.tags) : task.tags,
-  }
 }

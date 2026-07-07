@@ -31,7 +31,7 @@ describe('API /api/tasks (CRUD)', () => {
         title: 'tarea de prueba',
         description: 'creada por prueba funcional',
         status: 'pending',
-        assignee: 'Julian',
+        assigneeIds: ['julian'],
         dueDate: '2026-12-31',
         priority: 'medium',
         type: 'other',
@@ -51,6 +51,7 @@ describe('API /api/tasks (CRUD)', () => {
     expect(task.title).toBe('tarea de prueba')
     expect(task.tags).toEqual(['qa', 'funcional'])
     expect(task.checklist).toHaveLength(1)
+    expect(task.assigneeIds).toEqual(['julian'])
   })
 
   it('CREATE: rechaza tarea sin projectId', async () => {
@@ -61,9 +62,23 @@ describe('API /api/tasks (CRUD)', () => {
   it('CREATE: rechaza projectId de otra empresa o inexistente', async () => {
     const res = await admin.request('/api/tasks', {
       method: 'POST',
-      body: { projectId: 'no-existe', title: 'x', assignee: 'Julian', dueDate: '2026-12-31' },
+      body: { projectId: 'no-existe', title: 'x', assigneeIds: ['julian'], dueDate: '2026-12-31' },
     })
     expect(res.status).toBe(400)
+  })
+
+  it('UPDATE: reemplaza los responsables y registra el cambio en el historial', async () => {
+    const res = await admin.request(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      body: { assigneeIds: [] },
+    })
+    expect(res.status).toBe(200)
+    expect((await res.json()).assigneeIds).toEqual([])
+
+    const events = await (await admin.request('/api/history')).json()
+    expect(
+      events.some((e: { taskId?: string; type: string }) => e.taskId === taskId && e.type === 'assignee-changed')
+    ).toBe(true)
   })
 
   it('READ: el listado incluye la tarea y GET por id la devuelve', async () => {

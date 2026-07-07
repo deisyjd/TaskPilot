@@ -37,7 +37,7 @@ export default function BoardPage() {
     return tasks.filter((t) => {
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false
       if (projectFilter !== 'all' && t.projectId !== projectFilter) return false
-      if (assigneeFilter !== 'all' && t.assignee !== assigneeFilter) return false
+      if (assigneeFilter !== 'all' && !t.assigneeIds.includes(assigneeFilter)) return false
       return true
     })
   }, [tasks, search, projectFilter, assigneeFilter])
@@ -91,7 +91,7 @@ export default function BoardPage() {
               style={{ ...inputBase, width: '100%', paddingRight: '28px', appearance: 'none', cursor: 'pointer' }}
               className="sm:w-[160px]">
               <option value="all">Todos</option>
-              {users.map((u) => <option key={u.id} value={u.name}>{u.name}</option>)}
+              {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: 'var(--tp-text-2)' }} />
           </div>

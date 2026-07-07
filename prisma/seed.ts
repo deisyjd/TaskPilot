@@ -116,7 +116,7 @@ async function main() {
       projectName: 'Qenta',
       description: 'Crear 3 formatos de banner (feed, stories, portada) para la campaña de lanzamiento.',
       status: 'in-progress',
-      assignee: 'Diego',
+      assigneeId: 'diego',
       dueDate: '2026-07-15',
       priority: 'high',
       type: 'design',
@@ -128,7 +128,7 @@ async function main() {
       projectName: 'Wigilabs',
       description: 'Escribir el correo de bienvenida para nuevos usuarios del app.',
       status: 'pending',
-      assignee: 'Karol',
+      assigneeId: 'karol',
       dueDate: '2026-07-20',
       priority: 'medium',
       type: 'copy',
@@ -140,7 +140,7 @@ async function main() {
       projectName: 'Ainoa',
       description: 'Implementar landing page con Next.js y animaciones Framer Motion.',
       status: 'pending',
-      assignee: 'Julian',
+      assigneeId: 'julian',
       dueDate: '2026-07-25',
       priority: 'high',
       type: 'dev',
@@ -149,11 +149,17 @@ async function main() {
   ]
 
   for (const t of tasks) {
-    const { projectName, ...rest } = t
+    const { projectName, assigneeId, ...rest } = t
     await prisma.task.upsert({
       where: { id: t.id },
       update: {},
-      create: { ...rest, tags: JSON.stringify(t.tags), companyId: 'legacy-co', projectId: projectIdByName[projectName] },
+      create: {
+        ...rest,
+        tags: JSON.stringify(t.tags),
+        companyId: 'legacy-co',
+        projectId: projectIdByName[projectName],
+        assignees: { create: [{ userId: assigneeId }] },
+      },
     })
   }
 
@@ -166,13 +172,13 @@ async function main() {
       title: 'Preparar propuesta de marca',
       description: 'Brief inicial de identidad visual para Acme.',
       status: 'pending',
-      assignee: 'Acme Admin',
       dueDate: '2026-07-18',
       priority: 'medium',
       type: 'design',
       tags: JSON.stringify(['branding']),
       companyId: 'acme-co',
       projectId: acmeQenta.id,
+      assignees: { create: [{ userId: 'acme-admin' }] },
     },
   })
 

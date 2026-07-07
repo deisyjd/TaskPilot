@@ -71,12 +71,12 @@ export function UserList() {
     return matchesSearch && matchesRole
   })
 
-  function getUserTasks(userName: string) {
-    return tasks.filter((t) => t.assignee === userName && t.status !== 'done')
+  function getUserTasks(userId: string) {
+    return tasks.filter((t) => t.assigneeIds.includes(userId) && t.status !== 'done')
   }
 
-  function getTaskCount(userName: string): number {
-    return tasks.filter((t) => t.assignee === userName).length
+  function getTaskCount(userId: string): number {
+    return tasks.filter((t) => t.assigneeIds.includes(userId)).length
   }
 
   function openDeleteDialog(u: User) {
@@ -88,8 +88,10 @@ export function UserList() {
     if (!deleteTarget) return
     // Reassign active tasks first if a target was chosen
     if (reassignTo) {
-      getUserTasks(deleteTarget.name).forEach((t) => {
-        updateTask(t.id, { assignee: reassignTo })
+      getUserTasks(deleteTarget.id).forEach((t) => {
+        const nextIds = t.assigneeIds.filter((id) => id !== deleteTarget.id)
+        if (!nextIds.includes(reassignTo)) nextIds.push(reassignTo)
+        updateTask(t.id, { assigneeIds: nextIds })
       })
     }
     deleteUser(deleteTarget.id)
@@ -170,7 +172,7 @@ export function UserList() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((u) => {
-            const taskCount = getTaskCount(u.name)
+            const taskCount = getTaskCount(u.id)
             const isActive = u.status !== 'inactive'
 
             return (
@@ -304,7 +306,7 @@ export function UserList() {
 
       {/* Delete + reassign dialog */}
       {deleteTarget && (() => {
-        const pendingTasks = getUserTasks(deleteTarget.name)
+        const pendingTasks = getUserTasks(deleteTarget.id)
         const hasTasks = pendingTasks.length > 0
         return (
           <div
@@ -363,7 +365,7 @@ export function UserList() {
                     >
                       <option value="">— Selecciona un responsable —</option>
                       {reassignOptions.map((u) => (
-                        <option key={u.id} value={u.name}>{u.name} ({u.role})</option>
+                        <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
                       ))}
                     </select>
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--tp-text-2)' }}>
@@ -372,7 +374,7 @@ export function UserList() {
                   </div>
                   {reassignTo && (
                     <p className="text-xs" style={{ color: '#10b981' }}>
-                      ✓ {pendingTasks.length} tarea{pendingTasks.length !== 1 ? 's' : ''} se moverán a {reassignTo}
+                      ✓ {pendingTasks.length} tarea{pendingTasks.length !== 1 ? 's' : ''} se moverán a {reassignOptions.find((u) => u.id === reassignTo)?.name}
                     </p>
                   )}
                 </div>

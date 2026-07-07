@@ -456,8 +456,8 @@ export function ProjectDetail({ project, onEdit }: Props) {
                           <span className="flex-1 text-sm truncate" style={{ color: 'var(--tp-text)' }}>
                             {task.title}
                           </span>
-                          <span className="text-xs shrink-0" style={{ color: 'var(--tp-text-2)' }}>
-                            {task.assignee}
+                          <span className="text-xs shrink-0 truncate max-w-[120px]" style={{ color: 'var(--tp-text-2)' }}>
+                            {task.assigneeIds.map((id) => users.find((u) => u.id === id)?.name).filter(Boolean).join(', ') || 'Sin asignar'}
                           </span>
                           {task.dueDate && (
                             <span

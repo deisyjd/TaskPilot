@@ -37,7 +37,7 @@ function StatPill({
   )
 }
 
-function UserCard({ userName }: { userName: string }) {
+function UserCard({ userId }: { userId: string }) {
   const tasks = useTaskStore((s) => s.tasks)
   const projects = useTaskStore((s) => s.projects)
   const users = useUserStore((s) => s.users)
@@ -45,9 +45,10 @@ function UserCard({ userName }: { userName: string }) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
-  const user = users.find((u) => u.name === userName)
+  const user = users.find((u) => u.id === userId)
+  const userName = user?.name ?? ''
 
-  const userTasks = useMemo(() => tasks.filter((t) => t.assignee === userName), [tasks, userName])
+  const userTasks = useMemo(() => tasks.filter((t) => t.assigneeIds.includes(userId)), [tasks, userId])
 
   const stats = useMemo(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -276,7 +277,7 @@ export default function UsersPage() {
       {/* User cards grid */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {users.map((user) => (
-          <UserCard key={user.id} userName={user.name} />
+          <UserCard key={user.id} userId={user.id} />
         ))}
       </div>
     </div>

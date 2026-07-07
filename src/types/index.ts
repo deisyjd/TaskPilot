@@ -4,6 +4,7 @@ export type Priority = 'low' | 'medium' | 'high' | 'urgent'
 export type TaskType =
   | 'design' | 'copy' | 'publication' | 'review'
   | 'development' | 'meeting' | 'strategy' | 'other'
+export type RecurrenceRule = 'daily' | 'weekly' | 'monthly'
 
 // ─── User / permissions ────────────────────────────────────────
 export type UserRole = 'admin' | 'member' | 'viewer'
@@ -75,7 +76,7 @@ export interface Task {
   companyId?: string
   description: string
   status: TaskStatus
-  assignee: string
+  assigneeIds: string[]
   dueDate: string
   priority: Priority
   type: TaskType
@@ -84,6 +85,11 @@ export interface Task {
   comments: Comment[]
   createdAt: string
   updatedAt: string
+  // Recurrencia
+  recurrence?: RecurrenceRule | null
+  recurrenceInterval?: number | null
+  recurrenceUntil?: string | null
+  parentTaskId?: string | null
   // Extended fields
   coverImageUrl?: string
   attachments?: Attachment[]

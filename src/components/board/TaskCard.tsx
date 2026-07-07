@@ -38,7 +38,9 @@ interface Props {
 export function TaskCard({ task, onClick }: Props) {
   const moveTask = useTaskStore((s) => s.moveTask)
   const project = useTaskStore((s) => s.projects.find((p) => p.id === task.projectId))
-  const user = useUserStore((s) => s.users.find((u) => u.name === task.assignee))
+  const users = useUserStore((s) => s.users)
+  const user = users.find((u) => u.id === task.assigneeIds[0])
+  const extraAssignees = task.assigneeIds.length - 1
   const overdue = isOverdue(task.dueDate, task.status)
   const dueToday = isToday(task.dueDate)
   const checklistDone = task.checklist.filter((c) => c.done).length
@@ -132,13 +134,23 @@ export function TaskCard({ task, onClick }: Props) {
             >
               {badge.label}
             </span>
-            {/* Assignee */}
-            <div
-              className={cn('w-6 h-6 rounded-lg flex items-center justify-center text-white text-xs font-semibold shrink-0', user?.color ?? 'bg-gray-400')}
-              title={task.assignee}
-            >
-              {user?.initials?.[0] ?? task.assignee[0]}
-            </div>
+            {/* Assignees */}
+            {user && (
+              <div
+                className={cn('w-6 h-6 rounded-lg flex items-center justify-center text-white text-xs font-semibold shrink-0', user.color)}
+                title={user.name}
+              >
+                {user.initials?.[0]}
+              </div>
+            )}
+            {extraAssignees > 0 && (
+              <div
+                className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[10px] font-semibold shrink-0 bg-gray-400"
+                title={`+${extraAssignees} responsable(s) más`}
+              >
+                +{extraAssignees}
+              </div>
+            )}
           </div>
         </div>
       </div>

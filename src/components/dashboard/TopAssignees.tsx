@@ -11,11 +11,13 @@ export function TopAssignees({ tasks }: Props) {
   const active = tasks.filter((t) => t.status !== 'done')
 
   const byAssignee = active.reduce<Record<string, { total: number; blocked: number; overdue: number }>>((acc, t) => {
-    if (!acc[t.assignee]) acc[t.assignee] = { total: 0, blocked: 0, overdue: 0 }
-    acc[t.assignee].total++
-    if (t.status === 'blocked') acc[t.assignee].blocked++
-    const today = new Date(); today.setHours(0, 0, 0, 0)
-    if (new Date(t.dueDate) < today && t.status !== 'done') acc[t.assignee].overdue++
+    t.assigneeIds.forEach((userId) => {
+      if (!acc[userId]) acc[userId] = { total: 0, blocked: 0, overdue: 0 }
+      acc[userId].total++
+      if (t.status === 'blocked') acc[userId].blocked++
+      const today = new Date(); today.setHours(0, 0, 0, 0)
+      if (new Date(t.dueDate) < today && t.status !== 'done') acc[userId].overdue++
+    })
     return acc
   }, {})
 
@@ -31,11 +33,12 @@ export function TopAssignees({ tasks }: Props) {
       <p className="text-xs mb-5" style={{ color: 'var(--tp-text-2)' }}>Carga de trabajo activa</p>
 
       <div className="space-y-4">
-        {sorted.map(([name, { total, blocked, overdue }]) => {
-          const user = users.find((u) => u.name === name)
+        {sorted.map(([userId, { total, blocked, overdue }]) => {
+          const user = users.find((u) => u.id === userId)
+          const name = user?.name ?? 'Desconocido'
           const pct = Math.round((total / max) * 100)
           return (
-            <div key={name} className="flex items-center gap-3">
+            <div key={userId} className="flex items-center gap-3">
               <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-semibold shrink-0', user?.color ?? 'bg-gray-400')}>
                 {user?.initials?.[0] ?? name[0]}
               </div>
