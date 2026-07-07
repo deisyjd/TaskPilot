@@ -97,6 +97,8 @@ export function ChatWindow({ conversation, currentUser }: Props) {
   const allMessages = useChatStore((s) => s.messages)
   const addMessage = useChatStore((s) => s.addMessage)
   const updateConversation = useChatStore((s) => s.updateConversation)
+  const fetchMessages = useChatStore((s) => s.fetchMessages)
+  const markRead = useChatStore((s) => s.markRead)
   const users = useUserStore((s) => s.users)
 
   const messages = conversation
@@ -113,6 +115,16 @@ export function ChatWindow({ conversation, currentUser }: Props) {
     }
   }, [conversation?.id])
 
+  // Sin websockets: se refresca la conversación abierta por sondeo.
+  useEffect(() => {
+    if (!conversation) return
+    fetchMessages(conversation.id)
+    markRead(conversation.id)
+    const interval = setInterval(() => fetchMessages(conversation.id), 5000)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation?.id])
+
   function getUserById(id: string): User | undefined {
     return users.find((u) => u.id === id)
   }
@@ -121,18 +133,11 @@ export function ChatWindow({ conversation, currentUser }: Props) {
     if (!conversation) return
     if (!input.trim() && pendingAttachments.length === 0 && pendingLinks.length === 0) return
 
-    const newMsg: Message = {
-      id: `msg-${Date.now()}`,
-      conversationId: conversation.id,
-      senderId: currentUser.id,
-      text: input.trim(),
-      attachments: pendingAttachments.length > 0 ? pendingAttachments : undefined,
-      links: pendingLinks.length > 0 ? pendingLinks : undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
+    const conversationId = conversation.id
+    const text = input.trim()
+    const attachments = pendingAttachments.length > 0 ? pendingAttachments : undefined
+    const links = pendingLinks.length > 0 ? pendingLinks : undefined
 
-    addMessage(newMsg)
     setInput('')
     setPendingAttachments([])
     setPendingLinks([])
@@ -144,6 +149,8 @@ export function ChatWindow({ conversation, currentUser }: Props) {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
+
+    addMessage({ conversationId, text, attachments, links })
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {

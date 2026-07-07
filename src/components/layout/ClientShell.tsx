@@ -20,9 +20,9 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
 
-  useEffect(() => {
-    useChatStore.persist.rehydrate()
+  const fetchConversations = useChatStore((s) => s.fetchConversations)
 
+  useEffect(() => {
     // Verify session with server
     fetch('/api/auth/me')
       .then((r) => (r.ok ? r.json() : null))
@@ -31,12 +31,20 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
           login(data)
           fetchAll()
           fetchUsers()
+          fetchConversations()
         }
       })
       .catch(() => {})
       .finally(() => setReady(true))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Contador de mensajes no leídos: sin websockets, se refresca por sondeo.
+  useEffect(() => {
+    if (!isLoggedIn) return
+    const interval = setInterval(() => fetchConversations(), 30000)
+    return () => clearInterval(interval)
+  }, [isLoggedIn, fetchConversations])
 
   useEffect(() => {
     if (!ready) return

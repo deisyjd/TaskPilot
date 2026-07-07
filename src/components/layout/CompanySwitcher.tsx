@@ -5,6 +5,7 @@ import { Check, ChevronDown, Building2, Plus } from 'lucide-react'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
+import { useChatStore } from '@/store/useChatStore'
 import { can } from '@/lib/permissions'
 import { CompanyModal } from '@/components/admin/CompanyModal'
 
@@ -15,6 +16,7 @@ export function CompanySwitcher() {
   const setActiveCompany = useAuthStore((s) => s.setActiveCompany)
   const fetchAll = useTaskStore((s) => s.fetchAll)
   const fetchUsers = useUserStore((s) => s.fetchUsers)
+  const fetchConversations = useChatStore((s) => s.fetchConversations)
   const currentUser = useCurrentUser()
   const canCreateCompany = can(currentUser, 'create_company')
 
@@ -43,7 +45,7 @@ export function CompanySwitcher() {
     const ok = await setActiveCompany(companyId)
     if (ok) {
       setOpen(false)
-      await Promise.all([fetchAll(), fetchUsers()])
+      await Promise.all([fetchAll(), fetchUsers(), fetchConversations()])
     }
   }
 

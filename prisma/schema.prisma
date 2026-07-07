@@ -21,6 +21,7 @@ model Company {
   tasks             Task[]
   historyEvents     HistoryEvent[]
   notes             Note[]
+  conversations     Conversation[]
   lastActiveForUser User[]              @relation("UserLastActiveCompany")
 
   @@map("companies")
@@ -56,9 +57,11 @@ model User {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  memberships        CompanyMembership[]
-  projectMemberships ProjectMember[]
-  taskAssignments    TaskAssignee[]
+  memberships              CompanyMembership[]
+  projectMemberships       ProjectMember[]
+  taskAssignments          TaskAssignee[]
+  messages                 Message[]
+  conversationParticipants ConversationParticipant[]
 
   @@map("users")
 }
@@ -172,26 +175,50 @@ model HistoryEvent {
 }
 
 model Conversation {
-  id           String   @id @default(cuid())
-  name         String?
-  type         String   @default("direct")
-  participants Json
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(cuid())
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name          String?
+  type          String   @default("direct")
+  coverImageUrl String?  @db.Text
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  messages Message[]
+  participants ConversationParticipant[]
+  messages     Message[]
 
+  @@index([companyId])
   @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt     DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+  @@index([conversationId])
+  @@index([userId])
+  @@map("conversation_participants")
 }
 
 model Message {
   id             String       @id @default(cuid())
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         String
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
   content        String       @db.Text
+  attachments    Json?
+  links          Json?
   createdAt      DateTime     @default(now())
 
+  @@index([conversationId])
   @@map("messages")
 }
 

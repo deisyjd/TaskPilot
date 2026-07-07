@@ -183,7 +183,9 @@ export interface Conversation {
   createdBy: string
   createdAt: string
   updatedAt: string
-  lastMessageAt?: string
+  lastMessageAt?: string | null
+  lastMessagePreview?: string
+  unreadCount?: number
 }
 
 export interface Message {

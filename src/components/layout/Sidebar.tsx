@@ -16,6 +16,7 @@ import {
   LogOut,
 } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
+import { useChatStore } from '@/store/useChatStore'
 import { useCurrentUser } from '@/store/useUserStore'
 import { useMobileNavStore } from '@/store/useMobileNavStore'
 import { useAuthStore } from '@/store/useAuthStore'
@@ -39,6 +40,8 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
   const projects = useTaskStore((s) => s.projects)
+  const conversations = useChatStore((s) => s.conversations)
+  const unreadMessages = conversations.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0)
   const currentUser = useCurrentUser()
   const isAdmin = can(currentUser, 'create_user')
   const logout = useAuthStore((s) => s.logout)
@@ -91,7 +94,18 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               style={active ? { backgroundColor: 'var(--tp-lime)', color: 'var(--tp-dark)' } : {}}
             >
               <Icon className="w-4 h-4 shrink-0" />
-              {label}
+              <span className="flex-1">{label}</span>
+              {href === '/chats' && unreadMessages > 0 && (
+                <span
+                  className="min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                  style={{
+                    backgroundColor: active ? 'var(--tp-dark)' : '#EF4444',
+                    color: '#FFFFFF',
+                  }}
+                >
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </span>
+              )}
             </Link>
           )
         })}

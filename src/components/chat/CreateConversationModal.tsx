@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useChatStore } from '@/store/useChatStore'
 import { useCurrentUser, useUserStore } from '@/store/useUserStore'
 import { cn } from '@/lib/utils'
-import { Conversation } from '@/types'
 
 interface Props {
   open: boolean
@@ -50,7 +49,7 @@ function UserAvatar({
 
 export function CreateConversationModal({ open, onClose }: Props) {
   const currentUser = useCurrentUser()
-  const addConversation = useChatStore((s) => s.addConversation)
+  const createConversation = useChatStore((s) => s.createConversation)
   const allUsers = useUserStore((s) => s.users)
 
   const [type, setType] = useState<ChatType>('direct')
@@ -90,7 +89,7 @@ export function CreateConversationModal({ open, onClose }: Props) {
     onClose()
   }
 
-  function handleSave() {
+  async function handleSave() {
     setError('')
     if (!currentUser) return
 
@@ -99,17 +98,11 @@ export function CreateConversationModal({ open, onClose }: Props) {
         setError('Selecciona un usuario para el chat directo.')
         return
       }
-      const targetUser = otherUsers.find((u) => u.id === selectedDirectUser)!
-      const newConv: Conversation = {
-        id: `conv-${Date.now()}`,
-        type: 'direct',
-        name: targetUser.name,
-        members: [currentUser.id, selectedDirectUser],
-        createdBy: currentUser.id,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+      const created = await createConversation({ type: 'direct', memberIds: [selectedDirectUser] })
+      if (!created) {
+        setError('No se pudo crear la conversación. Intenta de nuevo.')
+        return
       }
-      addConversation(newConv)
     } else {
       if (!groupName.trim()) {
         setError('El nombre del grupo es obligatorio.')
@@ -119,17 +112,16 @@ export function CreateConversationModal({ open, onClose }: Props) {
         setError('Agrega al menos un miembro al grupo.')
         return
       }
-      const newConv: Conversation = {
-        id: `conv-${Date.now()}`,
+      const created = await createConversation({
         type: 'group',
         name: groupName.trim(),
+        memberIds: selectedMembers,
         coverImageUrl: groupCoverBase64 ?? undefined,
-        members: [currentUser.id, ...selectedMembers],
-        createdBy: currentUser.id,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+      })
+      if (!created) {
+        setError('No se pudo crear el grupo. Intenta de nuevo.')
+        return
       }
-      addConversation(newConv)
     }
 
     handleClose()

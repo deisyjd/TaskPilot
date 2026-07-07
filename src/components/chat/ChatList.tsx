@@ -3,8 +3,6 @@
 import { useState } from 'react'
 import { Conversation } from '@/types'
 import { cn } from '@/lib/utils'
-import { formatDateTime } from '@/lib/dates'
-import { useChatStore } from '@/store/useChatStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
 
 interface Props {
@@ -14,7 +12,7 @@ interface Props {
   onNew: () => void
 }
 
-function isRecent(dateStr?: string): boolean {
+function isRecent(dateStr?: string | null): boolean {
   if (!dateStr) return false
   const then = new Date(dateStr).getTime()
   const now = Date.now()
@@ -75,7 +73,6 @@ function ConvAvatar({
 
 export function ChatList({ conversations, activeId, onSelect, onNew }: Props) {
   const [search, setSearch] = useState('')
-  const messages = useChatStore((s) => s.messages)
   const users = useUserStore((s) => s.users)
   const currentUser = useCurrentUser()
 
@@ -83,14 +80,10 @@ export function ChatList({ conversations, activeId, onSelect, onNew }: Props) {
     c.name.toLowerCase().includes(search.toLowerCase())
   )
 
-  function getLastMessagePreview(convId: string): string {
-    const convMessages = messages.filter((m) => m.conversationId === convId)
-    if (convMessages.length === 0) return 'Sin mensajes aún'
-    const last = convMessages[convMessages.length - 1]
-    if (last.text) return last.text.length > 50 ? last.text.slice(0, 50) + '…' : last.text
-    if (last.attachments?.length) return `📎 ${last.attachments[0].name}`
-    if (last.links?.length) return `🔗 ${last.links[0].title || last.links[0].url}`
-    return ''
+  function getLastMessagePreview(conv: Conversation): string {
+    const preview = conv.lastMessagePreview
+    if (!preview) return 'Sin mensajes aún'
+    return preview.length > 50 ? preview.slice(0, 50) + '…' : preview
   }
 
   return (
@@ -146,7 +139,7 @@ export function ChatList({ conversations, activeId, onSelect, onNew }: Props) {
           filtered.map((conv) => {
             const isActive = conv.id === activeId
             const recent = isRecent(conv.lastMessageAt)
-            const preview = getLastMessagePreview(conv.id)
+            const preview = getLastMessagePreview(conv)
             const timeLabel = conv.lastMessageAt
               ? new Date(conv.lastMessageAt).toLocaleTimeString('es-ES', {
                   hour: '2-digit',
