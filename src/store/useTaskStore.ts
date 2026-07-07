@@ -32,6 +32,7 @@ interface TaskStore {
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>
   moveTask: (id: string, status: TaskStatus) => Promise<void>
   deleteTask: (id: string) => Promise<void>
+  duplicateTask: (id: string) => Promise<Task | null>
 
   addProject: (project: Partial<Project> & { name: string; memberIds?: string[] }) => Promise<Project | null>
   updateProject: (id: string, updates: Partial<Project> & { memberIds?: string[] }) => Promise<void>
@@ -131,6 +132,18 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
       set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }))
     } catch (e) {
       set({ error: e instanceof Error ? e.message : 'Error al eliminar tarea' })
+    }
+  },
+
+  duplicateTask: async (id) => {
+    try {
+      const created = await api<Task>(`/api/tasks/${id}/duplicate`, { method: 'POST' })
+      set((s) => ({ tasks: [created, ...s.tasks] }))
+      get().fetchHistory()
+      return created
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al duplicar tarea' })
+      return null
     }
   },
 

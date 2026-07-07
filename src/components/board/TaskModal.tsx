@@ -11,7 +11,7 @@ import { formatDateTime } from '@/lib/dates'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cn } from '@/lib/utils'
-import { Trash2, Plus, X, Send, CheckSquare, MessageSquare, Tag, ChevronDown, Image } from 'lucide-react'
+import { Trash2, Plus, X, Send, CheckSquare, MessageSquare, Tag, ChevronDown, Image, Copy } from 'lucide-react'
 import { ImageUploader } from '@/components/shared/ImageUploader'
 import { FileUploader } from '@/components/shared/FileUploader'
 import { ReferenceLinks } from '@/components/shared/ReferenceLinks'
@@ -106,7 +106,7 @@ const fieldInput: React.CSSProperties = {
 }
 
 export function TaskModal({ task, defaultStatus = 'pending', defaultProject, defaultDueDate, open, onClose }: Props) {
-  const { addTask, updateTask, deleteTask } = useTaskStore()
+  const { addTask, updateTask, deleteTask, duplicateTask } = useTaskStore()
   const projects = useTaskStore((s) => s.projects).filter((p) => p.status !== 'inactive')
   const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
   const currentUser = useCurrentUser()
@@ -171,6 +171,10 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
 
   const handleDeleteConfirmed = () => {
     if (task) { deleteTask(task.id); onClose() }
+  }
+
+  const handleDuplicate = () => {
+    if (task) { duplicateTask(task.id); onClose() }
   }
 
   const checklistDone = form.checklist.filter((c) => c.done).length
@@ -616,7 +620,17 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
           className="flex items-center px-7 py-4 shrink-0 gap-2.5"
           style={{ borderTop: '1px solid var(--tp-border)', backgroundColor: 'var(--tp-surface)' }}
         >
-          {/* Delete — left, only in edit mode */}
+          {/* Duplicate + Delete — left, only in edit mode */}
+          {!isNew && (
+            <button
+              onClick={handleDuplicate}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all hover:opacity-80"
+              style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
+            >
+              <Copy className="w-3.5 h-3.5" />
+              Duplicar
+            </button>
+          )}
           {!isNew && (
             <button
               onClick={() => setConfirmOpen(true)}
