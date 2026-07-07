@@ -100,6 +100,7 @@ model Task {
   title       String
   description String?  @db.Text
   status      String   @default("pending")
+  startDate   String?
   dueDate     String
   priority    String   @default("medium")
   type        String   @default("other")

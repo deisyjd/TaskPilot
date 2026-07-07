@@ -24,6 +24,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
       title: `${original.title} (copia)`,
       description: original.description,
       status: 'pending',
+      startDate: original.startDate,
       dueDate: original.dueDate,
       priority: original.priority,
       type: original.type,

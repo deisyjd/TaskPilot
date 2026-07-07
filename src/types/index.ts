@@ -78,6 +78,7 @@ export interface Task {
   description: string
   status: TaskStatus
   assigneeIds: string[]
+  startDate?: string | null
   dueDate: string
   priority: Priority
   type: TaskType

@@ -1,6 +1,6 @@
 // Parse a date string as local time to avoid UTC offset shifting the day.
 // "2024-06-30" treated as UTC would be Jun 29 at 7pm in UTC-5 (Colombia).
-function parseLocal(dateStr: string): Date {
+export function parseLocal(dateStr: string): Date {
   if (!dateStr) return new Date(NaN)
   // If it already has time info (ISO with T), use as-is
   if (dateStr.includes('T')) return new Date(dateStr)

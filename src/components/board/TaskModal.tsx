@@ -43,7 +43,7 @@ function emptyTask(status: TaskStatus = 'pending', projectId = '', assigneeIds: 
   const now = new Date().toISOString()
   return {
     id: `t-${uid()}`, title: '', projectId, description: '', status,
-    assigneeIds, dueDate: dueDate || new Date().toISOString().split('T')[0],
+    assigneeIds, startDate: null, dueDate: dueDate || new Date().toISOString().split('T')[0],
     priority: 'medium', type: 'other', tags: [], checklist: [], comments: [],
     createdAt: now, updatedAt: now,
     recurrence: null, recurrenceInterval: null, recurrenceUntil: null,
@@ -562,6 +562,17 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
 
             {/* Divider */}
             <div style={{ height: '1px', backgroundColor: 'var(--tp-border)' }} />
+
+            {/* Start date */}
+            <div>
+              <FieldLabel>Fecha de inicio</FieldLabel>
+              <input
+                type="date"
+                value={form.startDate ?? ''}
+                onChange={(e) => setField('startDate', e.target.value || null)}
+                style={{ ...fieldInput, backgroundColor: 'var(--tp-surface)' }}
+              />
+            </div>
 
             {/* Due date */}
             <div>

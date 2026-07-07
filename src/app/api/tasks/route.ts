@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const {
-    checklist, comments, projectId, title, description, status, assigneeIds, dueDate, priority, type, tags,
+    checklist, comments, projectId, title, description, status, assigneeIds, startDate, dueDate, priority, type, tags,
     recurrence, recurrenceInterval, recurrenceUntil, coverImageUrl, attachments, links,
   } = body
 
@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
       title,
       description,
       status,
+      startDate: startDate || null,
       dueDate,
       priority,
       type,

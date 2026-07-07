@@ -35,7 +35,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const data: Record<string, unknown> = {}
   for (const key of [
-    'title', 'description', 'status', 'dueDate', 'priority', 'type', 'projectId', 'tags',
+    'title', 'description', 'status', 'startDate', 'dueDate', 'priority', 'type', 'projectId', 'tags',
     'recurrence', 'recurrenceInterval', 'recurrenceUntil', 'coverImageUrl', 'attachments', 'links',
   ]) {
     if (key in body) data[key] = body[key]

@@ -26,6 +26,17 @@ function todayStr(): string {
   return formatDateOnly(new Date())
 }
 
+function daysBetween(fromStr: string, toStr: string): number {
+  const ms = parseDateOnly(toStr).getTime() - parseDateOnly(fromStr).getTime()
+  return Math.round(ms / 86400000)
+}
+
+function shiftDate(dateStr: string, days: number): string {
+  const date = parseDateOnly(dateStr)
+  date.setDate(date.getDate() + days)
+  return formatDateOnly(date)
+}
+
 /**
  * Generates every occurrence of a recurring task up to its end date
  * (`recurrenceUntil`), not just the next one — so a "cada 7 días hasta
@@ -62,6 +73,8 @@ export async function generateDueRecurrences(companyId: string) {
     const horizon = template.recurrenceUntil || advanceDate(today, 'monthly', 3)
     let lastDueDate = existingOccurrences[0]?.dueDate ?? template.dueDate
     let generated = 0
+    // Preserva cuántos días dura la tarea (inicio → fin) en cada ocurrencia generada.
+    const durationDays = template.startDate ? daysBetween(template.startDate, template.dueDate) : null
 
     while (generated < MAX_GENERATED_PER_TEMPLATE) {
       const nextDate = advanceDate(lastDueDate, recurrence, interval)
@@ -75,6 +88,7 @@ export async function generateDueRecurrences(companyId: string) {
             title: template.title,
             description: template.description,
             status: 'pending',
+            startDate: durationDays !== null ? shiftDate(nextDate, -durationDays) : null,
             dueDate: nextDate,
             priority: template.priority,
             type: template.type,

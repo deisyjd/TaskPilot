@@ -23,15 +23,19 @@ import {
   X,
   Archive,
   ArchiveRestore,
+  List,
+  GanttChartSquare,
 } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
 import { can, canManageProject } from '@/lib/permissions'
 import { TaskModal } from '@/components/board/TaskModal'
+import { ProjectGantt } from '@/components/projects/ProjectGantt'
 import {
   Project,
   Attachment,
   ReferenceLink,
+  Task,
   TaskStatus,
   STATUS_DOT_COLORS,
   STATUS_LABELS,
@@ -124,7 +128,9 @@ export function ProjectDetail({ project, onEdit }: Props) {
   const [linkForm, setLinkForm] = useState({ url: '', title: '' })
   const [showLinkForm, setShowLinkForm] = useState(false)
   const [taskModalOpen, setTaskModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [confirmArchive, setConfirmArchive] = useState(false)
+  const [tasksView, setTasksView] = useState<'list' | 'gantt'>('list')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Derived data
@@ -138,6 +144,10 @@ export function ProjectDetail({ project, onEdit }: Props) {
     acc[t.status].push(t)
     return acc
   }, {} as Record<TaskStatus, typeof projectTasks>)
+
+  const openNewTask = () => { setEditingTask(null); setTaskModalOpen(true) }
+  const openEditTask = (task: Task) => { setEditingTask(task); setTaskModalOpen(true) }
+  const closeTaskModal = () => { setTaskModalOpen(false); setEditingTask(null) }
 
   // ─── File upload ──────────────────────────────────────────
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -244,7 +254,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
           <div className="flex items-center gap-2">
             {can(currentUser, 'create_task') && (
               <button
-                onClick={() => setTaskModalOpen(true)}
+                onClick={openNewTask}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-90"
                 style={{
                   backgroundColor: 'var(--tp-lime)',
@@ -405,9 +415,36 @@ export function ProjectDetail({ project, onEdit }: Props) {
                 Tareas del proyecto ({projectTasks.length})
               </h2>
               <div className="flex items-center gap-2">
+                <div
+                  className="flex items-center gap-1 p-0.5 rounded-lg"
+                  style={{ backgroundColor: 'var(--tp-bg)', border: '1px solid var(--tp-border)' }}
+                >
+                  <button
+                    onClick={() => setTasksView('list')}
+                    className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md transition-colors"
+                    style={{
+                      backgroundColor: tasksView === 'list' ? 'var(--tp-dark)' : 'transparent',
+                      color: tasksView === 'list' ? 'var(--tp-lime)' : 'var(--tp-text-2)',
+                    }}
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    Lista
+                  </button>
+                  <button
+                    onClick={() => setTasksView('gantt')}
+                    className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md transition-colors"
+                    style={{
+                      backgroundColor: tasksView === 'gantt' ? 'var(--tp-dark)' : 'transparent',
+                      color: tasksView === 'gantt' ? 'var(--tp-lime)' : 'var(--tp-text-2)',
+                    }}
+                  >
+                    <GanttChartSquare className="w-3.5 h-3.5" />
+                    Gantt
+                  </button>
+                </div>
                 {can(currentUser, 'create_task') && (
                   <button
-                    onClick={() => setTaskModalOpen(true)}
+                    onClick={openNewTask}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all hover:opacity-75"
                     style={{
                       backgroundColor: 'var(--tp-dark)',
@@ -434,6 +471,8 @@ export function ProjectDetail({ project, onEdit }: Props) {
               <p className="text-sm italic" style={{ color: 'var(--tp-text-2)' }}>
                 No hay tareas en este proyecto aún.
               </p>
+            ) : tasksView === 'gantt' ? (
+              <ProjectGantt tasks={projectTasks} onTaskClick={openEditTask} />
             ) : (
               <div className="flex flex-col gap-3">
                 {(Object.entries(tasksByStatus) as [TaskStatus, typeof projectTasks][]).map(([status, tasks]) => (
@@ -446,9 +485,10 @@ export function ProjectDetail({ project, onEdit }: Props) {
                     </p>
                     <div className="flex flex-col gap-1">
                       {tasks.map((task) => (
-                        <div
+                        <button
                           key={task.id}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                          onClick={() => openEditTask(task)}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors hover:opacity-80"
                           style={{ backgroundColor: 'var(--tp-bg)', border: '1px solid var(--tp-border)' }}
                         >
                           <span
@@ -471,7 +511,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
                               })}
                             </span>
                           )}
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -849,10 +889,10 @@ export function ProjectDetail({ project, onEdit }: Props) {
       </div>
 
       <TaskModal
-        task={null}
+        task={editingTask}
         defaultProject={project.id}
         open={taskModalOpen}
-        onClose={() => setTaskModalOpen(false)}
+        onClose={closeTaskModal}
       />
     </div>
   )
