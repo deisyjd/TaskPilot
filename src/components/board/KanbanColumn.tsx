@@ -63,11 +63,11 @@ export function KanbanColumn({ status, tasks, onCardClick, onAddTask, onDrop }: 
   const accent = DOT_COLORS[status]
 
   return (
-    <div className="flex flex-col w-72 shrink-0">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3 px-1">
+    <div className="flex flex-col w-72 shrink-0 h-full min-h-0">
+      {/* Header — se queda fijo arriba, no se va con el scroll de las tarjetas */}
+      <div className="flex items-center justify-between mb-3 px-1 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: accent }} />
+          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: accent }} />
           <span className="text-sm font-semibold" style={{ color: 'var(--tp-text)' }}>
             {STATUS_LABELS[status]}
           </span>
@@ -91,13 +91,13 @@ export function KanbanColumn({ status, tasks, onCardClick, onAddTask, onDrop }: 
         </button>
       </div>
 
-      {/* Drop zone */}
+      {/* Drop zone — scroll vertical propio, independiente de las demás columnas */}
       <div
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        className="flex flex-col gap-2 flex-1 min-h-[200px] p-2.5 transition-all"
+        className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto p-2.5 transition-all"
         style={{
           backgroundColor: isDragOver ? accent + '18' : STATUS_BG[status],
           borderRadius: 'var(--tp-r-inner)',
