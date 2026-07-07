@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 
-const MAX_GENERATED_PER_TEMPLATE = 30
+const MAX_GENERATED_PER_TEMPLATE = 120
 
 function parseDateOnly(dateStr: string): Date {
   const [y, m, d] = dateStr.split('T')[0].split('-').map(Number)
@@ -27,10 +27,17 @@ function todayStr(): string {
 }
 
 /**
- * Lazily generates due occurrences of recurring tasks for a company.
- * There is no cron/worker in this app — GET /api/tasks is the one
- * reliable hook that fires on every real page load, so recurrence
- * catch-up happens here instead.
+ * Generates every occurrence of a recurring task up to its end date
+ * (`recurrenceUntil`), not just the next one — so a "cada 7 días hasta
+ * diciembre" series shows the whole calendar right away instead of one
+ * task appearing at a time as the weeks go by.
+ *
+ * There is no cron/worker in this app — GET /api/tasks (and task
+ * creation) are the reliable hooks that fire on every real page load,
+ * so generation happens here instead. Series with no `recurrenceUntil`
+ * only pre-generate 3 months ahead, to avoid an unbounded series from
+ * writing rows forever; `MAX_GENERATED_PER_TEMPLATE` is a hard backstop
+ * on top of that.
  */
 export async function generateDueRecurrences(companyId: string) {
   const templates = await prisma.task.findMany({
@@ -45,29 +52,22 @@ export async function generateDueRecurrences(companyId: string) {
     if (!recurrence) continue
     const interval = template.recurrenceInterval ?? 1
 
-    const lastOccurrence = await prisma.task.findFirst({
+    const existingOccurrences = await prisma.task.findMany({
       where: { parentTaskId: template.id },
+      select: { dueDate: true },
       orderBy: { dueDate: 'desc' },
     })
+    const existingDates = new Set(existingOccurrences.map((o) => o.dueDate))
 
-    // Si la serie todavía no generó ninguna ocurrencia, se crea la
-    // siguiente de una vez (aunque su fecha sea futura) para que se vea
-    // completa desde que se crea, en vez de esperar a que la fecha de la
-    // plantilla ya haya pasado.
-    const isFirstRun = !lastOccurrence
-    let lastDueDate = lastOccurrence?.dueDate ?? template.dueDate
+    const horizon = template.recurrenceUntil || advanceDate(today, 'monthly', 3)
+    let lastDueDate = existingOccurrences[0]?.dueDate ?? template.dueDate
     let generated = 0
 
     while (generated < MAX_GENERATED_PER_TEMPLATE) {
       const nextDate = advanceDate(lastDueDate, recurrence, interval)
-      if (template.recurrenceUntil && nextDate > template.recurrenceUntil) break
-      if (nextDate > today && !(isFirstRun && generated === 0)) break
+      if (nextDate > horizon) break
 
-      const alreadyExists = await prisma.task.findFirst({
-        where: { parentTaskId: template.id, dueDate: nextDate },
-        select: { id: true },
-      })
-      if (!alreadyExists) {
+      if (!existingDates.has(nextDate)) {
         await prisma.task.create({
           data: {
             companyId: template.companyId,
