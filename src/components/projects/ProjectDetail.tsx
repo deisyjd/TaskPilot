@@ -96,14 +96,15 @@ const HISTORY_TYPE_ICONS: Record<string, { icon: React.ReactNode; color: string 
 
 // ─── Sub-components ───────────────────────────────────────────
 
-function UserAvatar({ name, users }: { name: string; users: import('@/types').User[] }) {
-  const user = users.find((u: import('@/types').User) => u.name === name)
+function UserAvatar({ userId, users }: { userId: string; users: import('@/types').User[] }) {
+  const user = users.find((u: import('@/types').User) => u.id === userId)
+  const label = user?.name ?? userId
   return (
     <div
-      title={name}
+      title={label}
       className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0 -ml-2 first:ml-0 border-2 border-white ${user?.color ?? 'bg-gray-400'}`}
     >
-      {user?.initials ?? name.slice(0, 2).toUpperCase()}
+      {user?.initials ?? label.slice(0, 2).toUpperCase()}
     </div>
   )
 }
@@ -371,16 +372,16 @@ export function ProjectDetail({ project, onEdit }: Props) {
               </h2>
               <div className="flex items-center gap-1 flex-wrap">
                 <div className="flex items-center">
-                  {project.members!.map((memberName) => (
-                    <UserAvatar key={memberName} name={memberName} users={users} />
+                  {project.members!.map((memberId) => (
+                    <UserAvatar key={memberId} userId={memberId} users={users} />
                   ))}
                 </div>
                 <div className="ml-3 flex flex-col gap-0.5">
-                  {project.members!.map((memberName) => {
-                    const u = users.find((u) => u.name === memberName)
+                  {project.members!.map((memberId) => {
+                    const u = users.find((u) => u.id === memberId)
                     return (
-                      <span key={memberName} className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
-                        {memberName}{u?.role ? ` — ${u.role}` : ''}
+                      <span key={memberId} className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
+                        {u?.name ?? memberId}{u?.role ? ` — ${u.role}` : ''}
                       </span>
                     )
                   })}
