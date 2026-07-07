@@ -33,11 +33,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const body = await req.json()
 
-  // Whitelist: el cliente envía campos que no son columnas (attachments, links, coverImageUrl, …)
   const data: Record<string, unknown> = {}
   for (const key of [
     'title', 'description', 'status', 'dueDate', 'priority', 'type', 'projectId', 'tags',
-    'recurrence', 'recurrenceInterval', 'recurrenceUntil',
+    'recurrence', 'recurrenceInterval', 'recurrenceUntil', 'coverImageUrl', 'attachments', 'links',
   ]) {
     if (key in body) data[key] = body[key]
   }
@@ -53,6 +52,42 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if (Object.keys(data).length > 0) {
     await prisma.task.update({ where: { id }, data })
+  }
+
+  if (Array.isArray(body.checklist)) {
+    await prisma.$transaction([
+      prisma.checklistItem.deleteMany({ where: { taskId: id } }),
+      ...(body.checklist.length > 0
+        ? [
+            prisma.checklistItem.createMany({
+              data: body.checklist.map((c: { text: string; done?: boolean }) => ({
+                taskId: id,
+                text: c.text,
+                done: Boolean(c.done),
+              })),
+            }),
+          ]
+        : []),
+    ])
+  }
+
+  if (Array.isArray(body.comments)) {
+    const existingCommentIds = new Set(
+      (await prisma.comment.findMany({ where: { taskId: id }, select: { id: true } })).map((c) => c.id)
+    )
+    const newComments = body.comments.filter(
+      (c: { id?: string; text: string }) => !c.id || !existingCommentIds.has(c.id)
+    )
+    if (newComments.length > 0) {
+      const actorForComment = await prisma.user.findUnique({ where: { id: session.userId }, select: { name: true } })
+      await prisma.comment.createMany({
+        data: newComments.map((c: { text: string }) => ({
+          taskId: id,
+          author: actorForComment?.name ?? session.email,
+          text: c.text,
+        })),
+      })
+    }
   }
 
   const oldIds = existing.assignees.map((a) => a.userId)

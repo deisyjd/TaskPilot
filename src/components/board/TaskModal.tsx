@@ -6,7 +6,7 @@ import {
   STATUS_LABELS, PRIORITY_LABELS, TYPE_LABELS, STATUS_DOT_COLORS,
 } from '@/types'
 import { useTaskStore } from '@/store/useTaskStore'
-import { useUserStore } from '@/store/useUserStore'
+import { useUserStore, useCurrentUser } from '@/store/useUserStore'
 import { formatDateTime } from '@/lib/dates'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -109,6 +109,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
   const { addTask, updateTask, deleteTask } = useTaskStore()
   const projects = useTaskStore((s) => s.projects).filter((p) => p.status !== 'inactive')
   const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
+  const currentUser = useCurrentUser()
   const isNew = !task
 
   const defaultAssigneeIds = users[0] ? [users[0].id] : []
@@ -157,7 +158,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
   const addComment = () => {
     if (!commentInput.trim()) return
     setField('comments', [...form.comments, {
-      id: uid(), author: 'Deisy', text: commentInput.trim(), createdAt: new Date().toISOString(),
+      id: uid(), author: currentUser?.name ?? '', text: commentInput.trim(), createdAt: new Date().toISOString(),
     }])
     setCommentInput('')
   }
@@ -339,14 +340,14 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
             <FileUploader
               value={attachments}
               onChange={(files) => setField('attachments', files)}
-              uploadedBy="Deisy"
+              uploadedBy={currentUser?.name ?? ''}
             />
 
             {/* Reference links */}
             <ReferenceLinks
               value={links}
               onChange={(l) => setField('links', l)}
-              createdBy="Deisy"
+              createdBy={currentUser?.name ?? ''}
             />
 
             {/* Comments */}

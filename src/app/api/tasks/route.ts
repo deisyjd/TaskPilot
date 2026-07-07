@@ -48,10 +48,9 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const body = await req.json()
-  // Whitelist: el cliente envía campos que no son columnas (attachments, links, coverImageUrl, …)
   const {
-    checklist, projectId, title, description, status, assigneeIds, dueDate, priority, type, tags,
-    recurrence, recurrenceInterval, recurrenceUntil,
+    checklist, comments, projectId, title, description, status, assigneeIds, dueDate, priority, type, tags,
+    recurrence, recurrenceInterval, recurrenceUntil, coverImageUrl, attachments, links,
   } = body
 
   if (!projectId) return NextResponse.json({ error: 'projectId requerido' }, { status: 400 })
@@ -63,6 +62,8 @@ export async function POST(req: NextRequest) {
 
   const hasRecurrence = RECURRENCE_VALUES.includes(recurrence)
   const validIds = await validAssigneeIds(session.activeCompanyId, assigneeIds)
+  const actor = await prisma.user.findUnique({ where: { id: session.userId } })
+  const authorName = actor?.name ?? session.email
 
   const task = await prisma.task.create({
     data: {
@@ -75,18 +76,23 @@ export async function POST(req: NextRequest) {
       projectId,
       companyId: session.activeCompanyId,
       tags: JSON.stringify(tags ?? []),
+      coverImageUrl: coverImageUrl || null,
+      attachments: Array.isArray(attachments) && attachments.length > 0 ? attachments : undefined,
+      links: Array.isArray(links) && links.length > 0 ? links : undefined,
       recurrence: hasRecurrence ? recurrence : null,
       recurrenceInterval: hasRecurrence ? (recurrenceInterval || 1) : null,
       recurrenceUntil: hasRecurrence ? (recurrenceUntil || null) : null,
       checklist: checklist?.length
         ? { create: checklist.map(({ id: _id, ...c }: { id?: string; text: string; done: boolean }) => c) }
         : undefined,
+      comments: comments?.length
+        ? { create: comments.map((c: { text: string }) => ({ author: authorName, text: c.text })) }
+        : undefined,
       assignees: validIds.length ? { createMany: { data: validIds.map((userId) => ({ userId })) } } : undefined,
     },
     include: { checklist: true, comments: true, assignees: { select: { userId: true } } },
   })
 
-  const actor = await prisma.user.findUnique({ where: { id: session.userId } })
   await recordHistoryEvent({
     companyId: session.activeCompanyId,
     type: 'task-created',
@@ -94,7 +100,7 @@ export async function POST(req: NextRequest) {
     taskTitle: task.title,
     project: project.name,
     description: 'Tarea creada',
-    user: actor?.name ?? session.email,
+    user: authorName,
   })
 
   // Si es una tarea recurrente, generar de una vez la siguiente ocurrencia

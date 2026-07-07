@@ -103,6 +103,9 @@ model Task {
   priority    String   @default("medium")
   type        String   @default("other")
   tags        Json     @default("[]")
+  coverImageUrl String? @db.Text
+  attachments Json?
+  links       Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
