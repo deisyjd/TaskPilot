@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import { User, UserRole } from '@/types'
 import { useUserStore } from '@/store/useUserStore'
+import { useAuthStore } from '@/store/useAuthStore'
 import { ImageUploader } from '@/components/shared/ImageUploader'
+import { UserCompaniesPanel } from '@/components/admin/UserCompaniesPanel'
 import { Eye, EyeOff, ChevronDown } from 'lucide-react'
 import {
   Dialog,
@@ -58,6 +60,7 @@ type FormErrors = Partial<Record<keyof typeof EMPTY_FORM, string>>
 export function UserForm({ open, user, onClose }: Props) {
   const addUser = useUserStore((s) => s.addUser)
   const updateUser = useUserStore((s) => s.updateUser)
+  const activeCompanyId = useAuthStore((s) => s.activeCompanyId)
 
   const isNew = !user
 
@@ -454,6 +457,11 @@ export function UserForm({ open, user, onClose }: Props) {
                 />
               </button>
             </div>
+          )}
+
+          {/* Acceso a otras empresas — solo en edición */}
+          {!isNew && user && (
+            <UserCompaniesPanel userId={user.id} excludeCompanyId={activeCompanyId ?? undefined} />
           )}
         </div>
 

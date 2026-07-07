@@ -16,6 +16,13 @@ async function api<T>(url: string, opts?: RequestInit): Promise<T> {
   return res.json()
 }
 
+export interface UserCompanyAccess {
+  companyId: string
+  name: string
+  color: string
+  role: string | null
+}
+
 interface UserStore {
   users: User[]
   loading: boolean
@@ -26,6 +33,9 @@ interface UserStore {
   deleteUser: (id: string) => Promise<void>
   deactivateUser: (id: string) => Promise<void>
   activateUser: (id: string) => Promise<void>
+  fetchUserCompanies: (userId: string) => Promise<UserCompanyAccess[]>
+  setUserCompany: (userId: string, companyId: string, role: string) => Promise<boolean>
+  removeUserCompany: (userId: string, companyId: string) => Promise<{ ok: boolean; error?: string }>
 }
 
 export const useUserStore = create<UserStore>()((set, get) => ({
@@ -80,6 +90,36 @@ export const useUserStore = create<UserStore>()((set, get) => ({
 
   activateUser: async (id) => {
     await get().updateUser(id, { status: 'active' })
+  },
+
+  fetchUserCompanies: async (userId) => {
+    try {
+      return await api<UserCompanyAccess[]>(`/api/users/${userId}/companies`)
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al cargar empresas del usuario' })
+      return []
+    }
+  },
+
+  setUserCompany: async (userId, companyId, role) => {
+    try {
+      await api(`/api/users/${userId}/companies`, { method: 'POST', body: JSON.stringify({ companyId, role }) })
+      return true
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al dar acceso a la empresa' })
+      return false
+    }
+  },
+
+  removeUserCompany: async (userId, companyId) => {
+    try {
+      const res = await fetch(`/api/users/${userId}/companies/${companyId}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return { ok: false, error: data.error ?? 'No se pudo quitar el acceso' }
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : 'No se pudo quitar el acceso' }
+    }
   },
 }))
 
