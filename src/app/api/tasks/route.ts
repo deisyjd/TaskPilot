@@ -97,5 +97,11 @@ export async function POST(req: NextRequest) {
     user: actor?.name ?? session.email,
   })
 
+  // Si es una tarea recurrente, generar de una vez la siguiente ocurrencia
+  // en vez de esperar a la próxima carga de la lista.
+  if (hasRecurrence) {
+    await generateDueRecurrences(session.activeCompanyId)
+  }
+
   return NextResponse.json(serializeTask(task), { status: 201 })
 }

@@ -46,17 +46,22 @@ export async function generateDueRecurrences(companyId: string) {
     const interval = template.recurrenceInterval ?? 1
 
     const lastOccurrence = await prisma.task.findFirst({
-      where: { OR: [{ id: template.id }, { parentTaskId: template.id }] },
+      where: { parentTaskId: template.id },
       orderBy: { dueDate: 'desc' },
     })
 
+    // Si la serie todavía no generó ninguna ocurrencia, se crea la
+    // siguiente de una vez (aunque su fecha sea futura) para que se vea
+    // completa desde que se crea, en vez de esperar a que la fecha de la
+    // plantilla ya haya pasado.
+    const isFirstRun = !lastOccurrence
     let lastDueDate = lastOccurrence?.dueDate ?? template.dueDate
     let generated = 0
 
     while (generated < MAX_GENERATED_PER_TEMPLATE) {
       const nextDate = advanceDate(lastDueDate, recurrence, interval)
-      if (nextDate > today) break
       if (template.recurrenceUntil && nextDate > template.recurrenceUntil) break
+      if (nextDate > today && !(isFirstRun && generated === 0)) break
 
       const alreadyExists = await prisma.task.findFirst({
         where: { parentTaskId: template.id, dueDate: nextDate },
