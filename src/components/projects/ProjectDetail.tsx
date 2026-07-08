@@ -120,13 +120,14 @@ export function ProjectDetail({ project, onEdit }: Props) {
   const history = useTaskStore((s) => s.history)
   const archiveProject = useTaskStore((s) => s.archiveProject)
   const restoreProject = useTaskStore((s) => s.restoreProject)
+  const updateProject = useTaskStore((s) => s.updateProject)
   const users = useUserStore((s) => s.users)
   const currentUser = useCurrentUser()
 
-  const [sessionAttachments, setSessionAttachments] = useState<Attachment[]>([])
-  const [sessionLinks, setSessionLinks] = useState<ReferenceLink[]>([])
   const [linkForm, setLinkForm] = useState({ url: '', title: '' })
   const [showLinkForm, setShowLinkForm] = useState(false)
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
+  const [linkError, setLinkError] = useState<string | null>(null)
   const [taskModalOpen, setTaskModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [confirmArchive, setConfirmArchive] = useState(false)
@@ -136,8 +137,8 @@ export function ProjectDetail({ project, onEdit }: Props) {
   // Derived data
   const projectTasks = tasks.filter((t) => t.projectId === project.id)
   const projectHistory = history.filter((e) => e.project === project.name).slice(0, 8)
-  const allAttachments: Attachment[] = [...(project.attachments ?? []), ...sessionAttachments]
-  const allLinks: ReferenceLink[] = [...(project.links ?? []), ...sessionLinks]
+  const allAttachments: Attachment[] = project.attachments ?? []
+  const allLinks: ReferenceLink[] = project.links ?? []
 
   const tasksByStatus = projectTasks.reduce<Record<TaskStatus, typeof projectTasks>>((acc, t) => {
     if (!acc[t.status]) acc[t.status] = []
@@ -155,7 +156,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
     if (!file) return
 
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
       const attachment: Attachment = {
         id: `att-${Date.now()}`,
         name: file.name,
@@ -165,17 +166,29 @@ export function ProjectDetail({ project, onEdit }: Props) {
         uploadedBy: currentUser?.name ?? '',
         uploadedAt: new Date().toISOString(),
       }
-      // TODO: call useTaskStore.getState().updateProject(project.id, { attachments: [...allAttachments, attachment] })
-      // when updateProject is added to the store. Until then, use local session state.
-      setSessionAttachments((prev) => [...prev, attachment])
+      setAttachmentError(null)
+      try {
+        await updateProject(project.id, { attachments: [...allAttachments, attachment] })
+      } catch {
+        setAttachmentError('No se pudo guardar el archivo. Intenta de nuevo.')
+      }
     }
     reader.readAsDataURL(file)
     // Reset input so the same file can be re-selected
     e.target.value = ''
   }
 
+  const removeAttachment = async (id: string) => {
+    setAttachmentError(null)
+    try {
+      await updateProject(project.id, { attachments: allAttachments.filter((a) => a.id !== id) })
+    } catch {
+      setAttachmentError('No se pudo eliminar el archivo. Intenta de nuevo.')
+    }
+  }
+
   // ─── Add link ─────────────────────────────────────────────
-  const handleAddLink = () => {
+  const handleAddLink = async () => {
     if (!linkForm.url.trim()) return
     const link: ReferenceLink = {
       id: `link-${Date.now()}`,
@@ -184,11 +197,23 @@ export function ProjectDetail({ project, onEdit }: Props) {
       createdBy: currentUser?.name ?? '',
       createdAt: new Date().toISOString(),
     }
-    // TODO: call useTaskStore.getState().updateProject(project.id, { links: [...allLinks, link] })
-    // when updateProject is added to the store.
-    setSessionLinks((prev) => [...prev, link])
-    setLinkForm({ url: '', title: '' })
-    setShowLinkForm(false)
+    setLinkError(null)
+    try {
+      await updateProject(project.id, { links: [...allLinks, link] })
+      setLinkForm({ url: '', title: '' })
+      setShowLinkForm(false)
+    } catch {
+      setLinkError('No se pudo guardar el enlace. Intenta de nuevo.')
+    }
+  }
+
+  const removeLink = async (id: string) => {
+    setLinkError(null)
+    try {
+      await updateProject(project.id, { links: allLinks.filter((l) => l.id !== id) })
+    } catch {
+      setLinkError('No se pudo eliminar el enlace. Intenta de nuevo.')
+    }
   }
 
   // ─── Hero gradient ────────────────────────────────────────
@@ -720,6 +745,10 @@ export function ProjectDetail({ project, onEdit }: Props) {
               )}
             </div>
 
+            {attachmentError && (
+              <p className="text-xs mb-3" style={{ color: '#DC2626' }}>{attachmentError}</p>
+            )}
+
             {allAttachments.length === 0 ? (
               <p className="text-xs italic" style={{ color: 'var(--tp-text-2)' }}>
                 Sin archivos adjuntos.
@@ -727,34 +756,45 @@ export function ProjectDetail({ project, onEdit }: Props) {
             ) : (
               <div className="flex flex-col gap-2">
                 {allAttachments.map((att) => (
-                  <a
+                  <div
                     key={att.id}
-                    href={att.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:opacity-80"
-                    style={{
-                      backgroundColor: 'var(--tp-bg)',
-                      border: '1px solid var(--tp-border)',
-                      textDecoration: 'none',
-                    }}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl group"
+                    style={{ backgroundColor: 'var(--tp-bg)', border: '1px solid var(--tp-border)' }}
                   >
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
+                    <a
+                      href={att.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 flex-1 min-w-0 transition-all hover:opacity-80"
+                      style={{ textDecoration: 'none' }}
                     >
-                      {getFileIcon(att.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate" style={{ color: 'var(--tp-text)' }}>
-                        {att.name}
-                      </p>
-                      <p className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
-                        {formatBytes(att.size)}
-                      </p>
-                    </div>
-                    <ExternalLink className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--tp-text-2)' }} />
-                  </a>
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
+                      >
+                        {getFileIcon(att.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate" style={{ color: 'var(--tp-text)' }}>
+                          {att.name}
+                        </p>
+                        <p className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
+                          {formatBytes(att.size)}
+                        </p>
+                      </div>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--tp-text-2)' }} />
+                    </a>
+                    {can(currentUser, 'upload_file') && (
+                      <button
+                        onClick={() => removeAttachment(att.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        style={{ color: '#DC2626' }}
+                        title="Eliminar archivo"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
@@ -826,6 +866,9 @@ export function ProjectDetail({ project, onEdit }: Props) {
                     outline: 'none',
                   }}
                 />
+                {linkError && (
+                  <p className="text-xs" style={{ color: '#DC2626' }}>{linkError}</p>
+                )}
                 <div className="flex gap-2">
                   <button
                     onClick={handleAddLink}
@@ -836,7 +879,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
                     Agregar link
                   </button>
                   <button
-                    onClick={() => { setShowLinkForm(false); setLinkForm({ url: '', title: '' }) }}
+                    onClick={() => { setShowLinkForm(false); setLinkForm({ url: '', title: '' }); setLinkError(null) }}
                     className="px-3 py-2 text-xs font-medium rounded-full transition-all hover:opacity-70"
                     style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
                   >
@@ -853,34 +896,43 @@ export function ProjectDetail({ project, onEdit }: Props) {
             ) : (
               <div className="flex flex-col gap-2">
                 {allLinks.map((link) => (
-                  <a
+                  <div
                     key={link.id}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all hover:opacity-80"
-                    style={{
-                      backgroundColor: 'var(--tp-bg)',
-                      border: '1px solid var(--tp-border)',
-                      textDecoration: 'none',
-                    }}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl group"
+                    style={{ backgroundColor: 'var(--tp-bg)', border: '1px solid var(--tp-border)' }}
                   >
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 flex-1 min-w-0 transition-all hover:opacity-80"
+                      style={{ textDecoration: 'none' }}
                     >
-                      <Link2 className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate" style={{ color: 'var(--tp-text)' }}>
-                        {link.title}
-                      </p>
-                      <p className="text-xs truncate" style={{ color: 'var(--tp-text-2)' }}>
-                        {getDomain(link.url)}
-                      </p>
-                    </div>
-                    <ExternalLink className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--tp-text-2)' }} />
-                  </a>
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
+                      >
+                        <Link2 className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate" style={{ color: 'var(--tp-text)' }}>
+                          {link.title}
+                        </p>
+                        <p className="text-xs truncate" style={{ color: 'var(--tp-text-2)' }}>
+                          {getDomain(link.url)}
+                        </p>
+                      </div>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--tp-text-2)' }} />
+                    </a>
+                    <button
+                      onClick={() => removeLink(link.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                      style={{ color: '#DC2626' }}
+                      title="Eliminar enlace"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}

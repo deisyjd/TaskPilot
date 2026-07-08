@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ExternalLink, X, Link2, Plus } from 'lucide-react'
+import { ExternalLink, X, Link2, Plus, Pencil, Check } from 'lucide-react'
 import { ReferenceLink } from '@/types'
 
 interface Props {
@@ -49,23 +49,29 @@ export function ReferenceLinks({
 }: Props) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [urlError, setUrlError] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState(EMPTY_FORM)
+  const [editUrlError, setEditUrlError] = useState<string | null>(null)
+
+  function normalizeUrl(rawUrl: string): string | null {
+    const trimmed = rawUrl.trim()
+    if (!trimmed) return null
+    const withProtocol = trimmed.startsWith('http://') || trimmed.startsWith('https://')
+      ? trimmed
+      : `https://${trimmed}`
+    return isValidUrl(withProtocol) ? withProtocol : null
+  }
 
   function handleAdd() {
     setUrlError(null)
 
-    const trimmedUrl = form.url.trim()
-    if (!trimmedUrl) {
+    if (!form.url.trim()) {
       setUrlError('La URL es requerida.')
       return
     }
 
-    // Auto-prepend protocol if missing
-    const normalizedUrl =
-      trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')
-        ? trimmedUrl
-        : `https://${trimmedUrl}`
-
-    if (!isValidUrl(normalizedUrl)) {
+    const normalizedUrl = normalizeUrl(form.url)
+    if (!normalizedUrl) {
       setUrlError('Ingresa una URL válida (ej. https://ejemplo.com).')
       return
     }
@@ -95,6 +101,39 @@ export function ReferenceLinks({
     }
   }
 
+  function startEdit(link: ReferenceLink) {
+    setEditingId(link.id)
+    setEditForm({ url: link.url, title: link.title, description: link.description ?? '' })
+    setEditUrlError(null)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditUrlError(null)
+  }
+
+  function saveEdit() {
+    if (!editingId) return
+    setEditUrlError(null)
+
+    if (!editForm.url.trim()) {
+      setEditUrlError('La URL es requerida.')
+      return
+    }
+
+    const normalizedUrl = normalizeUrl(editForm.url)
+    if (!normalizedUrl) {
+      setEditUrlError('Ingresa una URL válida (ej. https://ejemplo.com).')
+      return
+    }
+
+    const domain = extractDomain(normalizedUrl)
+    onChange(value.map((l) => (l.id === editingId
+      ? { ...l, url: normalizedUrl, title: editForm.title.trim() || domain, description: editForm.description.trim() || undefined }
+      : l)))
+    setEditingId(null)
+  }
+
   return (
     <div className="flex flex-col gap-3">
       {label && (
@@ -109,6 +148,68 @@ export function ReferenceLinks({
           {value.map((link) => {
             const domain = extractDomain(link.url)
             const dotColor = getLinkColor(link.id)
+
+            if (editingId === link.id) {
+              return (
+                <li
+                  key={link.id}
+                  className="flex flex-col gap-2 p-3 rounded-[var(--tp-r-input)] border"
+                  style={{ background: 'var(--tp-surface)', borderColor: 'var(--tp-lime)' }}
+                >
+                  <div>
+                    <input
+                      type="url"
+                      placeholder="https://ejemplo.com"
+                      value={editForm.url}
+                      onChange={(e) => { setEditForm((f) => ({ ...f, url: e.target.value })); setEditUrlError(null) }}
+                      className="w-full px-3 py-2 text-sm rounded-[var(--tp-r-input)] border outline-none transition-all focus:border-[var(--tp-lime)]"
+                      style={{
+                        background: 'var(--tp-bg)',
+                        borderColor: editUrlError ? '#ef4444' : 'var(--tp-border)',
+                        color: 'var(--tp-text)',
+                      }}
+                      autoFocus
+                    />
+                    {editUrlError && <p className="text-xs text-red-500 mt-1">{editUrlError}</p>}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Título (opcional)"
+                    value={editForm.title}
+                    onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-[var(--tp-r-input)] border outline-none transition-all focus:border-[var(--tp-lime)]"
+                    style={{ background: 'var(--tp-bg)', borderColor: 'var(--tp-border)', color: 'var(--tp-text)' }}
+                  />
+                  <textarea
+                    placeholder="Descripción (opcional)"
+                    value={editForm.description}
+                    onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                    rows={2}
+                    className="w-full px-3 py-2 text-sm rounded-[var(--tp-r-input)] border outline-none resize-none transition-all focus:border-[var(--tp-lime)]"
+                    style={{ background: 'var(--tp-bg)', borderColor: 'var(--tp-border)', color: 'var(--tp-text)' }}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={saveEdit}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-[var(--tp-r-btn)] text-xs font-semibold transition-all active:scale-95"
+                      style={{ background: 'var(--tp-lime)', color: 'var(--tp-darker)' }}
+                    >
+                      <Check size={13} />
+                      Guardar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      className="px-4 py-2 rounded-[var(--tp-r-btn)] text-xs font-medium transition-all hover:bg-[var(--tp-bg-2)]"
+                      style={{ color: 'var(--tp-text-2)' }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </li>
+              )
+            }
 
             return (
               <li
@@ -165,6 +266,14 @@ export function ReferenceLinks({
                   >
                     <ExternalLink size={13} style={{ color: 'var(--tp-text-2)' }} />
                   </a>
+                  <button
+                    type="button"
+                    onClick={() => startEdit(link)}
+                    className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[var(--tp-bg-2)] transition-colors"
+                    title="Editar enlace"
+                  >
+                    <Pencil size={13} style={{ color: 'var(--tp-text-2)' }} />
+                  </button>
                   <button
                     type="button"
                     onClick={() => removeLink(link.id)}

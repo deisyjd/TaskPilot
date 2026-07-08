@@ -11,7 +11,7 @@ import { formatDateTime } from '@/lib/dates'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cn } from '@/lib/utils'
-import { Trash2, Plus, X, Send, CheckSquare, MessageSquare, Tag, ChevronDown, Image, Copy, Link2, Check } from 'lucide-react'
+import { Trash2, Plus, X, Send, CheckSquare, MessageSquare, Tag, ChevronDown, Image, Copy, Link2, Check, Pencil } from 'lucide-react'
 import { ImageUploader } from '@/components/shared/ImageUploader'
 import { FileUploader } from '@/components/shared/FileUploader'
 import { ReferenceLinks } from '@/components/shared/ReferenceLinks'
@@ -120,6 +120,8 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
   const [commentInput, setCommentInput] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [editingChecklistId, setEditingChecklistId] = useState<string | null>(null)
+  const [editingChecklistText, setEditingChecklistText] = useState('')
 
   useEffect(() => {
     setForm(task ?? emptyTask(defaultStatus, resolvedDefaultProject, defaultAssigneeIds, defaultDueDate))
@@ -150,6 +152,19 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
     setField('checklist', form.checklist.filter((c) => c.id !== id))
   const tagChecklist = (id: string, assigneeId: string | null) =>
     setField('checklist', form.checklist.map((c) => (c.id === id ? { ...c, assigneeId } : c)))
+  const editChecklistText = (id: string, text: string) =>
+    setField('checklist', form.checklist.map((c) => (c.id === id ? { ...c, text } : c)))
+  const startEditChecklist = (id: string, text: string) => {
+    setEditingChecklistId(id)
+    setEditingChecklistText(text)
+  }
+  const saveEditChecklist = () => {
+    if (editingChecklistId && editingChecklistText.trim()) {
+      editChecklistText(editingChecklistId, editingChecklistText.trim())
+    }
+    setEditingChecklistId(null)
+  }
+  const cancelEditChecklist = () => setEditingChecklistId(null)
 
   const addTag = () => {
     const tag = tagInput.trim().toLowerCase()
@@ -320,12 +335,35 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                           className="w-4 h-4 rounded cursor-pointer shrink-0"
                           style={{ accentColor: '#111318' }}
                         />
-                        <span
-                          className={cn('text-sm flex-1', item.done ? 'line-through' : '')}
-                          style={{ color: item.done ? 'var(--tp-text-2)' : 'var(--tp-text)' }}
+                        {editingChecklistId === item.id ? (
+                          <input
+                            value={editingChecklistText}
+                            onChange={(e) => setEditingChecklistText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveEditChecklist()
+                              if (e.key === 'Escape') cancelEditChecklist()
+                            }}
+                            onBlur={saveEditChecklist}
+                            autoFocus
+                            className="text-sm flex-1 outline-none border-b bg-transparent"
+                            style={{ color: 'var(--tp-text)', borderColor: 'var(--tp-dark)' }}
+                          />
+                        ) : (
+                          <span
+                            className={cn('text-sm flex-1', item.done ? 'line-through' : '')}
+                            style={{ color: item.done ? 'var(--tp-text-2)' : 'var(--tp-text)' }}
+                          >
+                            {item.text}
+                          </span>
+                        )}
+                        <button
+                          onClick={() => startEditChecklist(item.id, item.text)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                          style={{ color: 'var(--tp-text-2)' }}
+                          title="Editar ítem"
                         >
-                          {item.text}
-                        </span>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
                         <select
                           value={item.assigneeId ?? ''}
                           onChange={(e) => tagChecklist(item.id, e.target.value || null)}

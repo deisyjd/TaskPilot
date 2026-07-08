@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   // Whitelist: el cliente envía campos que no son columnas (createdBy, …)
   const data: Record<string, unknown> = {}
-  for (const key of ['name', 'description', 'color', 'status', 'featured', 'coverImageUrl']) {
+  for (const key of ['name', 'description', 'color', 'status', 'featured', 'coverImageUrl', 'attachments', 'links']) {
     if (key in body) data[key] = body[key]
   }
 

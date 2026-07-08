@@ -78,6 +78,8 @@ model Project {
   status        String   @default("active")
   featured      Boolean  @default(false)
   coverImageUrl String?  @db.Text
+  attachments   Json?
+  links         Json?
   createdById   String?
   createdBy     User?    @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt     DateTime @default(now())
