@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   FolderOpen,
   LogOut,
+  FileBarChart,
 } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useChatStore } from '@/store/useChatStore'
@@ -30,6 +31,7 @@ const mainNav = [
   { label: 'Proyectos',        href: '/projects',        icon: FolderOpen },
   { label: 'Línea de tiempo',  href: '/timeline',        icon: CalendarDays },
   { label: 'Revisión semanal', href: '/weekly-review',   icon: ClipboardCheck },
+  { label: 'Reporte mensual',  href: '/reports/monthly', icon: FileBarChart },
   { label: 'Responsables',     href: '/users',           icon: Users },
   { label: 'Chats',            href: '/chats',           icon: MessageSquare },
   { label: 'Historial',        href: '/history',         icon: History },

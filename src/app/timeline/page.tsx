@@ -208,7 +208,7 @@ export default function TimelinePage() {
 
         {/* Assignee filter */}
         <Select value={assigneeFilter} onValueChange={(v) => setAssigneeFilter(v ?? 'all')}>
-          <SelectTrigger className="w-44 h-9 bg-white text-sm">
+          <SelectTrigger className="w-52 h-9 bg-white text-sm">
             <SelectValue placeholder="Responsable">
               {(v: string) => (v === 'all' ? 'Todos los responsables' : users.find((u) => u.id === v)?.name ?? 'Responsable')}
             </SelectValue>
