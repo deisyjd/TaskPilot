@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
+import { useUserStore } from '@/store/useUserStore'
 import { Task, TaskStatus } from '@/types'
 import { isSameDay } from '@/lib/dates'
 import { DayColumn } from '@/components/timeline/DayColumn'
@@ -43,10 +44,12 @@ function getWeekDays(weekStart: Date): Date[] {
 export default function TimelinePage() {
   const tasks = useTaskStore((s) => s.tasks)
   const projects = useTaskStore((s) => s.projects).filter((p) => p.status !== 'inactive')
+  const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
 
   const [viewMode, setViewMode] = useState<ViewMode>('week')
   const [weekOffset, setWeekOffset] = useState(0)
   const [projectFilter, setProjectFilter] = useState('all')
+  const [assigneeFilter, setAssigneeFilter] = useState('all')
   const [showDone, setShowDone] = useState(true)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
@@ -65,6 +68,7 @@ export default function TimelinePage() {
   const filtered = useMemo(() => {
     return tasks.filter((t) => {
       if (projectFilter !== 'all' && t.projectId !== projectFilter) return false
+      if (assigneeFilter !== 'all' && !t.assigneeIds.includes(assigneeFilter)) return false
       if (!showDone && t.status === 'done') return false
       if (viewMode === 'week') {
         const [y, m, d] = t.dueDate.split('T')[0].split('-').map(Number)
@@ -74,7 +78,7 @@ export default function TimelinePage() {
       }
       return true
     })
-  }, [tasks, projectFilter, showDone, viewMode, weekStart, weekEnd])
+  }, [tasks, projectFilter, assigneeFilter, showDone, viewMode, weekStart, weekEnd])
 
   const tasksByDay = useMemo(() => {
     return weekDays.map((day) => ({
@@ -190,12 +194,29 @@ export default function TimelinePage() {
         {/* Project filter */}
         <Select value={projectFilter} onValueChange={(v) => setProjectFilter(v ?? 'all')}>
           <SelectTrigger className="w-44 h-9 bg-white text-sm">
-            <SelectValue placeholder="Proyecto" />
+            <SelectValue placeholder="Proyecto">
+              {(v: string) => (v === 'all' ? 'Todos los proyectos' : projects.find((p) => p.id === v)?.name ?? 'Proyecto')}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los proyectos</SelectItem>
             {projects.map((p) => (
               <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Assignee filter */}
+        <Select value={assigneeFilter} onValueChange={(v) => setAssigneeFilter(v ?? 'all')}>
+          <SelectTrigger className="w-44 h-9 bg-white text-sm">
+            <SelectValue placeholder="Responsable">
+              {(v: string) => (v === 'all' ? 'Todos los responsables' : users.find((u) => u.id === v)?.name ?? 'Responsable')}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los responsables</SelectItem>
+            {users.map((u) => (
+              <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
