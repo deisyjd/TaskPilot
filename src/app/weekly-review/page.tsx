@@ -94,7 +94,9 @@ export default function WeeklyReviewPage() {
       const d = new Date(t.dueDate); d.setHours(0,0,0,0)
       return d >= weekStart && d <= weekEnd
     })
-  }, [tasks])
+  // weekStart/weekEnd are new Date objects every render — depend on weekOffset instead
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, weekOffset])
 
   const done = weekTasks.filter((t) => t.status === 'done')
   const pending = weekTasks.filter((t) => t.status === 'pending' || t.status === 'in-progress' || t.status === 'review' || t.status === 'scheduled')
