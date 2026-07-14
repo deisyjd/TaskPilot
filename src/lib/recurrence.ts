@@ -51,16 +51,27 @@ function shiftDate(dateStr: string, days: number): string {
  * on top of that.
  */
 export async function generateDueRecurrences(companyId: string) {
+  const today = todayStr()
+
+  // Excluye series con recurrenceUntil ya vencido: nunca van a generar nada
+  // nuevo, pero sin este filtro se siguen consultando en cada carga para
+  // siempre — un costo que solo crece con los meses de uso de la empresa.
   const templates = await prisma.task.findMany({
-    where: { companyId, parentTaskId: null, recurrence: { not: null } },
+    where: {
+      companyId,
+      parentTaskId: null,
+      recurrence: { not: null },
+      OR: [{ recurrenceUntil: null }, { recurrenceUntil: { gte: today } }],
+    },
     include: { assignees: { select: { userId: true } } },
   })
 
-  const today = todayStr()
-
-  for (const template of templates) {
+  // Cada plantilla es independiente de las demás — se procesan en paralelo
+  // en vez de una por una, para no sumar una ronda de latencia de red por
+  // cada tarea recurrente que la empresa tenga acumulada.
+  await Promise.all(templates.map(async (template) => {
     const recurrence = template.recurrence
-    if (!recurrence) continue
+    if (!recurrence) return
     const interval = template.recurrenceInterval ?? 1
 
     const existingOccurrences = await prisma.task.findMany({
@@ -104,5 +115,5 @@ export async function generateDueRecurrences(companyId: string) {
       lastDueDate = nextDate
       generated++
     }
-  }
+  }))
 }

@@ -23,14 +23,15 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
   const fetchConversations = useChatStore((s) => s.fetchConversations)
 
   useEffect(() => {
-    // Verify session with server
+    // Verify session with server, then wait for the initial data load too —
+    // otherwise the shell renders with empty tasks/projects for a moment
+    // (visible as "no hay tareas" that pops in once the fetch resolves).
     fetch('/api/auth/me')
       .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
+      .then(async (data) => {
         if (data) {
           login(data)
-          fetchAll()
-          fetchUsers()
+          await Promise.all([fetchAll(), fetchUsers()])
           fetchConversations()
         }
       })
@@ -53,7 +54,14 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
   }, [ready, isLoggedIn, pathname, router])
 
   if (!ready) {
-    return <div className="h-screen" style={{ backgroundColor: 'var(--tp-bg)' }} />
+    return (
+      <div className="h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--tp-bg)' }}>
+        <div
+          className="w-6 h-6 rounded-full border-2 animate-spin"
+          style={{ borderColor: 'var(--tp-border)', borderTopColor: 'var(--tp-dark)' }}
+        />
+      </div>
+    )
   }
 
   if (pathname === '/login') {
