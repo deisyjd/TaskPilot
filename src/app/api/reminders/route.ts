@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  const { projectId, title, dueDate, assigneeId } = await req.json()
+  const { projectId, title, dueDate, dueTime, assigneeId } = await req.json()
   if (!projectId || !title?.trim() || !dueDate) {
     return NextResponse.json({ error: 'projectId, title y dueDate son requeridos' }, { status: 400 })
   }
@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
       projectId,
       title: title.trim(),
       dueDate,
+      dueTime: dueTime || null,
       assigneeId: validAssigneeId,
       createdBy: actor?.name ?? session.email,
     },

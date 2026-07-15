@@ -47,8 +47,8 @@ interface TaskStore {
   updateNote: (id: string, updates: { title?: string; content?: string; color?: string }) => Promise<boolean>
   deleteNote: (id: string) => Promise<boolean>
 
-  addReminder: (reminder: { projectId: string; title: string; dueDate: string; assigneeId?: string | null }) => Promise<Reminder | null>
-  updateReminder: (id: string, updates: Partial<Pick<Reminder, 'title' | 'dueDate' | 'done' | 'assigneeId'>>) => Promise<void>
+  addReminder: (reminder: { projectId: string; title: string; dueDate: string; dueTime?: string | null; assigneeId?: string | null }) => Promise<Reminder | null>
+  updateReminder: (id: string, updates: Partial<Pick<Reminder, 'title' | 'dueDate' | 'dueTime' | 'done' | 'assigneeId'>>) => Promise<void>
   deleteReminder: (id: string) => Promise<void>
 
   getProjectById: (id: string) => Project | undefined

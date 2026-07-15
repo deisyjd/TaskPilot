@@ -21,7 +21,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const body = await req.json()
   const data: Record<string, unknown> = {}
-  for (const key of ['title', 'dueDate', 'done']) {
+  for (const key of ['title', 'dueDate', 'dueTime', 'done']) {
     if (key in body) data[key] = body[key]
   }
 

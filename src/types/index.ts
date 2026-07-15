@@ -151,6 +151,7 @@ export interface Reminder {
   projectColor: string
   title: string
   dueDate: string
+  dueTime?: string | null
   done: boolean
   assigneeId?: string | null
   createdBy?: string

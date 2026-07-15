@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation'
 import { Bell, Plus, AlertTriangle, Clock, ChevronRight, Menu, BellRing } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useMobileNavStore } from '@/store/useMobileNavStore'
-import { isOverdue, isToday } from '@/lib/dates'
+import { isOverdue } from '@/lib/dates'
+import { isReminderDue, formatReminderDateTime } from '@/lib/reminders'
 import { ProjectModal } from '@/components/projects/ProjectModal'
 import { Task, Reminder } from '@/types'
 
@@ -104,9 +105,7 @@ function ReminderNotifItem({ reminder }: { reminder: Reminder }) {
           </span>
         </div>
         <p className="text-[10px] mt-0.5" style={{ color: 'var(--tp-text-2)' }}>
-          {new Date(reminder.dueDate + 'T00:00:00').toLocaleDateString('es-ES', {
-            day: 'numeric', month: 'short',
-          })}
+          {formatReminderDateTime(reminder)}
         </p>
       </div>
     </div>
@@ -140,10 +139,10 @@ export function Header() {
       return (PRIORITY_ORDER[a.priority] ?? 99) - (PRIORITY_ORDER[b.priority] ?? 99)
     })
 
-  // Recordatorios con fecha ya cumplida o vencida, sin marcar como hechos.
+  // Recordatorios cuya fecha/hora ya llegó, sin marcar como hechos.
   const notifReminders = reminders
-    .filter((r) => !r.done && (isOverdue(r.dueDate, 'pending') || isToday(r.dueDate)))
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .filter(isReminderDue)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || (a.dueTime ?? '').localeCompare(b.dueTime ?? ''))
 
   const alertCount = notifTasks.length + notifReminders.length
 

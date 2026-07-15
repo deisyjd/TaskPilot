@@ -1,17 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { BellRing, Plus, Trash2 } from 'lucide-react'
+import { BellRing, Plus, Trash2, Clock } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore } from '@/store/useUserStore'
-import { isOverdue } from '@/lib/dates'
+import { isReminderDue, formatReminderDateTime, getSnoozeOptions } from '@/lib/reminders'
 import { cn } from '@/lib/utils'
 import { Project, Reminder } from '@/types'
-
-function formatDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
-}
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 interface Props {
   project: Project
@@ -26,6 +27,7 @@ export function RemindersPanel({ project }: Props) {
 
   const [title, setTitle] = useState('')
   const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0])
+  const [dueTime, setDueTime] = useState('')
   const [assigneeId, setAssigneeId] = useState('')
   const [error, setError] = useState('')
 
@@ -34,19 +36,22 @@ export function RemindersPanel({ project }: Props) {
 
   async function handleCreate() {
     if (!title.trim() || !dueDate) return
-    const created = await addReminder({ projectId: project.id, title: title.trim(), dueDate, assigneeId: assigneeId || null })
+    const created = await addReminder({
+      projectId: project.id, title: title.trim(), dueDate, dueTime: dueTime || null, assigneeId: assigneeId || null,
+    })
     if (!created) {
       setError('No se pudo crear el recordatorio. Intenta de nuevo.')
       return
     }
     setError('')
     setTitle('')
+    setDueTime('')
     setAssigneeId('')
   }
 
   function ReminderRow({ reminder }: { reminder: Reminder }) {
     const user = users.find((u) => u.id === reminder.assigneeId)
-    const overdue = !reminder.done && isOverdue(reminder.dueDate, 'pending')
+    const overdue = isReminderDue(reminder)
     return (
       <div
         className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl group"
@@ -66,7 +71,7 @@ export function RemindersPanel({ project }: Props) {
           {reminder.title}
         </span>
         <span className="text-xs shrink-0" style={{ color: overdue ? '#DC2626' : 'var(--tp-text-2)' }}>
-          {formatDate(reminder.dueDate)}
+          {formatReminderDateTime(reminder)}
         </span>
         {user && (
           <div
@@ -75,6 +80,31 @@ export function RemindersPanel({ project }: Props) {
           >
             {user.initials?.[0]}
           </div>
+        )}
+        {!reminder.done && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+              style={{ color: 'var(--tp-text-2)' }}
+              title="Posponer"
+            >
+              <Clock className="w-3.5 h-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40 rounded-2xl">
+              {getSnoozeOptions().map(({ label, compute }) => (
+                <DropdownMenuItem
+                  key={label}
+                  className="text-sm rounded-xl"
+                  onClick={() => {
+                    const { dueDate: nd, dueTime: nt } = compute()
+                    updateReminder(reminder.id, { dueDate: nd, dueTime: nt })
+                  }}
+                >
+                  {label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         <button
           onClick={() => deleteReminder(reminder.id)}
@@ -117,6 +147,14 @@ export function RemindersPanel({ project }: Props) {
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
+            className="text-sm px-3 outline-none rounded-lg border"
+            style={{ height: '38px', backgroundColor: 'var(--tp-surface)', borderColor: 'var(--tp-border)', color: 'var(--tp-text)' }}
+          />
+          <input
+            type="time"
+            value={dueTime}
+            onChange={(e) => setDueTime(e.target.value)}
+            title="Hora (opcional)"
             className="text-sm px-3 outline-none rounded-lg border"
             style={{ height: '38px', backgroundColor: 'var(--tp-surface)', borderColor: 'var(--tp-border)', color: 'var(--tp-text)' }}
           />
