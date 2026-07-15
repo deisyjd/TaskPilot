@@ -5,9 +5,10 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore } from '@/store/useUserStore'
 import { Task, TaskStatus } from '@/types'
+import { getWeekDays, parseLocal } from '@/lib/dates'
 import { KanbanColumn } from '@/components/board/KanbanColumn'
 import { TaskModal } from '@/components/board/TaskModal'
-import { Search, SlidersHorizontal, Plus, ChevronDown } from 'lucide-react'
+import { Search, Plus, ChevronDown, CalendarRange } from 'lucide-react'
 
 const STATUSES: TaskStatus[] = ['pending', 'in-progress', 'review', 'scheduled', 'done', 'blocked']
 
@@ -33,20 +34,30 @@ function BoardPageContent() {
   const [search, setSearch] = useState('')
   const [projectFilter, setProjectFilter] = useState('all')
   const [assigneeFilter, setAssigneeFilter] = useState('all')
+  const [weekOnly, setWeekOnly] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus>('pending')
   const [handledSharedId, setHandledSharedId] = useState<string | null>(null)
   const [sharedTaskNotFound, setSharedTaskNotFound] = useState(false)
 
+  const [weekStart, weekEnd] = useMemo(() => {
+    const days = getWeekDays(0)
+    return [days[0], days[6]]
+  }, [])
+
   const filtered = useMemo(() => {
     return tasks.filter((t) => {
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false
       if (projectFilter !== 'all' && t.projectId !== projectFilter) return false
       if (assigneeFilter !== 'all' && !t.assigneeIds.includes(assigneeFilter)) return false
+      if (weekOnly) {
+        const due = parseLocal(t.dueDate)
+        if (due < weekStart || due > weekEnd) return false
+      }
       return true
     })
-  }, [tasks, search, projectFilter, assigneeFilter])
+  }, [tasks, search, projectFilter, assigneeFilter, weekOnly, weekStart, weekEnd])
 
   const byStatus = useMemo(() => {
     return STATUSES.reduce<Record<TaskStatus, Task[]>>((acc, s) => {
@@ -131,6 +142,19 @@ function BoardPageContent() {
             </select>
             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: 'var(--tp-text-2)' }} />
           </div>
+
+          <button
+            onClick={() => setWeekOnly((v) => !v)}
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border transition-colors shrink-0"
+            style={{
+              backgroundColor: weekOnly ? 'var(--tp-dark)' : 'var(--tp-surface)',
+              borderColor: weekOnly ? 'var(--tp-dark)' : 'var(--tp-border)',
+              color: weekOnly ? 'var(--tp-lime)' : 'var(--tp-text-2)',
+            }}
+          >
+            <CalendarRange className="w-3.5 h-3.5" />
+            Esta semana
+          </button>
         </div>
 
         <div className="flex items-center gap-2.5 sm:ml-auto">
