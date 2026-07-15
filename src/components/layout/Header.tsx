@@ -2,12 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { Bell, Plus, AlertTriangle, Clock, ChevronRight, Menu } from 'lucide-react'
+import { Bell, Plus, AlertTriangle, Clock, ChevronRight, Menu, BellRing } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useMobileNavStore } from '@/store/useMobileNavStore'
-import { isOverdue } from '@/lib/dates'
+import { isOverdue, isToday } from '@/lib/dates'
 import { ProjectModal } from '@/components/projects/ProjectModal'
-import { Task } from '@/types'
+import { Task, Reminder } from '@/types'
 
 const pageTitles: Record<string, { title: string; sub: string }> = {
   '/dashboard':    { title: 'Dashboard',             sub: 'Resumen de operaciones del día' },
@@ -76,10 +76,48 @@ function NotifItem({ task }: { task: Task & { reason: string } }) {
   )
 }
 
+function ReminderNotifItem({ reminder }: { reminder: Reminder }) {
+  const overdue = isOverdue(reminder.dueDate, 'pending')
+  const color = overdue ? '#DC2626' : '#8B5CF6'
+  return (
+    <div
+      className="flex items-start gap-3 px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-[var(--tp-bg)]"
+      style={{ borderColor: 'var(--tp-border)' }}
+    >
+      <div
+        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+        style={{ backgroundColor: `${color}15`, color }}
+      >
+        <BellRing className="w-3.5 h-3.5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium truncate" style={{ color: 'var(--tp-text)' }}>
+          {reminder.title}
+        </p>
+        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+          <span className="text-[10px] font-semibold" style={{ color }}>
+            {overdue ? 'Vencido' : 'Recordatorio'}
+          </span>
+          <span className="text-[10px]" style={{ color: 'var(--tp-text-2)' }}>·</span>
+          <span className="text-[10px]" style={{ color: 'var(--tp-text-2)' }}>
+            {reminder.projectName}
+          </span>
+        </div>
+        <p className="text-[10px] mt-0.5" style={{ color: 'var(--tp-text-2)' }}>
+          {new Date(reminder.dueDate + 'T00:00:00').toLocaleDateString('es-ES', {
+            day: 'numeric', month: 'short',
+          })}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export function Header() {
   const pathname = usePathname()
   const page = pageTitles[pathname] ?? { title: 'Wipli', sub: '' }
   const tasks = useTaskStore((s) => s.tasks)
+  const reminders = useTaskStore((s) => s.reminders)
   const { toggle: toggleMobileNav } = useMobileNavStore()
   const [projectModalOpen, setProjectModalOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
@@ -102,7 +140,12 @@ export function Header() {
       return (PRIORITY_ORDER[a.priority] ?? 99) - (PRIORITY_ORDER[b.priority] ?? 99)
     })
 
-  const alertCount = notifTasks.length
+  // Recordatorios con fecha ya cumplida o vencida, sin marcar como hechos.
+  const notifReminders = reminders
+    .filter((r) => !r.done && (isOverdue(r.dueDate, 'pending') || isToday(r.dueDate)))
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+
+  const alertCount = notifTasks.length + notifReminders.length
 
   // Close panel on outside click
   useEffect(() => {
@@ -220,7 +263,7 @@ export function Header() {
 
               {/* List */}
               <div className="max-h-[360px] overflow-y-auto">
-                {notifTasks.length === 0 ? (
+                {notifTasks.length === 0 && notifReminders.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 gap-2">
                     <div
                       className="w-10 h-10 rounded-full flex items-center justify-center"
@@ -233,12 +276,15 @@ export function Header() {
                     </p>
                   </div>
                 ) : (
-                  notifTasks.map((t) => <NotifItem key={t.id} task={t} />)
+                  <>
+                    {notifTasks.map((t) => <NotifItem key={t.id} task={t} />)}
+                    {notifReminders.map((r) => <ReminderNotifItem key={r.id} reminder={r} />)}
+                  </>
                 )}
               </div>
 
               {/* Footer link */}
-              {notifTasks.length > 0 && (
+              {(notifTasks.length > 0 || notifReminders.length > 0) && (
                 <div style={{ borderTop: '1px solid var(--tp-border)' }}>
                   <a
                     href="/board"

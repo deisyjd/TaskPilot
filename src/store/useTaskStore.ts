@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Task, TaskStatus, HistoryEvent, Project, Note } from '@/types'
+import { Task, TaskStatus, HistoryEvent, Project, Note, Reminder } from '@/types'
 
 async function api<T>(url: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -18,14 +18,17 @@ interface TaskStore {
   tasks: Task[]
   history: HistoryEvent[]
   projects: Project[]
+  reminders: Reminder[]
   tasksLoading: boolean
   projectsLoading: boolean
   historyLoading: boolean
+  remindersLoading: boolean
   error: string | null
 
   fetchTasks: () => Promise<void>
   fetchProjects: () => Promise<void>
   fetchHistory: () => Promise<void>
+  fetchReminders: () => Promise<void>
   fetchAll: () => Promise<void>
 
   addTask: (task: Partial<Task> & { title: string; projectId: string }) => Promise<Task | null>
@@ -44,6 +47,10 @@ interface TaskStore {
   updateNote: (id: string, updates: { title?: string; content?: string; color?: string }) => Promise<boolean>
   deleteNote: (id: string) => Promise<boolean>
 
+  addReminder: (reminder: { projectId: string; title: string; dueDate: string; assigneeId?: string | null }) => Promise<Reminder | null>
+  updateReminder: (id: string, updates: Partial<Pick<Reminder, 'title' | 'dueDate' | 'done' | 'assigneeId'>>) => Promise<void>
+  deleteReminder: (id: string) => Promise<void>
+
   getProjectById: (id: string) => Project | undefined
 }
 
@@ -55,9 +62,11 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
   tasks: [],
   history: [],
   projects: [],
+  reminders: [],
   tasksLoading: false,
   projectsLoading: false,
   historyLoading: false,
+  remindersLoading: false,
   error: null,
 
   fetchTasks: async () => {
@@ -96,8 +105,20 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
     }
   },
 
+  fetchReminders: async () => {
+    set({ remindersLoading: true, error: null })
+    try {
+      const reminders = await api<Reminder[]>('/api/reminders')
+      set({ reminders })
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al cargar recordatorios' })
+    } finally {
+      set({ remindersLoading: false })
+    }
+  },
+
   fetchAll: async () => {
-    await Promise.all([get().fetchProjects(), get().fetchTasks(), get().fetchHistory()])
+    await Promise.all([get().fetchProjects(), get().fetchTasks(), get().fetchHistory(), get().fetchReminders()])
   },
 
   addTask: async (task) => {
@@ -218,6 +239,35 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
     } catch (e) {
       set({ error: e instanceof Error ? e.message : 'Error al eliminar nota' })
       return false
+    }
+  },
+
+  addReminder: async (reminder) => {
+    try {
+      const created = await api<Reminder>('/api/reminders', { method: 'POST', body: JSON.stringify(reminder) })
+      set((s) => ({ reminders: [...s.reminders, created].sort((a, b) => a.dueDate.localeCompare(b.dueDate)) }))
+      return created
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al crear recordatorio' })
+      return null
+    }
+  },
+
+  updateReminder: async (id, updates) => {
+    try {
+      const updated = await api<Reminder>(`/api/reminders/${id}`, { method: 'PATCH', body: JSON.stringify(updates) })
+      set((s) => ({ reminders: s.reminders.map((r) => (r.id === id ? updated : r)) }))
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al actualizar recordatorio' })
+    }
+  },
+
+  deleteReminder: async (id) => {
+    try {
+      await api(`/api/reminders/${id}`, { method: 'DELETE' })
+      set((s) => ({ reminders: s.reminders.filter((r) => r.id !== id) }))
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Error al eliminar recordatorio' })
     }
   },
 

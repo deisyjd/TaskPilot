@@ -1,0 +1,59 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getSession } from '@/lib/auth'
+import { reminderVisibilityFilter } from '../route'
+
+type Params = { params: Promise<{ id: string }> }
+
+function serializeReminder<T extends { project: { name: string; color: string } }>(reminder: T) {
+  return { ...reminder, projectName: reminder.project.name, projectColor: reminder.project.color }
+}
+
+export async function PATCH(req: NextRequest, { params }: Params) {
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+
+  const { id } = await params
+  const existing = await prisma.reminder.findFirst({
+    where: { id, companyId: session.activeCompanyId, ...reminderVisibilityFilter(session) },
+  })
+  if (!existing) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+
+  const body = await req.json()
+  const data: Record<string, unknown> = {}
+  for (const key of ['title', 'dueDate', 'done']) {
+    if (key in body) data[key] = body[key]
+  }
+
+  if ('assigneeId' in body) {
+    if (body.assigneeId) {
+      const membership = await prisma.companyMembership.findUnique({
+        where: { userId_companyId: { userId: body.assigneeId, companyId: session.activeCompanyId } },
+      })
+      data.assigneeId = membership ? body.assigneeId : null
+    } else {
+      data.assigneeId = null
+    }
+  }
+
+  const reminder = await prisma.reminder.update({
+    where: { id },
+    data,
+    include: { project: { select: { name: true, color: true } } },
+  })
+
+  return NextResponse.json(serializeReminder(reminder))
+}
+
+export async function DELETE(req: NextRequest, { params }: Params) {
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+
+  const { id } = await params
+  const result = await prisma.reminder.deleteMany({
+    where: { id, companyId: session.activeCompanyId, ...reminderVisibilityFilter(session) },
+  })
+  if (result.count === 0) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+
+  return NextResponse.json({ ok: true })
+}

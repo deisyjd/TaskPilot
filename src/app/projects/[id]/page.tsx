@@ -2,15 +2,16 @@
 
 import { use, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, FolderOpen, LayoutDashboard, StickyNote } from 'lucide-react'
+import { ArrowLeft, FolderOpen, LayoutDashboard, StickyNote, BellRing } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useCurrentUser } from '@/store/useUserStore'
 import { canManageProject } from '@/lib/permissions'
 import { ProjectDetail } from '@/components/projects/ProjectDetail'
 import { ProjectModal } from '@/components/projects/ProjectModal'
 import { NotesPanel } from '@/components/projects/NotesPanel'
+import { RemindersPanel } from '@/components/projects/RemindersPanel'
 
-type Tab = 'overview' | 'notes'
+type Tab = 'overview' | 'notes' | 'reminders'
 
 export default function ProjectPage({
   params,
@@ -19,6 +20,7 @@ export default function ProjectPage({
 }) {
   const { id } = use(params)
   const projects = useTaskStore((s) => s.projects)
+  const reminders = useTaskStore((s) => s.reminders)
   const project = projects.find((p) => p.id === id)
   const [editOpen, setEditOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
@@ -60,11 +62,13 @@ export default function ProjectPage({
   }
 
   const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'overview', label: 'Resumen',  icon: <LayoutDashboard className="w-4 h-4" /> },
-    { key: 'notes',    label: 'Notas',    icon: <StickyNote className="w-4 h-4" /> },
+    { key: 'overview',  label: 'Resumen',       icon: <LayoutDashboard className="w-4 h-4" /> },
+    { key: 'notes',     label: 'Notas',         icon: <StickyNote className="w-4 h-4" /> },
+    { key: 'reminders', label: 'Recordatorios', icon: <BellRing className="w-4 h-4" /> },
   ]
 
   const noteCount = project.notes?.length ?? 0
+  const reminderCount = reminders.filter((r) => r.projectId === project.id && !r.done).length
 
   // ─── Found ────────────────────────────────────────────────
   return (
@@ -119,6 +123,18 @@ export default function ProjectPage({
                 {noteCount}
               </span>
             )}
+            {key === 'reminders' && reminderCount > 0 && (
+              <span
+                className="ml-0.5 text-xs font-semibold px-1.5 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: activeTab === 'reminders' ? 'rgba(255,255,255,0.25)' : `${project.color}22`,
+                  color: activeTab === 'reminders' ? '#FFFFFF' : project.color,
+                  lineHeight: 1,
+                }}
+              >
+                {reminderCount}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -137,6 +153,18 @@ export default function ProjectPage({
           }}
         >
           <NotesPanel project={project} />
+        </div>
+      )}
+      {activeTab === 'reminders' && (
+        <div
+          className="p-5"
+          style={{
+            backgroundColor: 'var(--tp-surface)',
+            borderRadius: 'var(--tp-r-card)',
+            border: '1px solid var(--tp-border)',
+          }}
+        >
+          <RemindersPanel project={project} />
         </div>
       )}
 

@@ -144,6 +144,19 @@ export interface Note {
   updatedAt: string
 }
 
+export interface Reminder {
+  id: string
+  projectId: string
+  projectName: string
+  projectColor: string
+  title: string
+  dueDate: string
+  done: boolean
+  assigneeId?: string | null
+  createdBy?: string
+  createdAt: string
+}
+
 export interface Project {
   id: string
   name: string
