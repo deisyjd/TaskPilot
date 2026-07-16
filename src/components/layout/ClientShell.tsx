@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -9,6 +9,8 @@ import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore } from '@/store/useUserStore'
 import { useChatStore } from '@/store/useChatStore'
 import { useAuthStore } from '@/store/useAuthStore'
+import { isReminderDue } from '@/lib/reminders'
+import { isReminderAlertsEnabled, notifyReminderDue } from '@/lib/reminderAlerts'
 
 export function ClientShell({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false)
@@ -21,6 +23,9 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   const fetchConversations = useChatStore((s) => s.fetchConversations)
+  const fetchReminders = useTaskStore((s) => s.fetchReminders)
+  const alertedRemindersRef = useRef<Set<string>>(new Set())
+  const firstReminderCheckRef = useRef(true)
 
   useEffect(() => {
     // Verify session with server, then wait for the initial data load too —
@@ -33,6 +38,13 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
           login(data)
           await Promise.all([fetchAll(), fetchUsers()])
           fetchConversations()
+          // Registra en silencio los recordatorios que ya estaban vencidos al
+          // cargar, para no dispararles sonido/notificación en cada recarga —
+          // solo se alerta a los que se vencen mientras la pestaña sigue abierta.
+          useTaskStore.getState().reminders.forEach((r) => {
+            if (isReminderDue(r)) alertedRemindersRef.current.add(r.id)
+          })
+          firstReminderCheckRef.current = false
         }
       })
       .catch(() => {})
@@ -40,12 +52,24 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Contador de mensajes no leídos: sin websockets, se refresca por sondeo.
+  // Contador de mensajes no leídos + recordatorios vencidos: sin websockets,
+  // se refrescan por sondeo cada 30s (funciona aunque la pestaña de Wipli no
+  // esté a la vista — solo necesita seguir abierta en algún lado).
   useEffect(() => {
     if (!isLoggedIn) return
-    const interval = setInterval(() => fetchConversations(), 30000)
+    const interval = setInterval(async () => {
+      fetchConversations()
+      await fetchReminders()
+      if (firstReminderCheckRef.current || !isReminderAlertsEnabled()) return
+      useTaskStore.getState().reminders.forEach((r) => {
+        if (isReminderDue(r) && !alertedRemindersRef.current.has(r.id)) {
+          alertedRemindersRef.current.add(r.id)
+          notifyReminderDue(r)
+        }
+      })
+    }, 30000)
     return () => clearInterval(interval)
-  }, [isLoggedIn, fetchConversations])
+  }, [isLoggedIn, fetchConversations, fetchReminders])
 
   useEffect(() => {
     if (!ready) return

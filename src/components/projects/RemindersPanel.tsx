@@ -5,6 +5,7 @@ import { BellRing, Plus, Trash2, Clock } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore } from '@/store/useUserStore'
 import { isReminderDue, formatReminderDateTime, getSnoozeOptions } from '@/lib/reminders'
+import { formatDateOnly } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { Project, Reminder } from '@/types'
 import {
@@ -26,7 +27,7 @@ export function RemindersPanel({ project }: Props) {
   const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
 
   const [title, setTitle] = useState('')
-  const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0])
+  const [dueDate, setDueDate] = useState(formatDateOnly(new Date()))
   const [dueTime, setDueTime] = useState('')
   const [assigneeId, setAssigneeId] = useState('')
   const [error, setError] = useState('')

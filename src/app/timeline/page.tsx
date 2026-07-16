@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore } from '@/store/useUserStore'
 import { Task, TaskStatus } from '@/types'
-import { isSameDay } from '@/lib/dates'
+import { isSameDay, formatDateOnly } from '@/lib/dates'
 import { DayColumn } from '@/components/timeline/DayColumn'
 import { MonthCalendar } from '@/components/timeline/MonthCalendar'
 import { TaskModal } from '@/components/board/TaskModal'
@@ -111,7 +111,7 @@ export default function TimelinePage() {
 
   const openNew = (date: Date) => {
     setSelectedTask(null)
-    setNewTaskDate(date.toISOString().split('T')[0])
+    setNewTaskDate(formatDateOnly(date))
     setModalOpen(true)
   }
 

@@ -7,7 +7,7 @@ import {
 } from '@/types'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
-import { formatDateTime } from '@/lib/dates'
+import { formatDateTime, formatDateOnly } from '@/lib/dates'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cn } from '@/lib/utils'
@@ -43,7 +43,7 @@ function emptyTask(status: TaskStatus = 'pending', projectId = '', assigneeIds: 
   const now = new Date().toISOString()
   return {
     id: `t-${uid()}`, title: '', projectId, description: '', status,
-    assigneeIds, startDate: null, dueDate: dueDate || new Date().toISOString().split('T')[0],
+    assigneeIds, startDate: null, dueDate: dueDate || formatDateOnly(new Date()),
     priority: 'medium', type: 'other', tags: [], checklist: [], comments: [],
     createdAt: now, updatedAt: now,
     recurrence: null, recurrenceInterval: null, recurrenceUntil: null,

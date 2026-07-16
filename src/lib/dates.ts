@@ -9,6 +9,17 @@ export function parseLocal(dateStr: string): Date {
   return new Date(year, month - 1, day)
 }
 
+// Inverse of parseLocal: format a Date's own local Y/M/D as "YYYY-MM-DD".
+// Never use date.toISOString().split('T')[0] for this — toISOString() converts
+// to UTC first, so in the evening in UTC-5 (Colombia) it silently rolls over
+// to tomorrow's date.
+export function formatDateOnly(date: Date): string {
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
 export function isToday(dateStr: string): boolean {
   const today = new Date()
   const d = parseLocal(dateStr)
