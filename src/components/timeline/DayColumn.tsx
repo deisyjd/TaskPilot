@@ -27,10 +27,10 @@ export function DayColumn({ date, tasks, isToday, onCardClick, onAddTask, onDrop
   const [dragOver, setDragOver] = useState(false)
 
   return (
-    <div className="flex flex-col w-52 shrink-0" style={{ opacity: isWeekend ? 0.75 : 1 }}>
-      {/* Day header */}
+    <div className="flex flex-col w-52 shrink-0 h-full min-h-0" style={{ opacity: isWeekend ? 0.75 : 1 }}>
+      {/* Day header — se queda fijo arriba, no se va con el scroll de las tarjetas */}
       <div
-        className="rounded-2xl p-3 mb-2 text-center"
+        className="rounded-2xl p-3 mb-2 text-center shrink-0"
         style={{
           backgroundColor: isToday ? 'var(--tp-dark)' : 'var(--tp-surface)',
           border: isToday ? 'none' : '1px solid var(--tp-border)',
@@ -53,9 +53,9 @@ export function DayColumn({ date, tasks, isToday, onCardClick, onAddTask, onDrop
         )}
       </div>
 
-      {/* Tasks */}
+      {/* Tasks — scroll vertical propio, independiente de las demás columnas */}
       <div
-        className="flex flex-col gap-1.5 flex-1 p-1.5 min-h-[120px] transition-colors"
+        className="flex flex-col gap-1.5 flex-1 min-h-0 overflow-y-auto p-1.5 transition-colors"
         style={{
           backgroundColor: dragOver ? 'rgba(163, 230, 53, 0.15)' : 'var(--tp-bg-2)',
           borderRadius: 'var(--tp-r-inner)',
@@ -81,7 +81,7 @@ export function DayColumn({ date, tasks, isToday, onCardClick, onAddTask, onDrop
         ))}
         <button
           onClick={() => onAddTask(date)}
-          className="flex items-center justify-center gap-1 text-xs py-2 rounded-xl transition-all hover:opacity-80 mt-auto"
+          className="flex items-center justify-center gap-1 text-xs py-2 rounded-xl transition-all hover:opacity-80 mt-1 shrink-0"
           style={{ color: 'var(--tp-text-2)', backgroundColor: 'rgba(255,255,255,0.5)' }}
         >
           <Plus className="w-3 h-3" />

@@ -252,7 +252,7 @@ export default function TimelinePage() {
 
       {/* Week view */}
       {viewMode === 'week' && (
-        <div className="flex gap-3 overflow-x-auto pb-4 flex-1">
+        <div className="flex gap-3 overflow-x-auto pb-4 flex-1 min-h-0">
           {tasksByDay.map(({ date, tasks: dayTasks }) => (
             <DayColumn
               key={date.toISOString()}
