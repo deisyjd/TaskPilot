@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
-import { useUserStore } from '@/store/useUserStore'
+import { useUserStore, useCurrentUser } from '@/store/useUserStore'
 import { Task, TaskStatus } from '@/types'
 import { isSameDay, formatDateOnly } from '@/lib/dates'
 import { DayColumn } from '@/components/timeline/DayColumn'
@@ -46,11 +46,13 @@ export default function TimelinePage() {
   const updateTask = useTaskStore((s) => s.updateTask)
   const projects = useTaskStore((s) => s.projects).filter((p) => p.status !== 'inactive')
   const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
+  const currentUser = useCurrentUser()
 
   const [viewMode, setViewMode] = useState<ViewMode>('week')
   const [weekOffset, setWeekOffset] = useState(0)
   const [projectFilter, setProjectFilter] = useState('all')
   const [assigneeFilter, setAssigneeFilter] = useState('all')
+  const [roleFilter, setRoleFilter] = useState<'all' | 'editor' | 'viewer'>('all')
   const [showDone, setShowDone] = useState(true)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
@@ -70,6 +72,12 @@ export default function TimelinePage() {
     return tasks.filter((t) => {
       if (projectFilter !== 'all' && t.projectId !== projectFilter) return false
       if (assigneeFilter !== 'all' && !t.assigneeIds.includes(assigneeFilter)) return false
+      if (roleFilter !== 'all' && currentUser) {
+        const isAssignee = t.assigneeIds.includes(currentUser.id)
+        const isViewerOnTask = t.viewerAssigneeIds?.includes(currentUser.id) ?? false
+        if (roleFilter === 'editor' && (!isAssignee || isViewerOnTask)) return false
+        if (roleFilter === 'viewer' && (!isAssignee || !isViewerOnTask)) return false
+      }
       if (!showDone && t.status === 'done') return false
       if (viewMode === 'week') {
         const [y, m, d] = t.dueDate.split('T')[0].split('-').map(Number)
@@ -79,7 +87,7 @@ export default function TimelinePage() {
       }
       return true
     })
-  }, [tasks, projectFilter, assigneeFilter, showDone, viewMode, weekStart, weekEnd])
+  }, [tasks, projectFilter, assigneeFilter, roleFilter, currentUser, showDone, viewMode, weekStart, weekEnd])
 
   const tasksByDay = useMemo(() => {
     return weekDays.map((day) => ({
@@ -225,6 +233,22 @@ export default function TimelinePage() {
             {users.map((u) => (
               <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+
+        {/* Mi rol en la tarea: propias (editar) vs. solo auditoría (ver) */}
+        <Select value={roleFilter} onValueChange={(v) => setRoleFilter((v as typeof roleFilter) ?? 'all')}>
+          <SelectTrigger className="w-48 h-9 bg-white text-sm">
+            <SelectValue placeholder="Mi rol">
+              {(v: string) =>
+                v === 'editor' ? 'Propias (editar)' : v === 'viewer' ? 'Solo auditoría (ver)' : 'Todas (mi rol)'
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas (mi rol)</SelectItem>
+            <SelectItem value="editor">Propias (editar)</SelectItem>
+            <SelectItem value="viewer">Solo auditoría (ver)</SelectItem>
           </SelectContent>
         </Select>
 
