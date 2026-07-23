@@ -53,6 +53,7 @@ const EMPTY_FORM = {
   status: 'active' as 'active' | 'inactive',
   password: '',
   confirmPassword: '',
+  dailyDigestEmail: false,
 }
 
 type FormErrors = Partial<Record<keyof typeof EMPTY_FORM, string>>
@@ -60,6 +61,7 @@ type FormErrors = Partial<Record<keyof typeof EMPTY_FORM, string>>
 export function UserForm({ open, user, onClose }: Props) {
   const addUser = useUserStore((s) => s.addUser)
   const updateUser = useUserStore((s) => s.updateUser)
+  const sendTestDigest = useUserStore((s) => s.sendTestDigest)
   const activeCompanyId = useAuthStore((s) => s.activeCompanyId)
 
   const isNew = !user
@@ -69,6 +71,8 @@ export function UserForm({ open, user, onClose }: Props) {
   const [showPasswordSection, setShowPasswordSection] = useState(false)
   const [showPwd, setShowPwd] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [testDigestStatus, setTestDigestStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [testDigestError, setTestDigestError] = useState('')
 
   useEffect(() => {
     if (open) {
@@ -82,6 +86,7 @@ export function UserForm({ open, user, onClose }: Props) {
           status: user.status ?? 'active',
           password: '',
           confirmPassword: '',
+          dailyDigestEmail: user.dailyDigestEmail ?? false,
         })
       } else {
         setForm(EMPTY_FORM)
@@ -90,8 +95,22 @@ export function UserForm({ open, user, onClose }: Props) {
       setShowPasswordSection(false)
       setShowPwd(false)
       setShowConfirm(false)
+      setTestDigestStatus('idle')
+      setTestDigestError('')
     }
   }, [open, user])
+
+  async function handleSendTestDigest() {
+    if (!user) return
+    setTestDigestStatus('sending')
+    const result = await sendTestDigest(user.id)
+    if (result.ok) {
+      setTestDigestStatus('sent')
+    } else {
+      setTestDigestStatus('error')
+      setTestDigestError(result.error ?? 'No se pudo enviar el correo de prueba')
+    }
+  }
 
   function validate(): boolean {
     const errs: FormErrors = {}
@@ -148,6 +167,7 @@ export function UserForm({ open, user, onClose }: Props) {
       if (showPasswordSection && form.password) {
         updates.password = form.password
       }
+      updates.dailyDigestEmail = form.dailyDigestEmail
       updateUser(user.id, updates)
     }
 
@@ -463,6 +483,52 @@ export function UserForm({ open, user, onClose }: Props) {
                   }}
                 />
               </button>
+            </div>
+          )}
+
+          {/* Resumen diario por correo — solo en edición */}
+          {!isNew && (
+            <div className="flex flex-col rounded-[var(--tp-r-input)] border" style={{ borderColor: 'var(--tp-border)', background: 'var(--tp-surface)' }}>
+              <div className="flex items-center justify-between py-3 px-4">
+                <div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--tp-text)' }}>Resumen diario por correo</p>
+                  <p className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
+                    Recibe cada mañana (lun-vie, 7:00 a.m.) un resumen de sus tareas
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((f) => ({ ...f, dailyDigestEmail: !f.dailyDigestEmail }))
+                  }
+                  className="relative w-12 h-6 rounded-full transition-all shrink-0"
+                  style={{ background: form.dailyDigestEmail ? 'var(--tp-lime)' : '#D1D5DB' }}
+                >
+                  <span
+                    className="absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm"
+                    style={{
+                      left: form.dailyDigestEmail ? '26px' : '3px',
+                      transition: 'left 0.2s ease',
+                    }}
+                  />
+                </button>
+              </div>
+              <div className="flex items-center justify-between px-4 pb-3 pt-1 border-t" style={{ borderColor: 'var(--tp-border)' }}>
+                <p className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
+                  {testDigestStatus === 'sent' && '✓ Correo de prueba enviado'}
+                  {testDigestStatus === 'error' && testDigestError}
+                  {(testDigestStatus === 'idle' || testDigestStatus === 'sending') && 'Envíate una prueba con los datos de hoy'}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleSendTestDigest}
+                  disabled={testDigestStatus === 'sending'}
+                  className="px-3 py-1.5 rounded-[var(--tp-r-btn)] text-xs font-medium border transition-all hover:bg-[var(--tp-bg)] active:scale-95 disabled:opacity-50"
+                  style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-text-2)' }}
+                >
+                  {testDigestStatus === 'sending' ? 'Enviando…' : 'Enviar prueba'}
+                </button>
+              </div>
             </div>
           )}
 

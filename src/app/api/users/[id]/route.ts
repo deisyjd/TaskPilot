@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   // Whitelist: el cliente envía campos que no son columnas del modelo User
   const userData: Record<string, unknown> = {}
-  for (const key of ['name', 'role', 'initials', 'color', 'avatarUrl', 'status']) {
+  for (const key of ['name', 'role', 'initials', 'color', 'avatarUrl', 'status', 'dailyDigestEmail']) {
     if (key in body) userData[key] = body[key]
   }
   if (body.email) userData.email = body.email.toLowerCase()
@@ -31,7 +31,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const user = await prisma.user.update({
     where: { id },
     data: userData,
-    select: { id: true, name: true, email: true, role: true, initials: true, color: true, avatarUrl: true, status: true, createdAt: true, updatedAt: true },
+    select: { id: true, name: true, email: true, role: true, initials: true, color: true, avatarUrl: true, status: true, dailyDigestEmail: true, createdAt: true, updatedAt: true },
   })
 
   let finalRole = membership.role

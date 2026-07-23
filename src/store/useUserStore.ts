@@ -36,6 +36,7 @@ interface UserStore {
   fetchUserCompanies: (userId: string) => Promise<UserCompanyAccess[]>
   setUserCompany: (userId: string, companyId: string, role: string) => Promise<boolean>
   removeUserCompany: (userId: string, companyId: string) => Promise<{ ok: boolean; error?: string }>
+  sendTestDigest: (userId: string) => Promise<{ ok: boolean; error?: string }>
 }
 
 export const useUserStore = create<UserStore>()((set, get) => ({
@@ -119,6 +120,17 @@ export const useUserStore = create<UserStore>()((set, get) => ({
       return { ok: true }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : 'No se pudo quitar el acceso' }
+    }
+  },
+
+  sendTestDigest: async (userId) => {
+    try {
+      const res = await fetch(`/api/users/${userId}/send-test-digest`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return { ok: false, error: data.error ?? 'No se pudo enviar el correo de prueba' }
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : 'No se pudo enviar el correo de prueba' }
     }
   },
 }))

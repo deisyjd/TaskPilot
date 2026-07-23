@@ -111,6 +111,7 @@ export interface User {
   avatarUrl?: string
   status?: UserStatus
   password?: string
+  dailyDigestEmail?: boolean
   createdAt?: string
   updatedAt?: string
 }
