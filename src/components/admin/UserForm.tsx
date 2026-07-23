@@ -6,7 +6,7 @@ import { useUserStore } from '@/store/useUserStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { ImageUploader } from '@/components/shared/ImageUploader'
 import { UserCompaniesPanel } from '@/components/admin/UserCompaniesPanel'
-import { Eye, EyeOff, ChevronDown } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -343,36 +343,43 @@ export function UserForm({ open, user, onClose }: Props) {
             </div>
           )}
 
-          {/* ── Contraseña — EDITAR (colapsable) ── */}
+          {/* ── Contraseña — EDITAR ── */}
           {!isNew && (
             <div
-              className="rounded-[var(--tp-r-inner)] overflow-hidden"
-              style={{ border: '1px solid var(--tp-border)' }}
+              className="flex flex-col rounded-[var(--tp-r-input)] border"
+              style={{ borderColor: 'var(--tp-border)', background: 'var(--tp-surface)' }}
             >
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPasswordSection((v) => !v)
-                  setForm((f) => ({ ...f, password: '', confirmPassword: '' }))
-                  setErrors((e) => ({ ...e, password: undefined, confirmPassword: undefined }))
-                }}
-                className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:opacity-80"
-                style={{ background: 'var(--tp-surface)', color: 'var(--tp-text)' }}
-              >
-                <span>Cambiar contraseña</span>
-                <ChevronDown
-                  className="w-4 h-4 transition-transform"
-                  style={{
-                    color: 'var(--tp-text-2)',
-                    transform: showPasswordSection ? 'rotate(180deg)' : 'rotate(0deg)',
+              <div className="flex items-center justify-between py-3 px-4">
+                <div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--tp-text)' }}>Cambiar contraseña</p>
+                  <p className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
+                    {showPasswordSection ? 'Escribe la nueva contraseña abajo' : 'Deja esto apagado para no modificarla'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordSection((v) => !v)
+                    setForm((f) => ({ ...f, password: '', confirmPassword: '' }))
+                    setErrors((e) => ({ ...e, password: undefined, confirmPassword: undefined }))
                   }}
-                />
-              </button>
+                  className="relative w-12 h-6 rounded-full transition-all shrink-0"
+                  style={{ background: showPasswordSection ? 'var(--tp-lime)' : '#D1D5DB' }}
+                >
+                  <span
+                    className="absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm"
+                    style={{
+                      left: showPasswordSection ? '26px' : '3px',
+                      transition: 'left 0.2s ease',
+                    }}
+                  />
+                </button>
+              </div>
 
               {showPasswordSection && (
                 <div
-                  className="flex flex-col gap-4 px-4 pb-4 pt-2"
-                  style={{ background: 'var(--tp-bg)' }}
+                  className="flex flex-col gap-4 px-4 pb-4 pt-3 border-t"
+                  style={{ borderColor: 'var(--tp-border)', background: 'var(--tp-bg)' }}
                 >
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>
