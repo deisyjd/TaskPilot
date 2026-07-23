@@ -161,3 +161,23 @@
   background: var(--tp-surface);
 }
 .tp-input:focus { outline: 2px solid var(--tp-lime); outline-offset: 0; }
+
+/* Scroll sutil para módulos internos (ej. "Destacados" del sidebar) —
+   discreto por defecto, un poco más visible al pasar el mouse. */
+.tp-scroll-subtle {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+.tp-scroll-subtle::-webkit-scrollbar {
+  width: 5px;
+}
+.tp-scroll-subtle::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tp-scroll-subtle::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+}
+.tp-scroll-subtle:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3);
+}

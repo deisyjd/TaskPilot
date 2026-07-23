@@ -129,7 +129,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       {/* Projects */}
-      <div className="px-4 py-4 flex-1">
+      <div className="px-4 py-4 shrink-0">
         <Link
           href="/projects"
           onClick={onNavigate}
@@ -148,10 +148,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             Destaca proyectos en /proyectos →
           </Link>
         ) : (
-          <div className="space-y-0.5">
+          <div className="space-y-0.5 max-h-[112px] overflow-y-auto tp-scroll-subtle pr-1 -mr-1">
             {projects
               .filter((p) => p.featured)
-              .slice(0, 8)
               .map((project) => {
                 const active = isActive(`/projects/${project.id}`)
                 return (
@@ -249,7 +248,7 @@ export function Sidebar() {
 
       {/* Desktop sidebar */}
       <aside
-        className="hidden lg:flex flex-col w-64 min-h-screen shrink-0"
+        className="hidden lg:flex flex-col w-64 h-screen shrink-0 overflow-y-auto tp-scroll-subtle"
         style={{ backgroundColor: 'var(--tp-dark)' }}
       >
         <SidebarContent />
