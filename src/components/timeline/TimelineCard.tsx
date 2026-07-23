@@ -2,8 +2,9 @@
 
 import { Task, STATUS_DOT_COLORS } from '@/types'
 import { useTaskStore } from '@/store/useTaskStore'
-import { useUserStore } from '@/store/useUserStore'
+import { useUserStore, useCurrentUser } from '@/store/useUserStore'
 import { isOverdue } from '@/lib/dates'
+import { canEditTask } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { AlertTriangle } from 'lucide-react'
 
@@ -17,12 +18,20 @@ interface Props { task: Task; onClick: () => void }
 export function TimelineCard({ task, onClick }: Props) {
   const project = useTaskStore((s) => s.projects.find((p) => p.id === task.projectId))
   const user = useUserStore((s) => s.users.find((u) => u.id === task.assigneeIds[0]))
+  const currentUser = useCurrentUser()
+  const readOnly = !canEditTask(currentUser, task, project)
   const overdue = isOverdue(task.dueDate, task.status)
   const done = task.status === 'done'
 
   return (
     <button
       onClick={onClick}
+      draggable={!readOnly}
+      onDragStart={(e) => {
+        if (readOnly) return
+        e.dataTransfer.setData('taskId', task.id)
+        e.dataTransfer.effectAllowed = 'move'
+      }}
       className="w-full text-left transition-all hover:shadow-md"
       style={{
         backgroundColor: done ? 'var(--tp-bg-2)' : overdue ? '#FEF2F2' : 'var(--tp-surface)',
@@ -30,6 +39,7 @@ export function TimelineCard({ task, onClick }: Props) {
         borderRadius: 'var(--tp-r-inner)',
         padding: '10px 12px',
         opacity: done ? 0.7 : 1,
+        cursor: readOnly ? 'pointer' : 'grab',
       }}
     >
       <div className="flex items-start justify-between gap-1.5 mb-2">

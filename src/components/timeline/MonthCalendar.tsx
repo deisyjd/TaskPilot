@@ -3,7 +3,9 @@
 import { useState, useMemo } from 'react'
 import { Task } from '@/types'
 import { useTaskStore } from '@/store/useTaskStore'
+import { useCurrentUser } from '@/store/useUserStore'
 import { isOverdue } from '@/lib/dates'
+import { canEditTask } from '@/lib/permissions'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 
 const DAY_HEADERS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -28,12 +30,15 @@ interface Props {
   tasks: Task[]
   onTaskClick: (task: Task) => void
   onAddTask: (date: Date) => void
+  onDropTask: (taskId: string, date: Date) => void
 }
 
 const MAX_VISIBLE = 3
 
-export function MonthCalendar({ tasks, onTaskClick, onAddTask }: Props) {
+export function MonthCalendar({ tasks, onTaskClick, onAddTask, onDropTask }: Props) {
   const projects = useTaskStore((s) => s.projects)
+  const currentUser = useCurrentUser()
+  const [dragOverDay, setDragOverDay] = useState<number | null>(null)
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d }, [])
 
@@ -163,16 +168,28 @@ export function MonthCalendar({ tasks, onTaskClick, onAddTask }: Props) {
             return (
               <div
                 key={i}
-                className="group relative p-1.5 flex flex-col gap-0.5 overflow-hidden"
+                className="group relative p-1.5 flex flex-col gap-0.5 overflow-hidden transition-colors"
                 style={{
                   borderRight: col < 6 ? '1px solid var(--tp-border)' : undefined,
                   borderBottom: row < 5 ? '1px solid var(--tp-border)' : undefined,
-                  backgroundColor: isToday
+                  backgroundColor: dragOverDay === i
+                    ? 'rgba(163, 230, 53, 0.2)'
+                    : isToday
                     ? 'rgba(163, 230, 53, 0.1)'
                     : isWeekend
                     ? 'var(--tp-bg)'
                     : undefined,
+                  outline: dragOverDay === i ? '2px dashed var(--tp-lime)' : 'none',
+                  outlineOffset: '-2px',
                   opacity: inMonth ? 1 : 0.35,
+                }}
+                onDragOver={(e) => { e.preventDefault(); setDragOverDay(i) }}
+                onDragLeave={() => setDragOverDay((d) => (d === i ? null : d))}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setDragOverDay(null)
+                  const taskId = e.dataTransfer.getData('taskId')
+                  if (taskId) onDropTask(taskId, day)
                 }}
               >
                 {/* Day number + add button */}
@@ -202,11 +219,19 @@ export function MonthCalendar({ tasks, onTaskClick, onAddTask }: Props) {
                     const proj = projects.find((p) => p.id === task.projectId)
                     const overdue = isOverdue(task.dueDate, task.status)
                     const done = task.status === 'done'
+                    const readOnly = !canEditTask(currentUser, task, proj)
 
                     return (
                       <button
                         key={task.id}
                         onClick={(e) => { e.stopPropagation(); onTaskClick(task) }}
+                        draggable={!readOnly}
+                        onDragStart={(e) => {
+                          if (readOnly) return
+                          e.stopPropagation()
+                          e.dataTransfer.setData('taskId', task.id)
+                          e.dataTransfer.effectAllowed = 'move'
+                        }}
                         className="text-left text-xs px-1.5 py-px rounded truncate w-full transition-opacity hover:opacity-75"
                         title={task.title}
                         style={{
@@ -222,6 +247,7 @@ export function MonthCalendar({ tasks, onTaskClick, onAddTask }: Props) {
                           }`,
                           color: done ? 'var(--tp-text-2)' : overdue ? '#DC2626' : 'var(--tp-text)',
                           textDecoration: done ? 'line-through' : 'none',
+                          cursor: readOnly ? 'pointer' : 'grab',
                         }}
                       >
                         {task.title}

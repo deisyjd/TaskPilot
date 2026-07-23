@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Task } from '@/types'
 import { TimelineCard } from './TimelineCard'
 import { Plus } from 'lucide-react'
@@ -13,15 +14,17 @@ interface Props {
   isToday: boolean
   onCardClick: (task: Task) => void
   onAddTask: (date: Date) => void
+  onDropTask: (taskId: string, date: Date) => void
 }
 
-export function DayColumn({ date, tasks, isToday, onCardClick, onAddTask }: Props) {
+export function DayColumn({ date, tasks, isToday, onCardClick, onAddTask, onDropTask }: Props) {
   const dayName = DAY_NAMES[date.getDay()]
   const dayNum = date.getDate()
   const month = MONTH_NAMES[date.getMonth()]
   const isWeekend = date.getDay() === 0 || date.getDay() === 6
   const done = tasks.filter((t) => t.status === 'done').length
   const active = tasks.filter((t) => t.status !== 'done').length
+  const [dragOver, setDragOver] = useState(false)
 
   return (
     <div className="flex flex-col w-52 shrink-0" style={{ opacity: isWeekend ? 0.75 : 1 }}>
@@ -52,8 +55,21 @@ export function DayColumn({ date, tasks, isToday, onCardClick, onAddTask }: Prop
 
       {/* Tasks */}
       <div
-        className="flex flex-col gap-1.5 flex-1 p-1.5 min-h-[120px]"
-        style={{ backgroundColor: 'var(--tp-bg-2)', borderRadius: 'var(--tp-r-inner)' }}
+        className="flex flex-col gap-1.5 flex-1 p-1.5 min-h-[120px] transition-colors"
+        style={{
+          backgroundColor: dragOver ? 'rgba(163, 230, 53, 0.15)' : 'var(--tp-bg-2)',
+          borderRadius: 'var(--tp-r-inner)',
+          outline: dragOver ? '2px dashed var(--tp-lime)' : 'none',
+          outlineOffset: '-2px',
+        }}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDragOver(false)
+          const taskId = e.dataTransfer.getData('taskId')
+          if (taskId) onDropTask(taskId, date)
+        }}
       >
         {tasks.length === 0 && (
           <div className="flex items-center justify-center h-16 text-xs" style={{ color: 'var(--tp-text-2)', opacity: 0.4 }}>

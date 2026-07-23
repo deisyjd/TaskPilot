@@ -43,6 +43,7 @@ function getWeekDays(weekStart: Date): Date[] {
 
 export default function TimelinePage() {
   const tasks = useTaskStore((s) => s.tasks)
+  const updateTask = useTaskStore((s) => s.updateTask)
   const projects = useTaskStore((s) => s.projects).filter((p) => p.status !== 'inactive')
   const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
 
@@ -116,6 +117,12 @@ export default function TimelinePage() {
   }
 
   const closeModal = () => { setModalOpen(false); setSelectedTask(null) }
+
+  const handleDropTask = (taskId: string, date: Date) => {
+    const task = tasks.find((t) => t.id === taskId)
+    const newDueDate = formatDateOnly(date)
+    if (task && task.dueDate !== newDueDate) updateTask(taskId, { dueDate: newDueDate })
+  }
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -254,6 +261,7 @@ export default function TimelinePage() {
               isToday={isSameDay(date, today)}
               onCardClick={openEdit}
               onAddTask={openNew}
+              onDropTask={handleDropTask}
             />
           ))}
         </div>
@@ -265,6 +273,7 @@ export default function TimelinePage() {
           tasks={filtered}
           onTaskClick={openEdit}
           onAddTask={openNew}
+          onDropTask={handleDropTask}
         />
       )}
 
