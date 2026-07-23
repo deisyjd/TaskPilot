@@ -28,7 +28,7 @@ import {
 } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
-import { can, canManageProject } from '@/lib/permissions'
+import { can, canManageProject, isProjectViewer } from '@/lib/permissions'
 import { TaskModal } from '@/components/board/TaskModal'
 import { ProjectGantt } from '@/components/projects/ProjectGantt'
 import {
@@ -123,6 +123,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
   const updateProject = useTaskStore((s) => s.updateProject)
   const users = useUserStore((s) => s.users)
   const currentUser = useCurrentUser()
+  const isViewer = isProjectViewer(currentUser, project)
 
   const [linkForm, setLinkForm] = useState({ url: '', title: '' })
   const [showLinkForm, setShowLinkForm] = useState(false)
@@ -277,7 +278,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
           </div>
 
           <div className="flex items-center gap-2">
-            {can(currentUser, 'create_task') && (
+            {can(currentUser, 'create_task') && !isViewer && (
               <button
                 onClick={openNewTask}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-90"
@@ -467,7 +468,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
                     Gantt
                   </button>
                 </div>
-                {can(currentUser, 'create_task') && (
+                {can(currentUser, 'create_task') && !isViewer && (
                   <button
                     onClick={openNewTask}
                     className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all hover:opacity-75"
@@ -721,7 +722,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
               <h2 className="text-sm font-semibold" style={{ color: 'var(--tp-text-2)' }}>
                 Archivos ({allAttachments.length})
               </h2>
-              {can(currentUser, 'upload_file') && (
+              {can(currentUser, 'upload_file') && !isViewer && (
                 <>
                   <button
                     onClick={() => fileInputRef.current?.click()}
@@ -784,7 +785,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
                       </div>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--tp-text-2)' }} />
                     </a>
-                    {can(currentUser, 'upload_file') && (
+                    {can(currentUser, 'upload_file') && !isViewer && (
                       <button
                         onClick={() => removeAttachment(att.id)}
                         className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
@@ -814,22 +815,24 @@ export function ProjectDetail({ project, onEdit }: Props) {
               <h2 className="text-sm font-semibold" style={{ color: 'var(--tp-text-2)' }}>
                 Links de referencia ({allLinks.length})
               </h2>
-              <button
-                onClick={() => setShowLinkForm((v) => !v)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all hover:opacity-75"
-                style={{
-                  backgroundColor: 'var(--tp-bg-2)',
-                  color: 'var(--tp-text)',
-                  borderRadius: 'var(--tp-r-btn)',
-                }}
-              >
-                <Plus className="w-3 h-3" />
-                Agregar
-              </button>
+              {!isViewer && (
+                <button
+                  onClick={() => setShowLinkForm((v) => !v)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all hover:opacity-75"
+                  style={{
+                    backgroundColor: 'var(--tp-bg-2)',
+                    color: 'var(--tp-text)',
+                    borderRadius: 'var(--tp-r-btn)',
+                  }}
+                >
+                  <Plus className="w-3 h-3" />
+                  Agregar
+                </button>
+              )}
             </div>
 
             {/* Add link form */}
-            {showLinkForm && (
+            {showLinkForm && !isViewer && (
               <div
                 className="mb-3 p-3 rounded-xl flex flex-col gap-2"
                 style={{ backgroundColor: 'var(--tp-bg)', border: '1px solid var(--tp-border)' }}
@@ -924,14 +927,16 @@ export function ProjectDetail({ project, onEdit }: Props) {
                       </div>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--tp-text-2)' }} />
                     </a>
-                    <button
-                      onClick={() => removeLink(link.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                      style={{ color: '#DC2626' }}
-                      title="Eliminar enlace"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+                    {!isViewer && (
+                      <button
+                        onClick={() => removeLink(link.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        style={{ color: '#DC2626' }}
+                        title="Eliminar enlace"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

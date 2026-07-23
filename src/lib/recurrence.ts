@@ -63,7 +63,7 @@ export async function generateDueRecurrences(companyId: string) {
       recurrence: { not: null },
       OR: [{ recurrenceUntil: null }, { recurrenceUntil: { gte: today } }],
     },
-    include: { assignees: { select: { userId: true } } },
+    include: { assignees: { select: { userId: true, role: true } } },
   })
 
   // Cada plantilla es independiente de las demás — se procesan en paralelo
@@ -106,7 +106,7 @@ export async function generateDueRecurrences(companyId: string) {
             tags: template.tags ?? '[]',
             parentTaskId: template.id,
             assignees: template.assignees.length
-              ? { createMany: { data: template.assignees.map((a) => ({ userId: a.userId })) } }
+              ? { createMany: { data: template.assignees.map((a) => ({ userId: a.userId, role: a.role })) } }
               : undefined,
           },
         })

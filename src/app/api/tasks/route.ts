@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { recordHistoryEvent } from '@/lib/history'
 import { generateDueRecurrences } from '@/lib/recurrence'
+import { isProjectViewerServer } from '@/lib/projectAccess'
 
 const RECURRENCE_VALUES = ['daily', 'weekly', 'monthly']
 
@@ -20,10 +21,26 @@ export function taskVisibilityFilter(session: { userRole: string; userId: string
   return { OR: [{ assignees: { none: {} } }, { assignees: { some: { userId: session.userId } } }] }
 }
 
-export function serializeTask<T extends { assignees: { userId: string }[]; tags: unknown }>(task: T) {
+// Bloquea editar/eliminar una tarea si: está etiquetado "solo ver" en esa
+// tarea puntual, el rol global no permite editar tareas (ej. viewer de
+// empresa — cierra un hueco que existía antes, la ruta nunca lo revisaba),
+// o el proyecto de la tarea es "solo ver" para este usuario.
+export async function canUserEditTaskServer(
+  session: { userRole: string; userId: string },
+  task: { projectId: string; assignees: { userId: string; role: string }[] }
+): Promise<boolean> {
+  if (session.userRole === 'admin') return true
+  if (session.userRole === 'viewer') return false
+  const isTaskViewer = task.assignees.some((a) => a.userId === session.userId && a.role === 'viewer')
+  if (isTaskViewer) return false
+  return !(await isProjectViewerServer(session, task.projectId))
+}
+
+export function serializeTask<T extends { assignees: { userId: string; role: string }[]; tags: unknown }>(task: T) {
   return {
     ...task,
     assigneeIds: task.assignees.map((a) => a.userId),
+    viewerAssigneeIds: task.assignees.filter((a) => a.role === 'viewer').map((a) => a.userId),
     tags: typeof task.tags === 'string' ? JSON.parse(task.tags) : task.tags,
   }
 }
@@ -36,7 +53,7 @@ export async function GET() {
 
   const tasks = await prisma.task.findMany({
     where: { companyId: session.activeCompanyId, ...taskVisibilityFilter(session) },
-    include: { checklist: true, comments: true, assignees: { select: { userId: true } } },
+    include: { checklist: true, comments: true, assignees: { select: { userId: true, role: true } } },
     orderBy: { createdAt: 'desc' },
   })
 
@@ -49,7 +66,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const {
-    checklist, comments, projectId, title, description, status, assigneeIds, startDate, dueDate, priority, type, tags,
+    checklist, comments, projectId, title, description, status, assigneeIds, viewerAssigneeIds, startDate, dueDate, priority, type, tags,
     recurrence, recurrenceInterval, recurrenceUntil, coverImageUrl, attachments, links,
   } = body
 
@@ -58,6 +75,9 @@ export async function POST(req: NextRequest) {
   const project = await prisma.project.findUnique({ where: { id: projectId } })
   if (!project || project.companyId !== session.activeCompanyId) {
     return NextResponse.json({ error: 'Proyecto inválido' }, { status: 400 })
+  }
+  if (await isProjectViewerServer(session, projectId)) {
+    return NextResponse.json({ error: 'Sin permisos: solo puedes ver este proyecto' }, { status: 403 })
   }
 
   const hasRecurrence = RECURRENCE_VALUES.includes(recurrence)
@@ -95,9 +115,18 @@ export async function POST(req: NextRequest) {
       comments: comments?.length
         ? { create: comments.map((c: { text: string }) => ({ author: authorName, text: c.text })) }
         : undefined,
-      assignees: validIds.length ? { createMany: { data: validIds.map((userId) => ({ userId })) } } : undefined,
+      assignees: validIds.length
+        ? {
+            createMany: {
+              data: validIds.map((userId) => ({
+                userId,
+                role: Array.isArray(viewerAssigneeIds) && viewerAssigneeIds.includes(userId) ? 'viewer' : 'editor',
+              })),
+            },
+          }
+        : undefined,
     },
-    include: { checklist: true, comments: true, assignees: { select: { userId: true } } },
+    include: { checklist: true, comments: true, assignees: { select: { userId: true, role: true } } },
   })
 
   await recordHistoryEvent({

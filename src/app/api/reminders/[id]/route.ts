@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { reminderVisibilityFilter } from '../route'
+import { isProjectViewerServer } from '@/lib/projectAccess'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -18,6 +19,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     where: { id, companyId: session.activeCompanyId, ...reminderVisibilityFilter(session) },
   })
   if (!existing) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+  if (await isProjectViewerServer(session, existing.projectId)) {
+    return NextResponse.json({ error: 'Sin permisos: solo puedes ver este proyecto' }, { status: 403 })
+  }
 
   const body = await req.json()
   const data: Record<string, unknown> = {}
@@ -50,10 +54,14 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { id } = await params
-  const result = await prisma.reminder.deleteMany({
+  const existing = await prisma.reminder.findFirst({
     where: { id, companyId: session.activeCompanyId, ...reminderVisibilityFilter(session) },
   })
-  if (result.count === 0) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+  if (!existing) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+  if (await isProjectViewerServer(session, existing.projectId)) {
+    return NextResponse.json({ error: 'Sin permisos: solo puedes ver este proyecto' }, { status: 403 })
+  }
 
+  await prisma.reminder.delete({ where: { id } })
   return NextResponse.json({ ok: true })
 }

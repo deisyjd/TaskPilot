@@ -78,6 +78,7 @@ export interface Task {
   description: string
   status: TaskStatus
   assigneeIds: string[]
+  viewerAssigneeIds?: string[]
   startDate?: string | null
   dueDate: string
   priority: Priority
@@ -171,6 +172,7 @@ export interface Project {
   createdBy?: string
   createdById?: string | null
   members?: string[]
+  viewerUserIds?: string[]
   createdAt?: string
   updatedAt?: string
   attachments?: Attachment[]

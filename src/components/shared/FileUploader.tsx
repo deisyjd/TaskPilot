@@ -12,6 +12,7 @@ interface Props {
   uploadedBy: string
   maxFiles?: number
   label?: string
+  readOnly?: boolean
 }
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024 // 10MB
@@ -52,6 +53,7 @@ export function FileUploader({
   uploadedBy,
   maxFiles = 10,
   label,
+  readOnly = false,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
@@ -119,7 +121,7 @@ export function FileUploader({
       )}
 
       {/* Drop zone */}
-      {canAddMore && (
+      {canAddMore && !readOnly && (
         <div
           className={`relative border-2 border-dashed rounded-[var(--tp-r-inner)] p-5 flex flex-col items-center gap-2 cursor-pointer transition-all ${
             dragging
@@ -214,14 +216,16 @@ export function FileUploader({
                 >
                   <ExternalLink size={13} style={{ color: 'var(--tp-text-2)' }} />
                 </a>
-                <button
-                  type="button"
-                  onClick={() => removeFile(file.id)}
-                  className="w-7 h-7 flex items-center justify-center rounded-full transition-colors hover:bg-red-100"
-                  title="Eliminar"
-                >
-                  <X size={13} className="text-red-500" />
-                </button>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => removeFile(file.id)}
+                    className="w-7 h-7 flex items-center justify-center rounded-full transition-colors hover:bg-red-100"
+                    title="Eliminar"
+                  >
+                    <X size={13} className="text-red-500" />
+                  </button>
+                )}
               </div>
             </li>
           ))}

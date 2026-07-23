@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { Task, STATUS_DOT_COLORS, TaskStatus } from '@/types'
 import { isOverdue, isToday, formatDate } from '@/lib/dates'
 import { useTaskStore } from '@/store/useTaskStore'
-import { useUserStore } from '@/store/useUserStore'
+import { useUserStore, useCurrentUser } from '@/store/useUserStore'
+import { canEditTask } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -39,6 +40,8 @@ export function TaskCard({ task, onClick }: Props) {
   const moveTask = useTaskStore((s) => s.moveTask)
   const project = useTaskStore((s) => s.projects.find((p) => p.id === task.projectId))
   const users = useUserStore((s) => s.users)
+  const currentUser = useCurrentUser()
+  const readOnly = !canEditTask(currentUser, task, project)
   const user = users.find((u) => u.id === task.assigneeIds[0])
   const extraAssignees = task.assigneeIds.length - 1
   const overdue = isOverdue(task.dueDate, task.status)
@@ -51,8 +54,9 @@ export function TaskCard({ task, onClick }: Props) {
 
   return (
     <div
-      draggable
+      draggable={!readOnly}
       onDragStart={(e) => {
+        if (readOnly) return
         e.dataTransfer.setData('taskId', task.id)
         e.dataTransfer.effectAllowed = 'move'
         setDragging(true)
@@ -65,7 +69,7 @@ export function TaskCard({ task, onClick }: Props) {
         border: '1px solid var(--tp-border)',
         boxShadow: 'var(--tp-shadow-sm)',
         opacity: dragging ? 0.4 : 1,
-        cursor: dragging ? 'grabbing' : 'grab',
+        cursor: readOnly ? 'pointer' : dragging ? 'grabbing' : 'grab',
       }}
       onClick={onClick}
     >
@@ -81,24 +85,28 @@ export function TaskCard({ task, onClick }: Props) {
             <span className="text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>{project?.name ?? 'Sin proyecto'}</span>
           </div>
           <div onClick={(e) => e.stopPropagation()}>
-            <DropdownMenu>
-              <DropdownMenuTrigger className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 rounded-lg px-1.5 py-0.5 hover:bg-gray-100 transition-all">
-                <div className={cn('w-2 h-2 rounded-full', STATUS_DOT_COLORS[task.status])} />
-                <ChevronDown className="w-3 h-3 text-gray-400" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 rounded-2xl">
-                {STATUSES.map((s) => (
-                  <DropdownMenuItem
-                    key={s.value}
-                    className="flex items-center gap-2 text-sm rounded-xl"
-                    onClick={() => moveTask(task.id, s.value)}
-                  >
-                    <div className={cn('w-2 h-2 rounded-full', STATUS_DOT_COLORS[s.value])} />
-                    {s.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {readOnly ? (
+              <div className={cn('w-2 h-2 rounded-full', STATUS_DOT_COLORS[task.status])} />
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 rounded-lg px-1.5 py-0.5 hover:bg-gray-100 transition-all">
+                  <div className={cn('w-2 h-2 rounded-full', STATUS_DOT_COLORS[task.status])} />
+                  <ChevronDown className="w-3 h-3 text-gray-400" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 rounded-2xl">
+                  {STATUSES.map((s) => (
+                    <DropdownMenuItem
+                      key={s.value}
+                      className="flex items-center gap-2 text-sm rounded-xl"
+                      onClick={() => moveTask(task.id, s.value)}
+                    >
+                      <div className={cn('w-2 h-2 rounded-full', STATUS_DOT_COLORS[s.value])} />
+                      {s.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
 

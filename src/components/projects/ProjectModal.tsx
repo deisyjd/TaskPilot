@@ -33,6 +33,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
   const [description, setDescription] = useState('')
   const [status, setStatus] = useState<'active' | 'inactive'>('active')
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
+  const [viewerMembers, setViewerMembers] = useState<string[]>([])
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
 
   const isEditMode = Boolean(existingProject)
@@ -45,6 +46,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
       setDescription(existingProject.description ?? '')
       setStatus(existingProject.status ?? 'active')
       setSelectedMembers(existingProject.members ?? [])
+      setViewerMembers(existingProject.viewerUserIds ?? [])
       setCoverPreview(existingProject.coverImageUrl ?? null)
     } else {
       setName('')
@@ -52,6 +54,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
       setDescription('')
       setStatus('active')
       setSelectedMembers([])
+      setViewerMembers([])
       setCoverPreview(null)
     }
   }, [existingProject, open])
@@ -62,6 +65,13 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
       prev.includes(userId)
         ? prev.filter((m) => m !== userId)
         : [...prev, userId]
+    )
+    setViewerMembers((prev) => prev.filter((m) => m !== userId))
+  }
+
+  const setMemberRole = (userId: string, role: 'editor' | 'viewer') => {
+    setViewerMembers((prev) =>
+      role === 'viewer' ? [...prev.filter((m) => m !== userId), userId] : prev.filter((m) => m !== userId)
     )
   }
 
@@ -79,6 +89,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
       coverImageUrl: coverPreview ?? undefined,
       status,
       members: selectedMembers.length > 0 ? selectedMembers : undefined,
+      viewerUserIds: viewerMembers.length > 0 ? viewerMembers : undefined,
       createdBy: existingProject?.createdBy ?? currentUser?.name ?? '',
       createdAt: existingProject?.createdAt ?? new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -97,10 +108,11 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
         status: newProject.status,
         members: newProject.members,
         memberIds: selectedMembers,
+        viewerMemberIds: viewerMembers,
         updatedAt: newProject.updatedAt,
       })
     } else {
-      addProject({ ...newProject, memberIds: selectedMembers })
+      addProject({ ...newProject, memberIds: selectedMembers, viewerMemberIds: viewerMembers })
     }
 
     handleClose()
@@ -112,6 +124,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
     setDescription('')
     setStatus('active')
     setSelectedMembers([])
+    setViewerMembers([])
     setCoverPreview(null)
     onClose()
   }
@@ -296,6 +309,18 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
                         {user.role}
                       </p>
                     </div>
+                    {checked && (
+                      <select
+                        value={viewerMembers.includes(user.id) ? 'viewer' : 'editor'}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => setMemberRole(user.id, e.target.value as 'editor' | 'viewer')}
+                        className="text-xs rounded-full px-2 py-1 border outline-none cursor-pointer shrink-0"
+                        style={{ borderColor: 'var(--tp-border)', backgroundColor: 'var(--tp-surface)', color: 'var(--tp-text-2)' }}
+                      >
+                        <option value="editor">Editar</option>
+                        <option value="viewer">Solo ver</option>
+                      </select>
+                    )}
                     <input
                       type="checkbox"
                       checked={checked}

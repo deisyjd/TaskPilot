@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { BellRing, Plus, Trash2, Clock } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
-import { useUserStore } from '@/store/useUserStore'
+import { useUserStore, useCurrentUser } from '@/store/useUserStore'
 import { isReminderDue, formatReminderDateTime, getSnoozeOptions } from '@/lib/reminders'
 import { formatDateOnly } from '@/lib/dates'
+import { isProjectViewer } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { Project, Reminder } from '@/types'
 import {
@@ -25,6 +26,8 @@ export function RemindersPanel({ project }: Props) {
   const updateReminder = useTaskStore((s) => s.updateReminder)
   const deleteReminder = useTaskStore((s) => s.deleteReminder)
   const users = useUserStore((s) => s.users).filter((u) => u.status !== 'inactive')
+  const currentUser = useCurrentUser()
+  const readOnly = isProjectViewer(currentUser, project)
 
   const [title, setTitle] = useState('')
   const [dueDate, setDueDate] = useState(formatDateOnly(new Date()))
@@ -62,6 +65,7 @@ export function RemindersPanel({ project }: Props) {
           type="checkbox"
           checked={reminder.done}
           onChange={() => updateReminder(reminder.id, { done: !reminder.done })}
+          disabled={readOnly}
           className="w-4 h-4 rounded cursor-pointer shrink-0"
           style={{ accentColor: '#111318' }}
         />
@@ -82,7 +86,7 @@ export function RemindersPanel({ project }: Props) {
             {user.initials?.[0]}
           </div>
         )}
-        {!reminder.done && (
+        {!reminder.done && !readOnly && (
           <DropdownMenu>
             <DropdownMenuTrigger
               className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
@@ -107,14 +111,16 @@ export function RemindersPanel({ project }: Props) {
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        <button
-          onClick={() => deleteReminder(reminder.id)}
-          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-          style={{ color: '#DC2626' }}
-          title="Eliminar recordatorio"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => deleteReminder(reminder.id)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            style={{ color: '#DC2626' }}
+            title="Eliminar recordatorio"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     )
   }
@@ -131,6 +137,7 @@ export function RemindersPanel({ project }: Props) {
       )}
 
       {/* New reminder form */}
+      {!readOnly && (
       <div
         className="flex flex-col gap-2 p-3.5 rounded-xl"
         style={{ backgroundColor: 'var(--tp-bg)', border: '1px solid var(--tp-border)' }}
@@ -179,6 +186,7 @@ export function RemindersPanel({ project }: Props) {
           </button>
         </div>
       </div>
+      )}
 
       {reminders.length === 0 ? (
         <div

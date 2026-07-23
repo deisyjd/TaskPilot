@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { isProjectViewerServer } from '@/lib/projectAccess'
 
 export async function POST(req: NextRequest) {
   const session = await getSession()
@@ -13,6 +14,9 @@ export async function POST(req: NextRequest) {
     where: { id: projectId, companyId: session.activeCompanyId },
   })
   if (!project) return NextResponse.json({ error: 'Proyecto no encontrado' }, { status: 404 })
+  if (await isProjectViewerServer(session, projectId)) {
+    return NextResponse.json({ error: 'Sin permisos: solo puedes ver este proyecto' }, { status: 403 })
+  }
 
   const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { name: true } })
 

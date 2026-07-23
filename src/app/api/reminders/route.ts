@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { isProjectViewerServer } from '@/lib/projectAccess'
 
 export function reminderVisibilityFilter(session: { userRole: string; userId: string }) {
   if (session.userRole === 'admin') return {}
@@ -39,6 +40,9 @@ export async function POST(req: NextRequest) {
   const project = await prisma.project.findUnique({ where: { id: projectId } })
   if (!project || project.companyId !== session.activeCompanyId) {
     return NextResponse.json({ error: 'Proyecto inválido' }, { status: 400 })
+  }
+  if (await isProjectViewerServer(session, projectId)) {
+    return NextResponse.json({ error: 'Sin permisos: solo puedes ver este proyecto' }, { status: 403 })
   }
 
   let validAssigneeId: string | null = null

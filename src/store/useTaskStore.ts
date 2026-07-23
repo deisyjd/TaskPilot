@@ -37,8 +37,8 @@ interface TaskStore {
   deleteTask: (id: string) => Promise<void>
   duplicateTask: (id: string) => Promise<Task | null>
 
-  addProject: (project: Partial<Project> & { name: string; memberIds?: string[] }) => Promise<Project | null>
-  updateProject: (id: string, updates: Partial<Project> & { memberIds?: string[] }) => Promise<void>
+  addProject: (project: Partial<Project> & { name: string; memberIds?: string[]; viewerMemberIds?: string[] }) => Promise<Project | null>
+  updateProject: (id: string, updates: Partial<Project> & { memberIds?: string[]; viewerMemberIds?: string[] }) => Promise<void>
   deleteProject: (id: string) => Promise<void>
   archiveProject: (id: string) => Promise<void>
   restoreProject: (id: string) => Promise<void>

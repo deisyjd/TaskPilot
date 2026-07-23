@@ -31,12 +31,41 @@ export function usePermission(user: User | null | undefined) {
 }
 
 // Editar/eliminar un proyecto: los admins pueden con cualquiera; un
-// member solo con los que él mismo creó.
+// member solo con los que él mismo creó. Un miembro marcado "solo ver"
+// (viewerUserIds) nunca puede editar el proyecto, ni siquiera si lo creó.
 export function canManageProject(
   user: User | null | undefined,
-  project: { createdById?: string | null } | null | undefined
+  project: { createdById?: string | null; viewerUserIds?: string[] } | null | undefined
 ): boolean {
   if (!user) return false
   if (user.userRole === 'admin') return true
+  if (project?.viewerUserIds?.includes(user.id)) return false
   return Boolean(project?.createdById && project.createdById === user.id)
+}
+
+// Un proyecto es "solo ver" para este usuario si está en su lista de
+// miembros marcados como viewer — bloquea crear/editar cualquier cosa
+// dentro del proyecto (tareas, notas, recordatorios, archivos, links).
+export function isProjectViewer(
+  user: User | null | undefined,
+  project: { viewerUserIds?: string[] } | null | undefined
+): boolean {
+  if (!user) return false
+  if (user.userRole === 'admin') return false
+  return Boolean(project?.viewerUserIds?.includes(user.id))
+}
+
+// Editar una tarea puntual: bloqueada si el usuario está etiquetado como
+// "solo ver" en esa tarea, si el proyecto de la tarea es "solo ver" para él,
+// o si su rol global no permite editar tareas (ej. rol "viewer" de la empresa).
+export function canEditTask(
+  user: User | null | undefined,
+  task: { viewerAssigneeIds?: string[] } | null | undefined,
+  project?: { viewerUserIds?: string[] } | null
+): boolean {
+  if (!user) return false
+  if (user.userRole === 'admin') return true
+  if (task?.viewerAssigneeIds?.includes(user.id)) return false
+  if (isProjectViewer(user, project)) return false
+  return can(user, 'edit_task')
 }

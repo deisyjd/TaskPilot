@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { recordHistoryEvent } from '@/lib/history'
-import { serializeTask, validAssigneeIds, taskVisibilityFilter } from '../route'
+import { serializeTask, validAssigneeIds, taskVisibilityFilter, canUserEditTaskServer } from '../route'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { id } = await params
   const task = await prisma.task.findFirst({
     where: { id, companyId: session.activeCompanyId, ...taskVisibilityFilter(session) },
-    include: { checklist: true, comments: true, assignees: { select: { userId: true } } },
+    include: { checklist: true, comments: true, assignees: { select: { userId: true, role: true } } },
   })
 
   if (!task) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
@@ -27,9 +27,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params
   const existing = await prisma.task.findFirst({
     where: { id, companyId: session.activeCompanyId, ...taskVisibilityFilter(session) },
-    include: { assignees: { select: { userId: true } } },
+    include: { assignees: { select: { userId: true, role: true } } },
   })
   if (!existing) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+  if (!(await canUserEditTaskServer(session, existing))) {
+    return NextResponse.json({ error: 'Sin permisos: solo puedes ver esta tarea' }, { status: 403 })
+  }
 
   const body = await req.json()
 
@@ -60,12 +63,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   if (Array.isArray(body.assigneeIds)) {
     newIds = await validAssigneeIds(session.activeCompanyId, body.assigneeIds)
+    const viewerIds: string[] = Array.isArray(body.viewerAssigneeIds) ? body.viewerAssigneeIds : []
+    const oldRoles = new Map(existing.assignees.map((a) => [a.userId, a.role]))
+    const roleFor = (userId: string) => (viewerIds.includes(userId) ? 'viewer' : 'editor')
     assigneeChanged = JSON.stringify([...oldIds].sort()) !== JSON.stringify([...newIds].sort())
-    if (assigneeChanged) {
+    const rolesChanged = newIds.some((userId) => (oldRoles.get(userId) ?? 'editor') !== roleFor(userId))
+    if (assigneeChanged || rolesChanged) {
       await prisma.$transaction([
         prisma.taskAssignee.deleteMany({ where: { taskId: id } }),
         ...(newIds.length > 0
-          ? [prisma.taskAssignee.createMany({ data: newIds.map((userId) => ({ taskId: id, userId })) })]
+          ? [prisma.taskAssignee.createMany({ data: newIds.map((userId) => ({ taskId: id, userId, role: roleFor(userId) })) })]
           : []),
       ])
     }
@@ -112,7 +119,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const task = await prisma.task.findUnique({
     where: { id },
-    include: { checklist: true, comments: true, assignees: { select: { userId: true } } },
+    include: { checklist: true, comments: true, assignees: { select: { userId: true, role: true } } },
   })
 
   const actor = await prisma.user.findUnique({ where: { id: session.userId } })
@@ -172,10 +179,15 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { id } = await params
-  const result = await prisma.task.deleteMany({
+  const existing = await prisma.task.findFirst({
     where: { id, companyId: session.activeCompanyId, ...taskVisibilityFilter(session) },
+    include: { assignees: { select: { userId: true, role: true } } },
   })
-  if (result.count === 0) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+  if (!existing) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+  if (!(await canUserEditTaskServer(session, existing))) {
+    return NextResponse.json({ error: 'Sin permisos: solo puedes ver esta tarea' }, { status: 403 })
+  }
 
+  await prisma.task.delete({ where: { id } })
   return NextResponse.json({ ok: true })
 }

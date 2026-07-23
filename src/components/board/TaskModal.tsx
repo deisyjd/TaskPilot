@@ -8,6 +8,7 @@ import {
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
 import { formatDateTime, formatDateOnly } from '@/lib/dates'
+import { canEditTask } from '@/lib/permissions'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cn } from '@/lib/utils'
@@ -133,6 +134,12 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
     setField('assigneeIds', form.assigneeIds.includes(userId)
       ? form.assigneeIds.filter((id) => id !== userId)
       : [...form.assigneeIds, userId])
+    setField('viewerAssigneeIds', (form.viewerAssigneeIds ?? []).filter((id) => id !== userId))
+  }
+
+  const setAssigneeRole = (userId: string, role: 'editor' | 'viewer') => {
+    const current = form.viewerAssigneeIds ?? []
+    setField('viewerAssigneeIds', role === 'viewer' ? [...current.filter((id) => id !== userId), userId] : current.filter((id) => id !== userId))
   }
 
   const attachments: Attachment[] = form.attachments ?? []
@@ -212,6 +219,8 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
   const taggableUsers = users.filter((u) => form.assigneeIds.includes(u.id))
   const statusCfg = STATUS_COLORS[form.status]
   const priorityCfg = PRIORITY_COLORS[form.priority]
+  const project = projects.find((p) => p.id === form.projectId)
+  const readOnly = !isNew && !!task && !canEditTask(currentUser, task, project)
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -239,11 +248,19 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                 className="text-xs font-semibold px-2.5 py-1 rounded-full"
                 style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
               >
-                {projects.find((p) => p.id === form.projectId)?.name ?? 'Sin proyecto'}
+                {project?.name ?? 'Sin proyecto'}
               </span>
               {!isNew && (
                 <span className="text-xs font-mono" style={{ color: 'var(--tp-text-2)', opacity: 0.5 }}>
                   #{task?.id.slice(0, 18)}
+                </span>
+              )}
+              {readOnly && (
+                <span
+                  className="text-xs font-semibold px-2.5 py-1 rounded-full"
+                  style={{ backgroundColor: 'rgba(107,114,128,0.15)', color: '#6B7280' }}
+                >
+                  Solo lectura
                 </span>
               )}
               {!isNew && (
@@ -265,6 +282,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
               value={form.title}
               onChange={(e) => setField('title', e.target.value)}
               placeholder="Título de la tarea..."
+              readOnly={readOnly}
               className="w-full text-2xl font-semibold border-0 bg-transparent outline-none"
               style={{ color: 'var(--tp-text)', lineHeight: '1.3' }}
             />
@@ -284,6 +302,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                 value={form.description}
                 onChange={(e) => setField('description', e.target.value)}
                 placeholder="Agrega contexto, notas o instrucciones sobre esta tarea..."
+                readOnly={readOnly}
                 rows={4}
                 className="resize-none w-full text-sm outline-none"
                 style={{
@@ -332,10 +351,11 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                           type="checkbox"
                           checked={item.done}
                           onChange={() => toggleChecklist(item.id)}
+                          disabled={readOnly}
                           className="w-4 h-4 rounded cursor-pointer shrink-0"
                           style={{ accentColor: '#111318' }}
                         />
-                        {editingChecklistId === item.id ? (
+                        {!readOnly && editingChecklistId === item.id ? (
                           <input
                             value={editingChecklistText}
                             onChange={(e) => setEditingChecklistText(e.target.value)}
@@ -356,18 +376,20 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                             {item.text}
                           </span>
                         )}
-                        <button
-                          onClick={() => startEditChecklist(item.id, item.text)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                          style={{ color: 'var(--tp-text-2)' }}
-                          title="Editar ítem"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
+                        {!readOnly && (
+                          <button
+                            onClick={() => startEditChecklist(item.id, item.text)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                            style={{ color: 'var(--tp-text-2)' }}
+                            title="Editar ítem"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         <select
                           value={item.assigneeId ?? ''}
                           onChange={(e) => tagChecklist(item.id, e.target.value || null)}
-                          disabled={taggableUsers.length === 0}
+                          disabled={readOnly || taggableUsers.length === 0}
                           title={taggableUsers.length === 0 ? 'Asigna responsables a la tarea para poder etiquetar' : undefined}
                           className="text-xs rounded-full px-2 py-1 border outline-none cursor-pointer shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
                           style={{ borderColor: 'var(--tp-border)', backgroundColor: 'var(--tp-bg)', color: 'var(--tp-text-2)' }}
@@ -377,55 +399,74 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                             <option key={u.id} value={u.id}>{u.name}</option>
                           ))}
                         </select>
-                        <button
-                          onClick={() => removeChecklist(item.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                          style={{ color: '#DC2626' }}
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                        {!readOnly && (
+                          <button
+                            onClick={() => removeChecklist(item.id)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                            style={{ color: '#DC2626' }}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="flex gap-2">
-                <input
-                  value={checkInput}
-                  onChange={(e) => setCheckInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addChecklist()}
-                  placeholder="Nuevo ítem del checklist..."
-                  style={{ ...fieldInput, flex: 1, backgroundColor: 'var(--tp-bg)' }}
-                />
-                <button
-                  onClick={addChecklist}
-                  className="w-10 h-10 flex items-center justify-center rounded-xl transition-all hover:opacity-80 shrink-0"
-                  style={{ backgroundColor: 'var(--tp-dark)', color: '#fff' }}
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
+              {!readOnly && (
+                <div className="flex gap-2">
+                  <input
+                    value={checkInput}
+                    onChange={(e) => setCheckInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addChecklist()}
+                    placeholder="Nuevo ítem del checklist..."
+                    style={{ ...fieldInput, flex: 1, backgroundColor: 'var(--tp-bg)' }}
+                  />
+                  <button
+                    onClick={addChecklist}
+                    className="w-10 h-10 flex items-center justify-center rounded-xl transition-all hover:opacity-80 shrink-0"
+                    style={{ backgroundColor: 'var(--tp-dark)', color: '#fff' }}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Cover image */}
+            {(!readOnly || form.coverImageUrl) && (
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <Image className="w-3.5 h-3.5" style={{ color: 'var(--tp-text-2)' }} />
                 <FieldLabel>Imagen de portada</FieldLabel>
               </div>
+              {readOnly ? (
+                form.coverImageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={form.coverImageUrl}
+                    alt="Portada de la tarea"
+                    className="w-full rounded-xl object-cover"
+                    style={{ maxHeight: '220px' }}
+                  />
+                )
+              ) : (
               <ImageUploader
                 value={form.coverImageUrl}
                 onChange={(url) => setField('coverImageUrl', url ?? undefined)}
                 aspectRatio="cover"
               />
+              )}
             </div>
+            )}
 
             {/* Attachments */}
             <FileUploader
               value={attachments}
               onChange={(files) => setField('attachments', files)}
               uploadedBy={currentUser?.name ?? ''}
+              readOnly={readOnly}
             />
 
             {/* Reference links */}
@@ -433,6 +474,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
               value={links}
               onChange={(l) => setField('links', l)}
               createdBy={currentUser?.name ?? ''}
+              readOnly={readOnly}
             />
 
             {/* Comments */}
@@ -464,22 +506,24 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                 </div>
               )}
 
-              <div className="flex gap-2">
-                <input
-                  value={commentInput}
-                  onChange={(e) => setCommentInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addComment()}
-                  placeholder="Escribe un comentario..."
-                  style={{ ...fieldInput, flex: 1, backgroundColor: 'var(--tp-bg)' }}
-                />
-                <button
-                  onClick={addComment}
-                  className="w-10 h-10 flex items-center justify-center rounded-xl transition-all hover:opacity-80 shrink-0"
-                  style={{ backgroundColor: 'var(--tp-dark)', color: '#fff' }}
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </div>
+              {!readOnly && (
+                <div className="flex gap-2">
+                  <input
+                    value={commentInput}
+                    onChange={(e) => setCommentInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addComment()}
+                    placeholder="Escribe un comentario..."
+                    style={{ ...fieldInput, flex: 1, backgroundColor: 'var(--tp-bg)' }}
+                  />
+                  <button
+                    onClick={addComment}
+                    className="w-10 h-10 flex items-center justify-center rounded-xl transition-all hover:opacity-80 shrink-0"
+                    style={{ backgroundColor: 'var(--tp-dark)', color: '#fff' }}
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -500,6 +544,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                 <select
                   value={form.status}
                   onChange={(e) => setField('status', e.target.value as TaskStatus)}
+                  disabled={readOnly}
                   style={{
                     ...fieldSelect,
                     backgroundColor: statusCfg.bg,
@@ -520,6 +565,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                 <select
                   value={form.priority}
                   onChange={(e) => setField('priority', e.target.value as Priority)}
+                  disabled={readOnly}
                   style={{
                     ...fieldSelect,
                     backgroundColor: priorityCfg.bg,
@@ -543,6 +589,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                 <select
                   value={form.type}
                   onChange={(e) => setField('type', e.target.value as TaskType)}
+                  disabled={readOnly}
                   style={fieldSelect}
                 >
                   {TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -557,6 +604,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                 <select
                   value={form.projectId}
                   onChange={(e) => setField('projectId', e.target.value)}
+                  disabled={readOnly}
                   style={fieldSelect}
                 >
                   {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -585,10 +633,23 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                         {u.initials}
                       </div>
                       <span className="text-xs flex-1 truncate" style={{ color: 'var(--tp-text)' }}>{u.name}</span>
+                      {checked && !readOnly && (
+                        <select
+                          value={(form.viewerAssigneeIds ?? []).includes(u.id) ? 'viewer' : 'editor'}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => setAssigneeRole(u.id, e.target.value as 'editor' | 'viewer')}
+                          className="text-[11px] rounded-full px-1.5 py-0.5 border outline-none cursor-pointer shrink-0"
+                          style={{ borderColor: 'var(--tp-border)', backgroundColor: 'var(--tp-surface)', color: 'var(--tp-text-2)' }}
+                        >
+                          <option value="editor">Editar</option>
+                          <option value="viewer">Solo ver</option>
+                        </select>
+                      )}
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => toggleAssignee(u.id)}
+                        disabled={readOnly}
                         className="w-3.5 h-3.5 rounded"
                         style={{ accentColor: 'var(--tp-dark)' }}
                       />
@@ -608,6 +669,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                 type="date"
                 value={form.startDate ?? ''}
                 onChange={(e) => setField('startDate', e.target.value || null)}
+                disabled={readOnly}
                 style={{ ...fieldInput, backgroundColor: 'var(--tp-surface)' }}
               />
             </div>
@@ -619,6 +681,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                 type="date"
                 value={form.dueDate}
                 onChange={(e) => setField('dueDate', e.target.value)}
+                disabled={readOnly}
                 style={{ ...fieldInput, backgroundColor: 'var(--tp-surface)' }}
               />
             </div>
@@ -631,6 +694,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                   <select
                     value={form.recurrence ?? ''}
                     onChange={(e) => setField('recurrence', (e.target.value || null) as Task['recurrence'])}
+                    disabled={readOnly}
                     style={fieldSelect}
                   >
                     <option value="">No se repite</option>
@@ -647,6 +711,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                       min={1}
                       value={form.recurrenceInterval ?? 1}
                       onChange={(e) => setField('recurrenceInterval', Math.max(1, Number(e.target.value) || 1))}
+                      disabled={readOnly}
                       style={{ ...fieldInput, width: '56px', height: '32px', padding: '0 8px', backgroundColor: 'var(--tp-surface)' }}
                     />
                     <span className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
@@ -661,6 +726,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                       type="date"
                       value={form.recurrenceUntil ?? ''}
                       onChange={(e) => setField('recurrenceUntil', e.target.value || null)}
+                      disabled={readOnly}
                       style={{ ...fieldInput, height: '32px', backgroundColor: 'var(--tp-surface)' }}
                     />
                   </div>
@@ -680,29 +746,33 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                       style={{ backgroundColor: 'var(--tp-lime)', color: 'var(--tp-dark)' }}
                     >
                       {tag}
-                      <button onClick={() => removeTag(tag)}>
-                        <X className="w-2.5 h-2.5" />
-                      </button>
+                      {!readOnly && (
+                        <button onClick={() => removeTag(tag)}>
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      )}
                     </span>
                   ))}
                 </div>
               )}
-              <div className="flex gap-1.5">
-                <input
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addTag()}
-                  placeholder="+ etiqueta"
-                  style={{ ...fieldInput, flex: 1, fontSize: '12px', height: '36px', backgroundColor: 'var(--tp-surface)' }}
-                />
-                <button
-                  onClick={addTag}
-                  className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0"
-                  style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
-                >
-                  <Tag className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              {!readOnly && (
+                <div className="flex gap-1.5">
+                  <input
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addTag()}
+                    placeholder="+ etiqueta"
+                    style={{ ...fieldInput, flex: 1, fontSize: '12px', height: '36px', backgroundColor: 'var(--tp-surface)' }}
+                  />
+                  <button
+                    onClick={addTag}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0"
+                    style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
+                  >
+                    <Tag className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -712,8 +782,8 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
           className="flex items-center px-7 py-4 shrink-0 gap-2.5"
           style={{ borderTop: '1px solid var(--tp-border)', backgroundColor: 'var(--tp-surface)' }}
         >
-          {/* Duplicate + Delete — left, only in edit mode */}
-          {!isNew && (
+          {/* Duplicate + Delete — left, only in edit mode with edit permission */}
+          {!isNew && !readOnly && (
             <button
               onClick={handleDuplicate}
               className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all hover:opacity-80"
@@ -723,7 +793,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
               Duplicar
             </button>
           )}
-          {!isNew && (
+          {!isNew && !readOnly && (
             <button
               onClick={() => setConfirmOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-full transition-all hover:opacity-80"
@@ -740,16 +810,18 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
               className="px-5 py-2.5 text-sm font-medium rounded-full transition-all hover:opacity-70"
               style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
             >
-              Cancelar
+              {readOnly ? 'Cerrar' : 'Cancelar'}
             </button>
-            <button
-              onClick={handleSave}
-              disabled={!form.title.trim()}
-              className="px-6 py-2.5 text-sm font-semibold rounded-full transition-all hover:opacity-88 disabled:opacity-40"
-              style={{ backgroundColor: 'var(--tp-dark)', color: '#FFFFFF' }}
-            >
-              {isNew ? 'Crear tarea' : 'Guardar cambios'}
-            </button>
+            {!readOnly && (
+              <button
+                onClick={handleSave}
+                disabled={!form.title.trim()}
+                className="px-6 py-2.5 text-sm font-semibold rounded-full transition-all hover:opacity-88 disabled:opacity-40"
+                style={{ backgroundColor: 'var(--tp-dark)', color: '#FFFFFF' }}
+              >
+                {isNew ? 'Crear tarea' : 'Guardar cambios'}
+              </button>
+            )}
           </div>
         </div>
       </DialogContent>

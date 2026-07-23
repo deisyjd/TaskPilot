@@ -9,6 +9,7 @@ interface Props {
   onChange: (links: ReferenceLink[]) => void
   createdBy: string
   label?: string
+  readOnly?: boolean
 }
 
 function extractDomain(url: string): string {
@@ -46,6 +47,7 @@ export function ReferenceLinks({
   onChange,
   createdBy,
   label,
+  readOnly = false,
 }: Props) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [urlError, setUrlError] = useState<string | null>(null)
@@ -266,22 +268,26 @@ export function ReferenceLinks({
                   >
                     <ExternalLink size={13} style={{ color: 'var(--tp-text-2)' }} />
                   </a>
-                  <button
-                    type="button"
-                    onClick={() => startEdit(link)}
-                    className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[var(--tp-bg-2)] transition-colors"
-                    title="Editar enlace"
-                  >
-                    <Pencil size={13} style={{ color: 'var(--tp-text-2)' }} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeLink(link.id)}
-                    className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-red-100 transition-colors"
-                    title="Eliminar enlace"
-                  >
-                    <X size={13} className="text-red-500" />
-                  </button>
+                  {!readOnly && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => startEdit(link)}
+                        className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[var(--tp-bg-2)] transition-colors"
+                        title="Editar enlace"
+                      >
+                        <Pencil size={13} style={{ color: 'var(--tp-text-2)' }} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeLink(link.id)}
+                        className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-red-100 transition-colors"
+                        title="Eliminar enlace"
+                      >
+                        <X size={13} className="text-red-500" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </li>
             )
@@ -290,6 +296,7 @@ export function ReferenceLinks({
       )}
 
       {/* Add form */}
+      {!readOnly && (
       <div
         className="flex flex-col gap-2 p-3 rounded-[var(--tp-r-inner)] border"
         style={{ background: 'var(--tp-surface)', borderColor: 'var(--tp-border)' }}
@@ -358,6 +365,7 @@ export function ReferenceLinks({
           Agregar
         </button>
       </div>
+      )}
     </div>
   )
 }

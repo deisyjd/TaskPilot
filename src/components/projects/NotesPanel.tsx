@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Plus, Trash2, StickyNote, Save, Check } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
+import { useCurrentUser } from '@/store/useUserStore'
+import { isProjectViewer } from '@/lib/permissions'
 import { Note, Project } from '@/types'
 
 // ─── Pastel color palette ─────────────────────────────────────
@@ -38,6 +40,8 @@ export function NotesPanel({ project }: Props) {
   const addNote = useTaskStore((s) => s.addNote)
   const updateNote = useTaskStore((s) => s.updateNote)
   const deleteNoteAction = useTaskStore((s) => s.deleteNote)
+  const currentUser = useCurrentUser()
+  const readOnly = isProjectViewer(currentUser, project)
 
   const notes: Note[] = project.notes ?? []
 
@@ -160,18 +164,20 @@ export function NotesPanel({ project }: Props) {
         style={{ width: '230px' }}
       >
         {/* New note button */}
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-2 w-full px-4 py-2.5 text-sm font-semibold transition-all hover:opacity-85"
-          style={{
-            backgroundColor: 'var(--tp-dark)',
-            color: '#FFFFFF',
-            borderRadius: 'var(--tp-r-btn)',
-          }}
-        >
-          <Plus className="w-4 h-4" />
-          Nueva nota
-        </button>
+        {!readOnly && (
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-2 w-full px-4 py-2.5 text-sm font-semibold transition-all hover:opacity-85"
+            style={{
+              backgroundColor: 'var(--tp-dark)',
+              color: '#FFFFFF',
+              borderRadius: 'var(--tp-r-btn)',
+            }}
+          >
+            <Plus className="w-4 h-4" />
+            Nueva nota
+          </button>
+        )}
 
         {/* Note cards list */}
         {notes.length === 0 ? (
@@ -250,18 +256,20 @@ export function NotesPanel({ project }: Props) {
               Tus apuntes para este proyecto aparecerán aquí
             </p>
           </div>
-          <button
-            onClick={handleCreate}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-80"
-            style={{
-              backgroundColor: 'var(--tp-dark)',
-              color: '#FFFFFF',
-              borderRadius: 'var(--tp-r-btn)',
-            }}
-          >
-            <Plus className="w-4 h-4" />
-            Nueva nota
-          </button>
+          {!readOnly && (
+            <button
+              onClick={handleCreate}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-80"
+              style={{
+                backgroundColor: 'var(--tp-dark)',
+                color: '#FFFFFF',
+                borderRadius: 'var(--tp-r-btn)',
+              }}
+            >
+              <Plus className="w-4 h-4" />
+              Nueva nota
+            </button>
+          )}
         </div>
       ) : (
         <div
@@ -282,83 +290,89 @@ export function NotesPanel({ project }: Props) {
             }}
           >
             {/* Color picker */}
-            <div className="flex items-center gap-1.5">
-              {NOTE_COLORS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => { setEditColor(c); setIsDirty(true) }}
-                  title={c}
-                  className="w-5 h-5 rounded-full transition-all hover:scale-110"
-                  style={{
-                    backgroundColor: c,
-                    border: editColor === c ? '2px solid var(--tp-dark)' : '1px solid rgba(0,0,0,0.12)',
-                  }}
-                />
-              ))}
-            </div>
+            {!readOnly && (
+              <div className="flex items-center gap-1.5">
+                {NOTE_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => { setEditColor(c); setIsDirty(true) }}
+                    title={c}
+                    className="w-5 h-5 rounded-full transition-all hover:scale-110"
+                    style={{
+                      backgroundColor: c,
+                      border: editColor === c ? '2px solid var(--tp-dark)' : '1px solid rgba(0,0,0,0.12)',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
 
             <div className="flex-1" />
 
-            {/* Save indicator */}
-            {isDirty && (
-              <span className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
-                Sin guardar
-              </span>
-            )}
-            {savedFlash && !isDirty && (
-              <span className="flex items-center gap-1 text-xs" style={{ color: '#10b981' }}>
-                <Check className="w-3.5 h-3.5" />
-                Guardado
-              </span>
-            )}
+            {!readOnly && (
+              <>
+                {/* Save indicator */}
+                {isDirty && (
+                  <span className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
+                    Sin guardar
+                  </span>
+                )}
+                {savedFlash && !isDirty && (
+                  <span className="flex items-center gap-1 text-xs" style={{ color: '#10b981' }}>
+                    <Check className="w-3.5 h-3.5" />
+                    Guardado
+                  </span>
+                )}
 
-            {/* Save button */}
-            <button
-              onClick={() => saveCurrentNote()}
-              disabled={!isDirty}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all hover:opacity-75 disabled:opacity-40"
-              style={{
-                backgroundColor: 'var(--tp-dark)',
-                color: '#FFFFFF',
-                borderRadius: 'var(--tp-r-btn)',
-              }}
-            >
-              <Save className="w-3.5 h-3.5" />
-              Guardar
-            </button>
+                {/* Save button */}
+                <button
+                  onClick={() => saveCurrentNote()}
+                  disabled={!isDirty}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all hover:opacity-75 disabled:opacity-40"
+                  style={{
+                    backgroundColor: 'var(--tp-dark)',
+                    color: '#FFFFFF',
+                    borderRadius: 'var(--tp-r-btn)',
+                  }}
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  Guardar
+                </button>
 
-            {/* Delete */}
-            {!confirmDelete ? (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all hover:opacity-75"
-                style={{
-                  backgroundColor: '#FEF2F2',
-                  color: '#DC2626',
-                  borderRadius: 'var(--tp-r-btn)',
-                }}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Eliminar
-              </button>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs" style={{ color: '#DC2626' }}>¿Eliminar?</span>
-                <button
-                  onClick={handleDelete}
-                  className="px-2.5 py-1 text-xs font-semibold rounded-full"
-                  style={{ backgroundColor: '#DC2626', color: '#FFFFFF' }}
-                >
-                  Sí
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="px-2.5 py-1 text-xs font-medium rounded-full"
-                  style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
-                >
-                  No
-                </button>
-              </div>
+                {/* Delete */}
+                {!confirmDelete ? (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all hover:opacity-75"
+                    style={{
+                      backgroundColor: '#FEF2F2',
+                      color: '#DC2626',
+                      borderRadius: 'var(--tp-r-btn)',
+                    }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Eliminar
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs" style={{ color: '#DC2626' }}>¿Eliminar?</span>
+                    <button
+                      onClick={handleDelete}
+                      className="px-2.5 py-1 text-xs font-semibold rounded-full"
+                      style={{ backgroundColor: '#DC2626', color: '#FFFFFF' }}
+                    >
+                      Sí
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(false)}
+                      className="px-2.5 py-1 text-xs font-medium rounded-full"
+                      style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
+                    >
+                      No
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -368,6 +382,7 @@ export function NotesPanel({ project }: Props) {
               value={editTitle}
               onChange={(e) => { setEditTitle(e.target.value); setIsDirty(true) }}
               placeholder="Título de la nota"
+              readOnly={readOnly}
               className="w-full bg-transparent outline-none font-bold text-xl leading-tight placeholder:opacity-30"
               style={{
                 color: 'var(--tp-text)',
@@ -384,6 +399,7 @@ export function NotesPanel({ project }: Props) {
               value={editContent}
               onChange={(e) => { setEditContent(e.target.value); setIsDirty(true) }}
               placeholder="Escribe aquí tu apunte… (Cmd+S para guardar)"
+              readOnly={readOnly}
               className="w-full bg-transparent outline-none resize-none text-sm leading-relaxed placeholder:opacity-30"
               style={{
                 color: 'var(--tp-text)',

@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 
-export function serializeProject<T extends { members: { userId: string }[] }>(project: T) {
-  return { ...project, members: project.members.map((m) => m.userId) }
+export function serializeProject<T extends { members: { userId: string; role: string }[] }>(project: T) {
+  return {
+    ...project,
+    members: project.members.map((m) => m.userId),
+    viewerUserIds: project.members.filter((m) => m.role === 'viewer').map((m) => m.userId),
+  }
 }
 
 export async function GET() {
@@ -21,7 +25,7 @@ export async function GET() {
     },
     include: {
       notes: { orderBy: { updatedAt: 'desc' } },
-      members: { select: { userId: true } },
+      members: { select: { userId: true, role: true } },
     },
     orderBy: { name: 'asc' },
   })
@@ -36,7 +40,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Whitelist: el cliente envía campos que no son columnas (createdBy, …)
-  const { name, description, color, status, featured, coverImageUrl, memberIds } = await req.json()
+  const { name, description, color, status, featured, coverImageUrl, memberIds, viewerMemberIds } = await req.json()
   if (!name) return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 })
 
   try {
@@ -52,10 +56,17 @@ export async function POST(req: NextRequest) {
         createdById: session.userId,
         members:
           Array.isArray(memberIds) && memberIds.length > 0
-            ? { createMany: { data: memberIds.map((userId: string) => ({ userId })) } }
+            ? {
+                createMany: {
+                  data: memberIds.map((userId: string) => ({
+                    userId,
+                    role: Array.isArray(viewerMemberIds) && viewerMemberIds.includes(userId) ? 'viewer' : 'editor',
+                  })),
+                },
+              }
             : undefined,
       },
-      include: { notes: true, members: { select: { userId: true } } },
+      include: { notes: true, members: { select: { userId: true, role: true } } },
     })
     return NextResponse.json(serializeProject(project), { status: 201 })
   } catch (e) {

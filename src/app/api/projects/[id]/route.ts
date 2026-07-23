@@ -12,11 +12,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params
   const body = await req.json()
 
-  const exists = await prisma.project.findFirst({ where: { id, companyId: session.activeCompanyId } })
+  const exists = await prisma.project.findFirst({
+    where: { id, companyId: session.activeCompanyId },
+    include: { members: { where: { userId: session.userId }, select: { role: true } } },
+  })
   if (!exists) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
 
+  const isViewer = exists.members[0]?.role === 'viewer'
   const isOwner = exists.createdById === session.userId
-  if (session.userRole !== 'admin' && !isOwner) {
+  if (session.userRole !== 'admin' && (isViewer || !isOwner)) {
     return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
   }
 
@@ -31,12 +35,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   if (Array.isArray(body.memberIds)) {
+    const viewerIds: string[] = Array.isArray(body.viewerMemberIds) ? body.viewerMemberIds : []
     await prisma.$transaction([
       prisma.projectMember.deleteMany({ where: { projectId: id } }),
       ...(body.memberIds.length > 0
         ? [
             prisma.projectMember.createMany({
-              data: body.memberIds.map((userId: string) => ({ projectId: id, userId })),
+              data: body.memberIds.map((userId: string) => ({
+                projectId: id,
+                userId,
+                role: viewerIds.includes(userId) ? 'viewer' : 'editor',
+              })),
             }),
           ]
         : []),
@@ -45,7 +54,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const project = await prisma.project.findUnique({
     where: { id },
-    include: { notes: true, members: { select: { userId: true } } },
+    include: { notes: true, members: { select: { userId: true, role: true } } },
   })
   return NextResponse.json(serializeProject(project!))
 }
@@ -55,11 +64,15 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   const { id } = await params
-  const exists = await prisma.project.findFirst({ where: { id, companyId: session.activeCompanyId } })
+  const exists = await prisma.project.findFirst({
+    where: { id, companyId: session.activeCompanyId },
+    include: { members: { where: { userId: session.userId }, select: { role: true } } },
+  })
   if (!exists) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
 
+  const isViewer = exists.members[0]?.role === 'viewer'
   const isOwner = exists.createdById === session.userId
-  if (session.userRole !== 'admin' && !isOwner) {
+  if (session.userRole !== 'admin' && (isViewer || !isOwner)) {
     return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
   }
 

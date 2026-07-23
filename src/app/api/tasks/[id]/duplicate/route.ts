@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { recordHistoryEvent } from '@/lib/history'
-import { serializeTask, taskVisibilityFilter } from '../../route'
+import { serializeTask, taskVisibilityFilter, canUserEditTaskServer } from '../../route'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -13,9 +13,12 @@ export async function POST(_req: NextRequest, { params }: Params) {
   const { id } = await params
   const original = await prisma.task.findFirst({
     where: { id, companyId: session.activeCompanyId, ...taskVisibilityFilter(session) },
-    include: { checklist: true, assignees: { select: { userId: true } } },
+    include: { checklist: true, assignees: { select: { userId: true, role: true } } },
   })
   if (!original) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+  if (!(await canUserEditTaskServer(session, original))) {
+    return NextResponse.json({ error: 'Sin permisos: solo puedes ver esta tarea' }, { status: 403 })
+  }
 
   const duplicate = await prisma.task.create({
     data: {
@@ -38,10 +41,10 @@ export async function POST(_req: NextRequest, { params }: Params) {
         ? { create: original.checklist.map((c) => ({ text: c.text, done: false })) }
         : undefined,
       assignees: original.assignees.length
-        ? { createMany: { data: original.assignees.map((a) => ({ userId: a.userId })) } }
+        ? { createMany: { data: original.assignees.map((a) => ({ userId: a.userId, role: a.role })) } }
         : undefined,
     },
-    include: { checklist: true, comments: true, assignees: { select: { userId: true } } },
+    include: { checklist: true, comments: true, assignees: { select: { userId: true, role: true } } },
   })
 
   const actor = await prisma.user.findUnique({ where: { id: session.userId } })
