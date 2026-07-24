@@ -60,6 +60,14 @@ export function TimelineCard({ task, onClick }: Props) {
           <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: project?.color ?? '#94a3b8' }} />
           <span className="text-xs truncate max-w-[70px]" style={{ color: 'var(--tp-text-2)' }}>{project?.name ?? 'Sin proyecto'}</span>
           <div className={cn('w-1.5 h-1.5 rounded-full', STATUS_DOT_COLORS[task.status])} />
+          {task.tags.length > 0 && (
+            <span
+              className="shrink-0 text-[9px] leading-none px-1 py-0.5 rounded-full font-medium truncate max-w-[50px]"
+              style={{ backgroundColor: 'var(--tp-lime)', color: 'var(--tp-dark)' }}
+            >
+              {task.tags[0]}
+            </span>
+          )}
         </div>
         {user && (
           <div className={cn('w-5 h-5 rounded-lg flex items-center justify-center text-white text-xs font-semibold shrink-0', user.color)}>

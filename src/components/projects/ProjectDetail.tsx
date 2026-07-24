@@ -523,6 +523,14 @@ export function ProjectDetail({ project, onEdit }: Props) {
                           <span className="flex-1 text-sm truncate" style={{ color: 'var(--tp-text)' }}>
                             {task.title}
                           </span>
+                          {task.tags.length > 0 && (
+                            <span
+                              className="shrink-0 text-[10px] leading-none px-1.5 py-1 rounded-full font-medium truncate max-w-[80px]"
+                              style={{ backgroundColor: 'var(--tp-lime)', color: 'var(--tp-dark)' }}
+                            >
+                              {task.tags[0]}
+                            </span>
+                          )}
                           <span className="text-xs shrink-0 truncate max-w-[120px]" style={{ color: 'var(--tp-text-2)' }}>
                             {task.assigneeIds.map((id) => users.find((u) => u.id === id)?.name).filter(Boolean).join(', ') || 'Sin asignar'}
                           </span>
