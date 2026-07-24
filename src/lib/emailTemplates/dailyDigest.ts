@@ -1,5 +1,7 @@
 import { Priority, TaskStatus } from '@/types'
 
+const FONT = "Poppins, Arial, Helvetica, sans-serif"
+
 const PRIORITY_BADGES: Record<Priority, { bg: string; text: string; label: string }> = {
   low: { bg: '#DCFCE7', text: '#16A34A', label: 'Baja' },
   medium: { bg: '#FEF9C3', text: '#CA8A04', label: 'Media' },
@@ -61,196 +63,245 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;')
 }
 
+// Tarjeta de una métrica (Tareas activas / vencidas / para hoy / publicaciones).
+function metricCellHtml(label: string, value: number, opts: { bg?: string; labelColor?: string; valueColor?: string } = {}): string {
+  const bg = opts.bg ?? '#FFFFFF'
+  const labelColor = opts.labelColor ?? '#65707A'
+  const valueColor = opts.valueColor ?? '#11161C'
+  return `
+    <td width="25%" valign="top" style="padding:6px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${bg};border-radius:24px;border:1px solid rgba(17,22,28,.06);">
+        <tr>
+          <td style="padding:20px 18px;font-family:${FONT};">
+            <p style="margin:0 0 18px;color:${labelColor};font-size:13px;font-weight:600;">${escapeHtml(label)}</p>
+            <p style="margin:0;color:${valueColor};font-size:32px;font-weight:800;letter-spacing:-.04em;">${value}</p>
+          </td>
+        </tr>
+      </table>
+    </td>`
+}
+
 function taskRowHtml(task: DigestTaskRow): string {
   const badge = task.overdue ? { bg: '#FFE0E1', text: '#E23B3B', label: 'Vencida' } : PRIORITY_BADGES[task.priority]
   const dot = STATUS_DOTS[task.status]
   return `
-    <div class="task">
-      <span class="dot" style="background:${dot}"></span>
-      <div>
-        <p class="task-title">${escapeHtml(task.title)}</p>
-        <p class="task-meta">${escapeHtml(task.projectName)} · ${escapeHtml(task.meta)}</p>
-      </div>
-      <span class="badge" style="background:${badge.bg};color:${badge.text}">${badge.label}</span>
-    </div>`
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:10px 0;background:#F8FAF6;border:1px solid rgba(17,22,28,.05);border-radius:20px;font-family:${FONT};">
+      <tr>
+        <td width="26" valign="top" style="padding:16px 0 16px 14px;">
+          <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${dot};margin-top:6px;font-size:0;line-height:0;">&nbsp;</span>
+        </td>
+        <td valign="top" style="padding:16px 8px;">
+          <p style="margin:0;color:#11161C;font-size:14px;font-weight:700;">${escapeHtml(task.title)}</p>
+          <p style="margin:6px 0 0;color:#6B7280;font-size:12px;">${escapeHtml(task.projectName)} · ${escapeHtml(task.meta)}</p>
+        </td>
+        <td valign="top" align="right" style="padding:16px 14px 16px 8px;white-space:nowrap;">
+          <span style="display:inline-block;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:700;background:${badge.bg};color:${badge.text};">${badge.label}</span>
+        </td>
+      </tr>
+    </table>`
 }
 
-function projectRowHtml(project: DigestProjectRow): string {
+function alertRowHtml(icon: string, iconBg: string, iconColor: string, title: string, subtitle: string): string {
   return `
-    <div class="project">
-      <span class="project-name"><i class="dot" style="background:${project.color};margin:0"></i> ${escapeHtml(project.name)}</span>
-      <span class="count">${project.pendingCount}</span>
-    </div>`
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px;background:#F8FAF6;border-radius:16px;font-family:${FONT};">
+      <tr>
+        <td width="50" valign="middle" style="padding:12px 0 12px 12px;">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td width="36" height="36" align="center" valign="middle" style="background:${iconBg};color:${iconColor};border-radius:50%;font-size:15px;font-weight:700;">${icon}</td>
+          </tr></table>
+        </td>
+        <td valign="middle" style="padding:12px 12px 12px 10px;">
+          <p style="margin:0 0 3px;color:#11161C;font-size:13px;font-weight:700;">${escapeHtml(title)}</p>
+          <p style="margin:0;color:#6B7280;font-size:11.5px;">${escapeHtml(subtitle)}</p>
+        </td>
+      </tr>
+    </table>`
+}
+
+function projectRowHtml(project: DigestProjectRow, isLast: boolean): string {
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="${isLast ? '' : 'border-bottom:1px solid #E3E8DF;'}font-family:${FONT};">
+      <tr>
+        <td style="padding:9px 0;">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${project.color};margin-right:8px;font-size:0;line-height:0;">&nbsp;</span>
+          <span style="font-size:13.5px;font-weight:600;color:#11161C;">${escapeHtml(project.name)}</span>
+        </td>
+        <td align="right" style="padding:9px 0;">
+          <span style="display:inline-block;min-width:28px;text-align:center;background:#E9EEE6;border-radius:999px;padding:5px 9px;font-size:12px;color:#65707A;font-weight:700;">${project.pendingCount}</span>
+        </td>
+      </tr>
+    </table>`
 }
 
 function emptyStateHtml(): string {
-  return `
-    <div style="padding:32px 24px;text-align:center;color:#6B7280;font-size:14px;">
-      🎉 No tienes tareas pendientes por ahora. ¡Buen trabajo!
-    </div>`
+  return `<p style="padding:24px;text-align:center;color:#6B7280;font-size:14px;font-family:${FONT};">🎉 No tienes tareas pendientes por ahora. ¡Buen trabajo!</p>`
 }
 
 export function renderDailyDigestEmail(data: DailyDigestData): string {
   const hasTasks = data.tasks.length > 0
+  const progressColor = data.weekly.percent >= 70 ? '#22C55E' : data.weekly.percent >= 40 ? '#F59E0B' : '#EF4444'
 
   return `<!doctype html>
 <html lang="es">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
   <title>Wipli · Resumen diario</title>
-  <style>
-    *{box-sizing:border-box}
-    body{margin:0;background:#E9EEE6;color:#11161C;font-family:Poppins, Inter, Arial, sans-serif;padding:36px 16px;}
-    .email-shell{width:760px;margin:0 auto;background:#F4F7F2;border-radius:38px;overflow:hidden;box-shadow:0 30px 90px rgba(17,22,28,.13);border:1px solid rgba(17,22,28,.06);}
-    .topbar{background:#11161C;padding:28px 30px;color:#fff;display:flex;justify-content:space-between;align-items:center;}
-    .brand{display:flex;gap:13px;align-items:center}
-    .mark{width:44px;height:44px;border-radius:999px;background:#DFFF45;display:flex;align-items:center;justify-content:center;color:#11161C;font-weight:900;font-size:24px;letter-spacing:-.08em;}
-    .brand-name{font-size:25px;font-weight:750;letter-spacing:-.03em;line-height:1}
-    .brand-name span{color:#DFFF45}
-    .date-pill{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#D4D7D1;padding:11px 16px;border-radius:999px;font-size:13px;font-weight:600;}
-    .intro{padding:30px 30px 14px;display:flex;justify-content:space-between;gap:20px;align-items:flex-start;border-bottom:1px solid #E3E8DF;}
-    .eyebrow{font-size:13px;color:#6B7280;margin:0 0 8px;font-weight:500}
-    h1{font-size:32px;line-height:1.08;margin:0;font-weight:800;letter-spacing:-.045em}
-    .intro-copy{margin:10px 0 0;color:#6B7280;font-size:14px;line-height:1.55;max-width:470px}
-    .btn{display:inline-flex;align-items:center;gap:9px;background:#11161C;color:#fff;text-decoration:none;border-radius:999px;padding:14px 20px;font-size:14px;font-weight:700;white-space:nowrap;box-shadow:0 12px 22px rgba(17,22,28,.16);}
-    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:26px 30px 22px}
-    .metric{min-height:110px;background:#fff;border-radius:28px;padding:21px 20px;position:relative;border:1px solid rgba(17,22,28,.06);box-shadow:0 8px 24px rgba(17,22,28,.05);}
-    .metric.lime{background:#DFFF45}
-    .metric.dark{background:#11161C;color:#fff}
-    .metric-label{margin:0 0 20px;color:#65707A;font-size:13px;font-weight:600;line-height:1.25}
-    .metric.dark .metric-label{color:#ACB2AE}
-    .metric-number{font-size:36px;margin:0;line-height:.9;font-weight:750;letter-spacing:-.06em}
-    .content{padding:0 30px 30px;display:grid;grid-template-columns:1.7fr 1fr;gap:20px;align-items:start}
-    .card{background:#fff;border-radius:30px;border:1px solid rgba(17,22,28,.06);box-shadow:0 8px 24px rgba(17,22,28,.05);overflow:hidden;}
-    .card-head{padding:24px 24px 16px;border-bottom:1px solid #E3E8DF;display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
-    .card-title{margin:0;font-size:18px;font-weight:800;letter-spacing:-.03em}
-    .card-sub{margin:5px 0 0;color:#6B7280;font-size:13px;line-height:1.35}
-    .small-pill{border-radius:999px;background:#EEF2EC;color:#11161C;padding:8px 11px;font-size:12px;font-weight:700;white-space:nowrap}
-    .task-list{padding:8px 14px 18px}
-    .task{margin:10px 0;padding:16px 14px;border-radius:22px;background:#F8FAF6;border:1px solid rgba(17,22,28,.05);display:grid;grid-template-columns:12px 1fr auto;gap:12px;align-items:start;}
-    .dot{width:9px;height:9px;border-radius:999px;margin-top:6px;display:inline-block}
-    .task-title{margin:0;font-size:14px;font-weight:800;line-height:1.25;color:#11161C;letter-spacing:-.01em}
-    .task-meta{margin:7px 0 0;color:#6B7280;font-size:12px;line-height:1.35}
-    .badge{display:inline-block;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:800;white-space:nowrap}
-    .aside{display:flex;flex-direction:column;gap:18px}
-    .dark-card{background:#11161C;color:#fff;border-radius:30px;padding:24px;box-shadow:0 12px 32px rgba(17,22,28,.14)}
-    .dark-card h2{margin:0;font-size:18px;line-height:1.15;letter-spacing:-.03em}
-    .dark-card p{margin:8px 0 18px;color:#B7BCB8;font-size:13px;line-height:1.45}
-    .progress-track{height:10px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:18px}
-    .progress-fill{height:10px;border-radius:999px}
-    .progress-number{font-size:42px;font-weight:800;letter-spacing:-.06em;color:#fff;margin:0}
-    .alert-list{padding:16px 16px 18px}
-    .alert{display:grid;grid-template-columns:38px 1fr;gap:12px;align-items:center;background:#F8FAF6;border-radius:18px;padding:12px;margin-bottom:10px;}
-    .alert-icon{height:38px;width:38px;border-radius:999px;background:#FFE0E1;color:#EF4444;display:flex;align-items:center;justify-content:center;font-size:16px}
-    .alert strong{display:block;font-size:13px;line-height:1.25;margin-bottom:3px}
-    .alert span{display:block;color:#6B7280;font-size:11.5px;line-height:1.3}
-    .projects{padding:18px 18px 20px}
-    .project{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #E3E8DF;gap:10px}
-    .project:last-child{border-bottom:0}
-    .project-name{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:#11161C;line-height:1.25}
-    .count{background:#E9EEE6;border-radius:999px;min-width:32px;text-align:center;padding:5px 9px;font-size:12px;color:#65707A;font-weight:800}
-    .footer{padding:0 30px 34px;text-align:center}
-    .footer .footer-box{background:#11161C;border-radius:28px;padding:24px;color:#AEB5AF;font-size:12px;line-height:1.6}
-    .footer strong{color:#fff}.footer span{color:#DFFF45}
-    @media(max-width:780px){.email-shell{width:100%}.metrics,.content{grid-template-columns:1fr}.intro{flex-direction:column}.metrics{grid-template-columns:1fr 1fr}}
-  </style>
 </head>
-<body>
-  <main class="email-shell">
-    <section class="topbar">
-      <div class="brand">
-        <div class="mark">w</div>
-        <div class="brand-name">Wip<span>li</span></div>
-      </div>
-      <div class="date-pill">Resumen diario · ${escapeHtml(data.dateLabel)}</div>
-    </section>
+<body style="margin:0;padding:0;background:#E9EEE6;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#E9EEE6;">
+    <tr>
+      <td align="center" style="padding:36px 16px;">
+        <table role="presentation" width="700" cellpadding="0" cellspacing="0" style="width:700px;max-width:100%;background:#F4F7F2;border-radius:32px;overflow:hidden;">
 
-    <section class="intro">
-      <div>
-        <p class="eyebrow">Tu resumen de tareas del día</p>
-        <h1>Hola, ${escapeHtml(data.recipientName)}. Este es tu foco de hoy.</h1>
-        <p class="intro-copy">Revisa tus tareas activas, vencimientos y publicaciones pendientes antes de iniciar el día.</p>
-      </div>
-      <a class="btn" href="${escapeHtml(data.appUrl)}">＋ Abrir Wipli</a>
-    </section>
+          <!-- Topbar -->
+          <tr>
+            <td style="background:#11161C;padding:26px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td valign="middle">
+                    <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                      <td width="40" height="40" align="center" valign="middle" style="background:#DFFF45;border-radius:50%;font-family:${FONT};font-weight:900;font-size:20px;color:#11161C;">w</td>
+                      <td style="padding-left:12px;font-family:${FONT};font-size:22px;font-weight:800;color:#ffffff;">Wip<span style="color:#DFFF45;">li</span></td>
+                    </tr></table>
+                  </td>
+                  <td align="right" valign="middle">
+                    <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                      <td style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#D4D7D1;padding:10px 15px;border-radius:999px;font-family:${FONT};font-size:12px;font-weight:600;white-space:nowrap;">Resumen diario · ${escapeHtml(data.dateLabel)}</td>
+                    </tr></table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-    <section class="metrics">
-      <article class="metric">
-        <p class="metric-label">Tareas activas</p>
-        <p class="metric-number">${data.metrics.active}</p>
-      </article>
-      <article class="metric">
-        <p class="metric-label">Tareas vencidas</p>
-        <p class="metric-number" style="color:#EF4444">${data.metrics.overdue}</p>
-      </article>
-      <article class="metric lime">
-        <p class="metric-label" style="color:#11161C">Para hoy</p>
-        <p class="metric-number">${data.metrics.today}</p>
-      </article>
-      <article class="metric dark">
-        <p class="metric-label">Publicaciones</p>
-        <p class="metric-number">${data.metrics.publications}</p>
-      </article>
-    </section>
+          <!-- Intro -->
+          <tr>
+            <td style="padding:28px 28px 16px;border-bottom:1px solid #E3E8DF;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td valign="top">
+                    <p style="margin:0 0 8px;font-family:${FONT};font-size:13px;color:#6B7280;font-weight:500;">Tu resumen de tareas del día</p>
+                    <p style="margin:0;font-family:${FONT};font-size:26px;line-height:1.15;font-weight:800;color:#11161C;">Hola, ${escapeHtml(data.recipientName)}. Este es tu foco de hoy.</p>
+                    <p style="margin:10px 0 0;font-family:${FONT};font-size:14px;line-height:1.55;color:#6B7280;">Revisa tus tareas activas, vencimientos y publicaciones pendientes antes de iniciar el día.</p>
+                  </td>
+                  <td width="150" valign="top" align="right">
+                    <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+                      <td style="background:#11161C;border-radius:999px;">
+                        <a href="${escapeHtml(data.appUrl)}" style="display:inline-block;padding:13px 18px;font-family:${FONT};font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap;"><span style="color:#ffffff;">＋ Abrir Wipli</span></a>
+                      </td>
+                    </tr></table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-    <section class="content">
-      <article class="card">
-        <div class="card-head">
-          <div>
-            <h2 class="card-title">Tus tareas de hoy</h2>
-            <p class="card-sub">Vencidas y para hoy, ordenadas por prioridad.</p>
-          </div>
-          <div class="small-pill">${data.tasks.length} en esta lista</div>
-        </div>
-        <div class="task-list">
-          ${hasTasks ? data.tasks.map(taskRowHtml).join('') : emptyStateHtml()}
-        </div>
-      </article>
+          <!-- Metrics -->
+          <tr>
+            <td style="padding:20px 22px 16px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  ${metricCellHtml('Tareas activas', data.metrics.active)}
+                  ${metricCellHtml('Tareas vencidas', data.metrics.overdue, { valueColor: '#EF4444' })}
+                  ${metricCellHtml('Para hoy', data.metrics.today, { bg: '#DFFF45', labelColor: '#11161C' })}
+                  ${metricCellHtml('Publicaciones', data.metrics.publications, { bg: '#11161C', labelColor: '#ACB2AE', valueColor: '#ffffff' })}
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-      <aside class="aside">
-        <article class="dark-card">
-          <h2>Cumplimiento semanal</h2>
-          <p>${data.weekly.completed} de ${data.weekly.total} tareas completadas esta semana.</p>
-          <p class="progress-number">${data.weekly.percent}%</p>
-          <div class="progress-track"><div class="progress-fill" style="width:${data.weekly.percent}%;background:${data.weekly.percent >= 70 ? '#22C55E' : data.weekly.percent >= 40 ? '#F59E0B' : '#EF4444'}"></div></div>
-        </article>
+          <!-- Content: tasks (left) + aside (right) -->
+          <tr>
+            <td style="padding:0 22px 26px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td width="62%" valign="top" style="padding-right:8px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:26px;border:1px solid rgba(17,22,28,.06);">
+                      <tr>
+                        <td style="padding:22px 20px 14px;border-bottom:1px solid #E3E8DF;">
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                            <td valign="top">
+                              <p style="margin:0;font-family:${FONT};font-size:17px;font-weight:800;color:#11161C;">Tus tareas de hoy</p>
+                              <p style="margin:4px 0 0;font-family:${FONT};font-size:13px;color:#6B7280;">Vencidas y para hoy, ordenadas por prioridad.</p>
+                            </td>
+                            <td align="right" valign="top">
+                              <span style="display:inline-block;border-radius:999px;background:#EEF2EC;color:#11161C;padding:7px 10px;font-family:${FONT};font-size:11px;font-weight:700;white-space:nowrap;">${data.tasks.length} en esta lista</span>
+                            </td>
+                          </tr></table>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:8px 12px 14px;">
+                          ${hasTasks ? data.tasks.map(taskRowHtml).join('') : emptyStateHtml()}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td width="38%" valign="top" style="padding-left:8px;">
 
-        <article class="card">
-          <div class="card-head" style="padding:20px 18px 12px">
-            <div>
-              <h2 class="card-title" style="font-size:16px">Alertas importantes</h2>
-              <p class="card-sub">Requieren tu atención hoy.</p>
-            </div>
-          </div>
-          <div class="alert-list">
-            <div class="alert"><div class="alert-icon">!</div><div><strong>${data.metrics.overdue} tareas vencidas</strong><span>Revisa y actualiza pendientes</span></div></div>
-            <div class="alert"><div class="alert-icon" style="background:#FFF1C2;color:#B45309">●</div><div><strong>${data.upcomingPublications} publicaciones próximas</strong><span>Entre hoy y mañana</span></div></div>
-            <div class="alert"><div class="alert-icon" style="background:#EEE7FF;color:#7C3AED">↻</div><div><strong>${data.pendingReviews} revisiones pendientes</strong><span>Esperando aprobación</span></div></div>
-          </div>
-        </article>
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#11161C;border-radius:26px;margin-bottom:16px;">
+                      <tr>
+                        <td style="padding:22px;font-family:${FONT};">
+                          <p style="margin:0;color:#ffffff;font-size:17px;font-weight:800;">Cumplimiento semanal</p>
+                          <p style="margin:8px 0 16px;color:#B7BCB8;font-size:13px;line-height:1.45;">${data.weekly.completed} de ${data.weekly.total} tareas completadas esta semana.</p>
+                          <p style="margin:0;color:#ffffff;font-size:36px;font-weight:800;letter-spacing:-.04em;">${data.weekly.percent}%</p>
+                          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
+                            <tr><td style="background:rgba(255,255,255,.12);border-radius:999px;height:8px;font-size:0;line-height:0;">
+                              <div style="width:${data.weekly.percent}%;background:${progressColor};height:8px;border-radius:999px;font-size:0;line-height:0;">&nbsp;</div>
+                            </td></tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
 
-        <article class="card">
-          <div class="card-head" style="padding:20px 18px 12px">
-            <div>
-              <h2 class="card-title" style="font-size:16px">Tus proyectos activos</h2>
-              <p class="card-sub">${data.projects.length} con tareas pendientes.</p>
-            </div>
-          </div>
-          <div class="projects">
-            ${data.projects.length ? data.projects.map(projectRowHtml).join('') : '<p style="padding:8px 0;color:#6B7280;font-size:13px;">Sin proyectos con tareas pendientes.</p>'}
-          </div>
-        </article>
-      </aside>
-    </section>
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:26px;border:1px solid rgba(17,22,28,.06);margin-bottom:16px;">
+                      <tr>
+                        <td style="padding:18px 16px 6px;font-family:${FONT};">
+                          <p style="margin:0;font-size:15px;font-weight:800;color:#11161C;">Alertas importantes</p>
+                          <p style="margin:4px 0 12px;font-size:12.5px;color:#6B7280;">Requieren tu atención hoy.</p>
+                          ${alertRowHtml('!', '#FFE0E1', '#EF4444', `${data.metrics.overdue} tareas vencidas`, 'Revisa y actualiza pendientes')}
+                          ${alertRowHtml('●', '#FFF1C2', '#B45309', `${data.upcomingPublications} publicaciones próximas`, 'Entre hoy y mañana')}
+                          ${alertRowHtml('↻', '#EEE7FF', '#7C3AED', `${data.pendingReviews} revisiones pendientes`, 'Esperando aprobación')}
+                        </td>
+                      </tr>
+                    </table>
 
-    <section class="footer">
-      <div class="footer-box">
-        <strong>Wip<span>li</span></strong><br>
-        Tu operación diaria bajo control. Este resumen fue generado automáticamente desde tu tablero.
-      </div>
-    </section>
-  </main>
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:26px;border:1px solid rgba(17,22,28,.06);">
+                      <tr>
+                        <td style="padding:18px 16px;font-family:${FONT};">
+                          <p style="margin:0;font-size:15px;font-weight:800;color:#11161C;">Tus proyectos activos</p>
+                          <p style="margin:4px 0 10px;font-size:12.5px;color:#6B7280;">${data.projects.length} con tareas pendientes.</p>
+                          ${data.projects.length ? data.projects.map((p, i) => projectRowHtml(p, i === data.projects.length - 1)).join('') : `<p style="margin:0;padding:8px 0;color:#6B7280;font-size:13px;">Sin proyectos con tareas pendientes.</p>`}
+                        </td>
+                      </tr>
+                    </table>
+
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:0 22px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#11161C;border-radius:22px;">
+                <tr>
+                  <td align="center" style="padding:22px;font-family:${FONT};color:#AEB5AF;font-size:12px;line-height:1.6;">
+                    <span style="color:#ffffff;font-weight:700;">Wip<span style="color:#DFFF45;">li</span></span><br />
+                    Tu operación diaria bajo control. Este resumen fue generado automáticamente desde tu tablero.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`
 }
