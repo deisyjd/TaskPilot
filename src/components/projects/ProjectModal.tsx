@@ -7,6 +7,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Project } from '@/types'
 import { FolderPlus } from 'lucide-react'
 import { ImageUploader } from '@/components/shared/ImageUploader'
+import { can } from '@/lib/permissions'
+import { DeleteProjectModal } from '@/components/projects/DeleteProjectModal'
 
 const PRESET_COLORS = [
   '#6366f1', '#0ea5e9', '#f43f5e', '#10b981', '#f59e0b',
@@ -35,8 +37,10 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
   const [viewerMembers, setViewerMembers] = useState<string[]>([])
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
 
   const isEditMode = Boolean(existingProject)
+  const canDelete = isEditMode && can(currentUser, 'delete_project')
 
   // Populate fields when editing
   useEffect(() => {
@@ -143,6 +147,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent
         className="p-0 gap-0 overflow-hidden"
@@ -353,29 +358,52 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
 
         {/* ── Footer ─────────────────────────────────────────── */}
         <div
-          className="flex items-center justify-end gap-2.5 px-6 py-4 sticky bottom-0"
+          className="flex items-center justify-between gap-2.5 px-6 py-4 sticky bottom-0"
           style={{
             borderTop: '1px solid var(--tp-border)',
             backgroundColor: 'var(--tp-surface)',
           }}
         >
-          <button
-            onClick={handleClose}
-            className="px-5 py-2.5 text-sm font-medium rounded-full transition-all hover:opacity-70"
-            style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!name.trim()}
-            className="px-6 py-2.5 text-sm font-semibold rounded-full transition-all hover:opacity-85 disabled:opacity-40"
-            style={{ backgroundColor: 'var(--tp-dark)', color: '#FFFFFF' }}
-          >
-            {isEditMode ? 'Guardar cambios' : 'Crear proyecto'}
-          </button>
+          {canDelete ? (
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="px-5 py-2.5 text-sm font-medium rounded-full transition-all hover:opacity-70"
+              style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#ef4444' }}
+            >
+              Eliminar proyecto
+            </button>
+          ) : (
+            <span />
+          )}
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={handleClose}
+              className="px-5 py-2.5 text-sm font-medium rounded-full transition-all hover:opacity-70"
+              style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!name.trim()}
+              className="px-6 py-2.5 text-sm font-semibold rounded-full transition-all hover:opacity-85 disabled:opacity-40"
+              style={{ backgroundColor: 'var(--tp-dark)', color: '#FFFFFF' }}
+            >
+              {isEditMode ? 'Guardar cambios' : 'Crear proyecto'}
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
+
+    {isEditMode && existingProject && (
+      <DeleteProjectModal
+        open={showDeleteModal}
+        project={existingProject}
+        onClose={() => setShowDeleteModal(false)}
+        onDeleted={onClose}
+      />
+    )}
+    </>
   )
 }

@@ -39,7 +39,7 @@ interface TaskStore {
 
   addProject: (project: Partial<Project> & { name: string; memberIds?: string[]; viewerMemberIds?: string[] }) => Promise<Project | null>
   updateProject: (id: string, updates: Partial<Project> & { memberIds?: string[]; viewerMemberIds?: string[] }) => Promise<void>
-  deleteProject: (id: string) => Promise<void>
+  deleteProject: (id: string) => Promise<{ ok: boolean; error?: string }>
   archiveProject: (id: string) => Promise<void>
   restoreProject: (id: string) => Promise<void>
 
@@ -192,8 +192,11 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
     try {
       await api(`/api/projects/${id}`, { method: 'DELETE' })
       set((s) => ({ projects: s.projects.filter((p) => p.id !== id) }))
+      return { ok: true }
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : 'Error al eliminar proyecto' })
+      const error = e instanceof Error ? e.message : 'Error al eliminar proyecto'
+      set({ error })
+      return { ok: false, error }
     }
   },
 
