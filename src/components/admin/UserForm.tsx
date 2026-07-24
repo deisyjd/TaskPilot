@@ -54,6 +54,7 @@ const EMPTY_FORM = {
   password: '',
   confirmPassword: '',
   dailyDigestEmail: false,
+  taskAssignedEmail: false,
 }
 
 type FormErrors = Partial<Record<keyof typeof EMPTY_FORM, string>>
@@ -87,6 +88,7 @@ export function UserForm({ open, user, onClose }: Props) {
           password: '',
           confirmPassword: '',
           dailyDigestEmail: user.dailyDigestEmail ?? false,
+          taskAssignedEmail: user.taskAssignedEmail ?? false,
         })
       } else {
         setForm(EMPTY_FORM)
@@ -168,6 +170,7 @@ export function UserForm({ open, user, onClose }: Props) {
         updates.password = form.password
       }
       updates.dailyDigestEmail = form.dailyDigestEmail
+      updates.taskAssignedEmail = form.taskAssignedEmail
       updateUser(user.id, updates)
     }
 
@@ -527,6 +530,36 @@ export function UserForm({ open, user, onClose }: Props) {
                   style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-text-2)' }}
                 >
                   {testDigestStatus === 'sending' ? 'Enviando…' : 'Enviar prueba'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Notificación de nuevas tareas asignadas — solo en edición */}
+          {!isNew && (
+            <div className="flex flex-col rounded-[var(--tp-r-input)] border" style={{ borderColor: 'var(--tp-border)', background: 'var(--tp-surface)' }}>
+              <div className="flex items-center justify-between py-3 px-4">
+                <div>
+                  <p className="text-sm font-medium" style={{ color: 'var(--tp-text)' }}>Notificar nuevas tareas asignadas</p>
+                  <p className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
+                    Recibe un correo cada vez que le asignen una tarea nueva
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((f) => ({ ...f, taskAssignedEmail: !f.taskAssignedEmail }))
+                  }
+                  className="relative w-12 h-6 rounded-full transition-all shrink-0"
+                  style={{ background: form.taskAssignedEmail ? 'var(--tp-lime)' : '#D1D5DB' }}
+                >
+                  <span
+                    className="absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm"
+                    style={{
+                      left: form.taskAssignedEmail ? '26px' : '3px',
+                      transition: 'left 0.2s ease',
+                    }}
+                  />
                 </button>
               </div>
             </div>

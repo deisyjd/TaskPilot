@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { recordHistoryEvent } from '@/lib/history'
 import { serializeTask, validAssigneeIds, taskVisibilityFilter, canUserEditTaskServer } from '../route'
+import { notifyTaskAssigned } from '@/lib/taskAssignedNotification'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -60,6 +61,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const oldIds = existing.assignees.map((a) => a.userId)
   let newIds = oldIds
   let assigneeChanged = false
+  let addedIds: string[] = []
 
   if (Array.isArray(body.assigneeIds)) {
     newIds = await validAssigneeIds(session.activeCompanyId, body.assigneeIds)
@@ -68,6 +70,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     const roleFor = (userId: string) => (viewerIds.includes(userId) ? 'viewer' : 'editor')
     assigneeChanged = JSON.stringify([...oldIds].sort()) !== JSON.stringify([...newIds].sort())
     const rolesChanged = newIds.some((userId) => (oldRoles.get(userId) ?? 'editor') !== roleFor(userId))
+    addedIds = newIds.filter((userId) => !oldIds.includes(userId))
     if (assigneeChanged || rolesChanged) {
       await prisma.$transaction([
         prisma.taskAssignee.deleteMany({ where: { taskId: id } }),
@@ -75,6 +78,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           ? [prisma.taskAssignee.createMany({ data: newIds.map((userId) => ({ taskId: id, userId, role: roleFor(userId) })) })]
           : []),
       ])
+      for (const userId of addedIds) {
+        after(() =>
+          notifyTaskAssigned(id, userId, session.userId).catch((err) =>
+            console.error('[task-assigned] error en notificación:', err)
+          )
+        )
+      }
     }
   }
 

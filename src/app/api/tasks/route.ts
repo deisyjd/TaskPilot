@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { recordHistoryEvent } from '@/lib/history'
 import { generateDueRecurrences } from '@/lib/recurrence'
 import { isProjectViewerServer } from '@/lib/projectAccess'
+import { notifyTaskAssigned } from '@/lib/taskAssignedNotification'
 
 const RECURRENCE_VALUES = ['daily', 'weekly', 'monthly']
 
@@ -143,6 +144,14 @@ export async function POST(req: NextRequest) {
   // en vez de esperar a la próxima carga de la lista.
   if (hasRecurrence) {
     await generateDueRecurrences(session.activeCompanyId)
+  }
+
+  for (const userId of validIds) {
+    after(() =>
+      notifyTaskAssigned(task.id, userId, session.userId).catch((err) =>
+        console.error('[task-assigned] error en notificación:', err)
+      )
+    )
   }
 
   return NextResponse.json(serializeTask(task), { status: 201 })

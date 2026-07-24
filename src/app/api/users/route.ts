@@ -11,7 +11,7 @@ export async function GET() {
     where: { companyId: session.activeCompanyId },
     include: {
       user: {
-        select: { id: true, name: true, email: true, role: true, initials: true, color: true, avatarUrl: true, status: true, dailyDigestEmail: true, createdAt: true, updatedAt: true },
+        select: { id: true, name: true, email: true, role: true, initials: true, color: true, avatarUrl: true, status: true, dailyDigestEmail: true, taskAssignedEmail: true, createdAt: true, updatedAt: true },
       },
     },
     orderBy: { user: { name: 'asc' } },

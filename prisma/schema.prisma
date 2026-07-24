@@ -54,6 +54,7 @@ model User {
   avatarUrl           String?  @db.Text
   status              String   @default("active")
   dailyDigestEmail    Boolean  @default(false)
+  taskAssignedEmail   Boolean  @default(false)
   lastActiveCompanyId String?
   lastActiveCompany   Company? @relation("UserLastActiveCompany", fields: [lastActiveCompanyId], references: [id], onDelete: SetNull)
   createdAt           DateTime @default(now())

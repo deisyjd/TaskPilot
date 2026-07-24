@@ -112,6 +112,7 @@ export interface User {
   status?: UserStatus
   password?: string
   dailyDigestEmail?: boolean
+  taskAssignedEmail?: boolean
   createdAt?: string
   updatedAt?: string
 }
