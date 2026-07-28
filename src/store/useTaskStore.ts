@@ -43,8 +43,8 @@ interface TaskStore {
   archiveProject: (id: string) => Promise<void>
   restoreProject: (id: string) => Promise<void>
 
-  addNote: (projectId: string, note: { title?: string; content?: string; color?: string }) => Promise<Note | null>
-  updateNote: (id: string, updates: { title?: string; content?: string; color?: string }) => Promise<boolean>
+  addNote: (projectId: string, note: { title?: string; content?: string; color?: string; shareWith?: { userId: string; role: 'editor' | 'viewer' }[] }) => Promise<Note | null>
+  updateNote: (id: string, updates: { title?: string; content?: string; color?: string; shareWith?: { userId: string; role: 'editor' | 'viewer' }[] }) => Promise<boolean>
   deleteNote: (id: string) => Promise<boolean>
 
   addReminder: (reminder: { projectId: string; title: string; dueDate: string; dueTime?: string | null; assigneeId?: string | null }) => Promise<Reminder | null>

@@ -68,6 +68,8 @@ model User {
   createdProjects          Project[]                  @relation("ProjectCreator")
   taggedChecklistItems     ChecklistItem[]
   assignedReminders        Reminder[]
+  createdNotes             Note[]                     @relation("NoteCreator")
+  noteShares               NoteShare[]
 
   @@map("users")
 }
@@ -241,21 +243,44 @@ model Message {
 }
 
 model Note {
-  id        String   @id @default(cuid())
-  companyId String
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  title     String
-  content   String?  @db.Text
-  color     String?
-  createdBy String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title         String
+  content       String?  @db.Text
+  color         String?
+  createdBy     String?
+  createdById   String?
+  createdByUser User?    @relation("NoteCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  shares NoteShare[]
 
   @@index([companyId])
   @@index([projectId])
   @@map("notes")
+}
+
+// Notas sin createdById (creadas antes de esta funcionalidad) se
+// mantienen visibles/editables para todo el proyecto como antes —
+// la privacidad estricta solo aplica a notas con dueño identificado.
+// Ni siquiera el admin puede ver una nota privada no compartida.
+model NoteShare {
+  id        String   @id @default(cuid())
+  noteId    String
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("viewer") // 'viewer' | 'editor'
+  createdAt DateTime @default(now())
+
+  @@unique([noteId, userId])
+  @@index([noteId])
+  @@index([userId])
+  @@map("note_shares")
 }
 
 model ProjectMember {

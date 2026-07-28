@@ -143,6 +143,9 @@ export interface Note {
   content: string
   color?: string   // pastel card color
   createdBy: string
+  createdById?: string | null
+  isOwner?: boolean
+  sharedWith?: { userId: string; role: 'editor' | 'viewer' }[]
   createdAt: string
   updatedAt: string
 }

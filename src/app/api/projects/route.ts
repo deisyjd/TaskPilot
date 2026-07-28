@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { noteVisibilityFilter, serializeNote } from '@/lib/noteAccess'
 
-export function serializeProject<T extends { members: { userId: string; role: string }[] }>(project: T) {
+export function serializeProject<
+  T extends {
+    members: { userId: string; role: string }[]
+    notes?: { createdById: string | null; shares: { userId: string; role: string }[] }[]
+  }
+>(project: T, currentUserId?: string) {
   return {
     ...project,
     members: project.members.map((m) => m.userId),
     viewerUserIds: project.members.filter((m) => m.role === 'viewer').map((m) => m.userId),
+    notes: project.notes && currentUserId ? project.notes.map((n) => serializeNote(n, currentUserId)) : project.notes,
   }
 }
 
@@ -24,12 +31,16 @@ export async function GET() {
         : { OR: [{ members: { none: {} } }, { members: { some: { userId: session.userId } } }] }),
     },
     include: {
-      notes: { orderBy: { updatedAt: 'desc' } },
+      notes: {
+        where: noteVisibilityFilter(session),
+        orderBy: { updatedAt: 'desc' },
+        include: { shares: { select: { userId: true, role: true } } },
+      },
       members: { select: { userId: true, role: true } },
     },
     orderBy: { name: 'asc' },
   })
-  return NextResponse.json(projects.map(serializeProject))
+  return NextResponse.json(projects.map((p) => serializeProject(p, session.userId)))
 }
 
 export async function POST(req: NextRequest) {
@@ -66,9 +77,9 @@ export async function POST(req: NextRequest) {
               }
             : undefined,
       },
-      include: { notes: true, members: { select: { userId: true, role: true } } },
+      include: { notes: { include: { shares: { select: { userId: true, role: true } } } }, members: { select: { userId: true, role: true } } },
     })
-    return NextResponse.json(serializeProject(project), { status: 201 })
+    return NextResponse.json(serializeProject(project, session.userId), { status: 201 })
   } catch (e) {
     if (typeof e === 'object' && e !== null && 'code' in e && e.code === 'P2002') {
       return NextResponse.json({ error: 'Ya existe un proyecto con ese nombre' }, { status: 409 })

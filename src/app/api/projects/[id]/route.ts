@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { serializeProject } from '../route'
+import { noteVisibilityFilter } from '@/lib/noteAccess'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -54,9 +55,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const project = await prisma.project.findUnique({
     where: { id },
-    include: { notes: true, members: { select: { userId: true, role: true } } },
+    include: {
+      notes: { where: noteVisibilityFilter(session), include: { shares: { select: { userId: true, role: true } } } },
+      members: { select: { userId: true, role: true } },
+    },
   })
-  return NextResponse.json(serializeProject(project!))
+  return NextResponse.json(serializeProject(project!, session.userId))
 }
 
 export async function DELETE(req: NextRequest, { params }: Params) {

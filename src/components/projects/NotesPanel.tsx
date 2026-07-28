@@ -1,11 +1,19 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Trash2, StickyNote, Save, Check } from 'lucide-react'
+import { Plus, Trash2, StickyNote, Save, Check, Lock, Users, X } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
-import { useCurrentUser } from '@/store/useUserStore'
+import { useCurrentUser, useUserStore } from '@/store/useUserStore'
 import { isProjectViewer } from '@/lib/permissions'
 import { Note, Project } from '@/types'
+
+type ShareEntry = { userId: string; role: 'editor' | 'viewer' }
+
+function canEditNoteClient(note: Note, currentUserId: string | undefined): boolean {
+  if (!currentUserId) return false
+  if (note.isOwner) return true
+  return note.sharedWith?.some((s) => s.userId === currentUserId && s.role === 'editor') ?? false
+}
 
 // ─── Pastel color palette ─────────────────────────────────────
 const NOTE_COLORS = [
@@ -41,7 +49,8 @@ export function NotesPanel({ project }: Props) {
   const updateNote = useTaskStore((s) => s.updateNote)
   const deleteNoteAction = useTaskStore((s) => s.deleteNote)
   const currentUser = useCurrentUser()
-  const readOnly = isProjectViewer(currentUser, project)
+  const allUsers = useUserStore((s) => s.users)
+  const projectReadOnly = isProjectViewer(currentUser, project)
 
   const notes: Note[] = project.notes ?? []
 
@@ -49,6 +58,8 @@ export function NotesPanel({ project }: Props) {
   const [editTitle, setEditTitle]   = useState('')
   const [editContent, setEditContent] = useState('')
   const [editColor, setEditColor]   = useState(NOTE_COLORS[0])
+  const [shareWith, setShareWith]   = useState<ShareEntry[]>([])
+  const [showSharePicker, setShowSharePicker] = useState(false)
   const [isDirty, setIsDirty]       = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
@@ -56,6 +67,25 @@ export function NotesPanel({ project }: Props) {
   const contentRef = useRef<HTMLTextAreaElement>(null)
 
   const selectedNote = notes.find((n) => n.id === selectedId) ?? null
+  const noteReadOnly = projectReadOnly || (selectedNote ? !canEditNoteClient(selectedNote, currentUser?.id) : false)
+  const canShare = !projectReadOnly && (!selectedNote || selectedNote.isOwner)
+
+  const shareCandidates = allUsers.filter((u) => {
+    if (u.status === 'inactive' || u.id === currentUser?.id) return false
+    return !project.members || project.members.length === 0 || project.members.includes(u.id)
+  })
+
+  function toggleShare(userId: string) {
+    setShareWith((prev) =>
+      prev.some((s) => s.userId === userId) ? prev.filter((s) => s.userId !== userId) : [...prev, { userId, role: 'viewer' }]
+    )
+    setIsDirty(true)
+  }
+
+  function setShareRole(userId: string, role: 'editor' | 'viewer') {
+    setShareWith((prev) => prev.map((s) => (s.userId === userId ? { ...s, role } : s)))
+    setIsDirty(true)
+  }
 
   // Auto-grow textarea
   useEffect(() => {
@@ -68,7 +98,7 @@ export function NotesPanel({ project }: Props) {
   // ─── Save helper ─────────────────────────────────────────────
   async function saveCurrentNote(id: string | null = selectedId) {
     if (!id) return
-    const ok = await updateNote(id, { title: editTitle, content: editContent, color: editColor })
+    const ok = await updateNote(id, { title: editTitle, content: editContent, color: editColor, shareWith })
     if (!ok) {
       setError('No se pudo guardar la nota. Intenta de nuevo.')
       return
@@ -86,6 +116,8 @@ export function NotesPanel({ project }: Props) {
     setEditTitle(note.title)
     setEditContent(note.content)
     setEditColor(note.color ?? NOTE_COLORS[0])
+    setShareWith(note.sharedWith ?? [])
+    setShowSharePicker(false)
     setConfirmDelete(false)
     setIsDirty(false)
     setError('')
@@ -104,6 +136,8 @@ export function NotesPanel({ project }: Props) {
     setEditTitle('')
     setEditContent('')
     setEditColor(NOTE_COLORS[1])
+    setShareWith([])
+    setShowSharePicker(false)
     setConfirmDelete(false)
     setIsDirty(false)
     setTimeout(() => contentRef.current?.focus(), 50)
@@ -125,12 +159,15 @@ export function NotesPanel({ project }: Props) {
       setEditTitle(next.title)
       setEditContent(next.content)
       setEditColor(next.color ?? NOTE_COLORS[0])
+      setShareWith(next.sharedWith ?? [])
     } else {
       setSelectedId(null)
       setEditTitle('')
       setEditContent('')
       setEditColor(NOTE_COLORS[0])
+      setShareWith([])
     }
+    setShowSharePicker(false)
     setConfirmDelete(false)
     setIsDirty(false)
   }
@@ -164,7 +201,7 @@ export function NotesPanel({ project }: Props) {
         style={{ width: '230px' }}
       >
         {/* New note button */}
-        {!readOnly && (
+        {!projectReadOnly && (
           <button
             onClick={handleCreate}
             className="flex items-center gap-2 w-full px-4 py-2.5 text-sm font-semibold transition-all hover:opacity-85"
@@ -212,12 +249,21 @@ export function NotesPanel({ project }: Props) {
                     boxShadow: active ? `0 0 0 1px ${project.color}33` : 'none',
                   }}
                 >
-                  <p
-                    className="text-xs font-semibold truncate mb-1"
-                    style={{ color: 'var(--tp-text)' }}
-                  >
-                    {note.title.trim() || 'Sin título'}
-                  </p>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <p
+                      className="text-xs font-semibold truncate flex-1"
+                      style={{ color: 'var(--tp-text)' }}
+                    >
+                      {note.title.trim() || 'Sin título'}
+                    </p>
+                    {note.isOwner && (
+                      note.sharedWith && note.sharedWith.length > 0 ? (
+                        <span title="Compartida" className="shrink-0"><Users className="w-3 h-3" style={{ color: 'var(--tp-text-2)' }} /></span>
+                      ) : (
+                        <span title="Privada" className="shrink-0"><Lock className="w-3 h-3" style={{ color: 'var(--tp-text-2)', opacity: 0.6 }} /></span>
+                      )
+                    )}
+                  </div>
                   <p
                     className="text-xs line-clamp-2 leading-relaxed"
                     style={{ color: 'var(--tp-text-2)' }}
@@ -256,7 +302,7 @@ export function NotesPanel({ project }: Props) {
               Tus apuntes para este proyecto aparecerán aquí
             </p>
           </div>
-          {!readOnly && (
+          {!projectReadOnly && (
             <button
               onClick={handleCreate}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-80"
@@ -290,7 +336,7 @@ export function NotesPanel({ project }: Props) {
             }}
           >
             {/* Color picker */}
-            {!readOnly && (
+            {!noteReadOnly && (
               <div className="flex items-center gap-1.5">
                 {NOTE_COLORS.map((c) => (
                   <button
@@ -307,9 +353,29 @@ export function NotesPanel({ project }: Props) {
               </div>
             )}
 
+            {canShare && (
+              <button
+                onClick={() => setShowSharePicker((v) => !v)}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full transition-all hover:opacity-75"
+                style={{
+                  backgroundColor: showSharePicker ? 'var(--tp-dark)' : 'rgba(0,0,0,0.06)',
+                  color: showSharePicker ? '#FFFFFF' : 'var(--tp-text-2)',
+                }}
+              >
+                {shareWith.length > 0 ? <Users className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                {shareWith.length > 0 ? `Compartida (${shareWith.length})` : 'Privada'}
+              </button>
+            )}
+            {!canShare && selectedNote && !selectedNote.isOwner && (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium" style={{ color: 'var(--tp-text-2)' }}>
+                <Users className="w-3.5 h-3.5" />
+                Compartida contigo
+              </span>
+            )}
+
             <div className="flex-1" />
 
-            {!readOnly && (
+            {!noteReadOnly && (
               <>
                 {/* Save indicator */}
                 {isDirty && (
@@ -376,13 +442,70 @@ export function NotesPanel({ project }: Props) {
             )}
           </div>
 
+          {/* Share picker */}
+          {canShare && showSharePicker && (
+            <div
+              className="px-5 py-3 shrink-0 flex flex-col gap-2"
+              style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', backgroundColor: 'rgba(0,0,0,0.02)' }}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold" style={{ color: 'var(--tp-text-2)' }}>
+                  Compartir con
+                </p>
+                <button onClick={() => setShowSharePicker(false)} className="hover:opacity-70">
+                  <X className="w-3.5 h-3.5" style={{ color: 'var(--tp-text-2)' }} />
+                </button>
+              </div>
+              {shareCandidates.length === 0 ? (
+                <p className="text-xs" style={{ color: 'var(--tp-text-2)' }}>
+                  No hay más personas en este proyecto para compartir.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
+                  {shareCandidates.map((u) => {
+                    const entry = shareWith.find((s) => s.userId === u.id)
+                    return (
+                      <label
+                        key={u.id}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer hover:opacity-80"
+                        style={{ backgroundColor: entry ? 'rgba(0,0,0,0.05)' : 'transparent' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={Boolean(entry)}
+                          onChange={() => toggleShare(u.id)}
+                          className="shrink-0"
+                        />
+                        <span className="flex-1 text-xs truncate" style={{ color: 'var(--tp-text)' }}>
+                          {u.name}
+                        </span>
+                        {entry && (
+                          <select
+                            value={entry.role}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => setShareRole(u.id, e.target.value as 'editor' | 'viewer')}
+                            className="text-xs rounded-md px-1.5 py-0.5 shrink-0"
+                            style={{ border: '1px solid var(--tp-border)', backgroundColor: 'var(--tp-bg)', color: 'var(--tp-text)' }}
+                          >
+                            <option value="viewer">Solo ver</option>
+                            <option value="editor">Editar</option>
+                          </select>
+                        )}
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Title input */}
           <div className="px-6 pt-5 pb-2">
             <input
               value={editTitle}
               onChange={(e) => { setEditTitle(e.target.value); setIsDirty(true) }}
               placeholder="Título de la nota"
-              readOnly={readOnly}
+              readOnly={noteReadOnly}
               className="w-full bg-transparent outline-none font-bold text-xl leading-tight placeholder:opacity-30"
               style={{
                 color: 'var(--tp-text)',
@@ -399,7 +522,7 @@ export function NotesPanel({ project }: Props) {
               value={editContent}
               onChange={(e) => { setEditContent(e.target.value); setIsDirty(true) }}
               placeholder="Escribe aquí tu apunte… (Cmd+S para guardar)"
-              readOnly={readOnly}
+              readOnly={noteReadOnly}
               className="w-full bg-transparent outline-none resize-none text-sm leading-relaxed placeholder:opacity-30"
               style={{
                 color: 'var(--tp-text)',
