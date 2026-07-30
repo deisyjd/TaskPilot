@@ -150,7 +150,7 @@ export interface Note {
   updatedAt: string
 }
 
-export type ReminderRecurrence = 'daily' | 'monthly' | 'yearly'
+export type ReminderRecurrence = 'daily' | 'weekly' | 'monthly' | 'yearly'
 
 export interface Reminder {
   id: string

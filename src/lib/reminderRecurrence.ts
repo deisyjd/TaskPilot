@@ -17,6 +17,7 @@ function formatDateOnly(date: Date): string {
 function advanceDate(dateStr: string, recurrence: string, interval: number): string {
   const date = parseDateOnly(dateStr)
   if (recurrence === 'daily') date.setDate(date.getDate() + interval)
+  else if (recurrence === 'weekly') date.setDate(date.getDate() + interval * 7)
   else if (recurrence === 'monthly') date.setMonth(date.getMonth() + interval)
   else if (recurrence === 'yearly') date.setFullYear(date.getFullYear() + interval)
   return formatDateOnly(date)

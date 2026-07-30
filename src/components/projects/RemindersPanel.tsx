@@ -13,6 +13,7 @@ import { Project, Reminder, ReminderRecurrence } from '@/types'
 const RECURRENCE_OPTIONS: { value: '' | ReminderRecurrence; label: string }[] = [
   { value: '', label: 'No se repite' },
   { value: 'daily', label: 'Diaria' },
+  { value: 'weekly', label: 'Semanal' },
   { value: 'monthly', label: 'Mensual' },
   { value: 'yearly', label: 'Anual' },
 ]

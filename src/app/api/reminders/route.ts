@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth'
 import { isProjectViewerServer } from '@/lib/projectAccess'
 import { generateDueReminderRecurrences } from '@/lib/reminderRecurrence'
 
-const RECURRENCE_VALUES = ['daily', 'monthly', 'yearly']
+const RECURRENCE_VALUES = ['daily', 'weekly', 'monthly', 'yearly']
 
 export function reminderVisibilityFilter(session: { userRole: string; userId: string }) {
   if (session.userRole === 'admin') return {}
