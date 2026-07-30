@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Task, TaskStatus, HistoryEvent, Project, Note, Reminder } from '@/types'
+import { Task, TaskStatus, HistoryEvent, Project, Note, Reminder, ReminderRecurrence } from '@/types'
 
 async function api<T>(url: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -47,8 +47,8 @@ interface TaskStore {
   updateNote: (id: string, updates: { title?: string; content?: string; color?: string; shareWith?: { userId: string; role: 'editor' | 'viewer' }[] }) => Promise<boolean>
   deleteNote: (id: string) => Promise<boolean>
 
-  addReminder: (reminder: { projectId: string; title: string; dueDate: string; dueTime?: string | null; assigneeId?: string | null }) => Promise<Reminder | null>
-  updateReminder: (id: string, updates: Partial<Pick<Reminder, 'title' | 'dueDate' | 'dueTime' | 'done' | 'assigneeId'>>) => Promise<void>
+  addReminder: (reminder: { projectId: string; title: string; dueDate: string; dueTime?: string | null; assigneeId?: string | null; recurrence?: ReminderRecurrence | null; recurrenceInterval?: number | null; recurrenceUntil?: string | null }) => Promise<Reminder | null>
+  updateReminder: (id: string, updates: Partial<Pick<Reminder, 'title' | 'dueDate' | 'dueTime' | 'done' | 'assigneeId' | 'recurrence' | 'recurrenceInterval' | 'recurrenceUntil'>>) => Promise<boolean>
   deleteReminder: (id: string) => Promise<void>
 
   getProjectById: (id: string) => Project | undefined
@@ -260,8 +260,10 @@ export const useTaskStore = create<TaskStore>()((set, get) => ({
     try {
       const updated = await api<Reminder>(`/api/reminders/${id}`, { method: 'PATCH', body: JSON.stringify(updates) })
       set((s) => ({ reminders: s.reminders.map((r) => (r.id === id ? updated : r)) }))
+      return true
     } catch (e) {
       set({ error: e instanceof Error ? e.message : 'Error al actualizar recordatorio' })
+      return false
     }
   },
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -9,8 +9,14 @@ import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore } from '@/store/useUserStore'
 import { useChatStore } from '@/store/useChatStore'
 import { useAuthStore } from '@/store/useAuthStore'
-import { isReminderDue } from '@/lib/reminders'
-import { isReminderAlertsEnabled, notifyReminderDue } from '@/lib/reminderAlerts'
+import { isReminderDue, reminderDueTimestamp } from '@/lib/reminders'
+import {
+  isReminderAlertsEnabled,
+  notifyReminderDue,
+  hasAlertedReminder,
+  markReminderAlerted,
+  pruneAlertedReminders,
+} from '@/lib/reminderAlerts'
 
 export function ClientShell({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false)
@@ -24,8 +30,24 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
 
   const fetchConversations = useChatStore((s) => s.fetchConversations)
   const fetchReminders = useTaskStore((s) => s.fetchReminders)
-  const alertedRemindersRef = useRef<Set<string>>(new Set())
-  const firstReminderCheckRef = useRef(true)
+
+  // Avisa (sonido + notificación) por cada recordatorio vencido que aún no se
+  // le haya avisado — el registro vive en localStorage (ver reminderAlerts.ts),
+  // así que un recordatorio vencido sigue avisando la primera vez que la app
+  // lo detecta, aunque eso pase al abrir la pestaña y no mientras ya estaba
+  // abierta. Si se pospone a otra fecha, vuelve a poder avisar.
+  function checkReminderAlerts() {
+    const reminders = useTaskStore.getState().reminders
+    pruneAlertedReminders(reminders.map((r) => r.id))
+    if (!isReminderAlertsEnabled()) return
+    reminders.forEach((r) => {
+      if (!isReminderDue(r)) return
+      const dueTs = reminderDueTimestamp(r).getTime()
+      if (hasAlertedReminder(r.id, dueTs)) return
+      markReminderAlerted(r.id, dueTs)
+      notifyReminderDue(r)
+    })
+  }
 
   useEffect(() => {
     // Verify session with server, then wait for the initial data load too —
@@ -38,13 +60,7 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
           login(data)
           await Promise.all([fetchAll(), fetchUsers()])
           fetchConversations()
-          // Registra en silencio los recordatorios que ya estaban vencidos al
-          // cargar, para no dispararles sonido/notificación en cada recarga —
-          // solo se alerta a los que se vencen mientras la pestaña sigue abierta.
-          useTaskStore.getState().reminders.forEach((r) => {
-            if (isReminderDue(r)) alertedRemindersRef.current.add(r.id)
-          })
-          firstReminderCheckRef.current = false
+          checkReminderAlerts()
         }
       })
       .catch(() => {})
@@ -60,13 +76,7 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
     const interval = setInterval(async () => {
       fetchConversations()
       await fetchReminders()
-      if (firstReminderCheckRef.current || !isReminderAlertsEnabled()) return
-      useTaskStore.getState().reminders.forEach((r) => {
-        if (isReminderDue(r) && !alertedRemindersRef.current.has(r.id)) {
-          alertedRemindersRef.current.add(r.id)
-          notifyReminderDue(r)
-        }
-      })
+      checkReminderAlerts()
     }, 30000)
     return () => clearInterval(interval)
   }, [isLoggedIn, fetchConversations, fetchReminders])

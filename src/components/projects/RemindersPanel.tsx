@@ -1,14 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { BellRing, Plus, Trash2, Clock } from 'lucide-react'
+import { BellRing, Plus, Trash2, Clock, Pencil, Check, X, Repeat } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
 import { isReminderDue, formatReminderDateTime, getSnoozeOptions } from '@/lib/reminders'
 import { formatDateOnly } from '@/lib/dates'
 import { isProjectViewer } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
-import { Project, Reminder } from '@/types'
+import { Project, Reminder, ReminderRecurrence } from '@/types'
+
+const RECURRENCE_OPTIONS: { value: '' | ReminderRecurrence; label: string }[] = [
+  { value: '', label: 'No se repite' },
+  { value: 'daily', label: 'Diaria' },
+  { value: 'monthly', label: 'Mensual' },
+  { value: 'yearly', label: 'Anual' },
+]
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +40,45 @@ export function RemindersPanel({ project }: Props) {
   const [dueDate, setDueDate] = useState(formatDateOnly(new Date()))
   const [dueTime, setDueTime] = useState('')
   const [assigneeId, setAssigneeId] = useState('')
+  const [recurrence, setRecurrence] = useState<'' | ReminderRecurrence>('')
   const [error, setError] = useState('')
+
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDueDate, setEditDueDate] = useState('')
+  const [editDueTime, setEditDueTime] = useState('')
+  const [editAssigneeId, setEditAssigneeId] = useState('')
+  const [editRecurrence, setEditRecurrence] = useState<'' | ReminderRecurrence>('')
+
+  function startEdit(reminder: Reminder) {
+    setEditingId(reminder.id)
+    setEditTitle(reminder.title)
+    setEditDueDate(reminder.dueDate)
+    setEditDueTime(reminder.dueTime ?? '')
+    setEditAssigneeId(reminder.assigneeId ?? '')
+    setEditRecurrence(reminder.recurrence ?? '')
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+  }
+
+  async function saveEdit(id: string, canEditRecurrence: boolean) {
+    if (!editTitle.trim() || !editDueDate) return
+    const ok = await updateReminder(id, {
+      title: editTitle.trim(),
+      dueDate: editDueDate,
+      dueTime: editDueTime || null,
+      assigneeId: editAssigneeId || null,
+      ...(canEditRecurrence ? { recurrence: editRecurrence || null } : {}),
+    })
+    if (!ok) {
+      setError('No se pudo guardar el recordatorio. Intenta de nuevo.')
+      return
+    }
+    setError('')
+    setEditingId(null)
+  }
 
   const pending = reminders.filter((r) => !r.done).sort((a, b) => a.dueDate.localeCompare(b.dueDate))
   const done = reminders.filter((r) => r.done).sort((a, b) => b.dueDate.localeCompare(a.dueDate))
@@ -42,6 +87,7 @@ export function RemindersPanel({ project }: Props) {
     if (!title.trim() || !dueDate) return
     const created = await addReminder({
       projectId: project.id, title: title.trim(), dueDate, dueTime: dueTime || null, assigneeId: assigneeId || null,
+      recurrence: recurrence || null,
     })
     if (!created) {
       setError('No se pudo crear el recordatorio. Intenta de nuevo.')
@@ -51,11 +97,86 @@ export function RemindersPanel({ project }: Props) {
     setTitle('')
     setDueTime('')
     setAssigneeId('')
+    setRecurrence('')
   }
 
   function ReminderRow({ reminder }: { reminder: Reminder }) {
     const user = users.find((u) => u.id === reminder.assigneeId)
     const overdue = isReminderDue(reminder)
+
+    if (editingId === reminder.id) {
+      const canEditRecurrence = !reminder.parentReminderId
+      return (
+        <div
+          className="flex flex-col gap-2 p-3.5 rounded-xl"
+          style={{ backgroundColor: 'var(--tp-bg)', border: '1px solid var(--tp-dark)' }}
+        >
+          <div className="flex gap-2 flex-wrap">
+            <input
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && saveEdit(reminder.id, canEditRecurrence)}
+              autoFocus
+              className="flex-1 min-w-[180px] text-sm px-3 outline-none rounded-lg border"
+              style={{ height: '38px', backgroundColor: 'var(--tp-surface)', borderColor: 'var(--tp-border)', color: 'var(--tp-text)' }}
+            />
+            <input
+              type="date"
+              value={editDueDate}
+              onChange={(e) => setEditDueDate(e.target.value)}
+              className="text-sm px-3 outline-none rounded-lg border"
+              style={{ height: '38px', backgroundColor: 'var(--tp-surface)', borderColor: 'var(--tp-border)', color: 'var(--tp-text)' }}
+            />
+            <input
+              type="time"
+              value={editDueTime}
+              onChange={(e) => setEditDueTime(e.target.value)}
+              title="Hora (opcional)"
+              className="text-sm px-3 outline-none rounded-lg border"
+              style={{ height: '38px', backgroundColor: 'var(--tp-surface)', borderColor: 'var(--tp-border)', color: 'var(--tp-text)' }}
+            />
+            <select
+              value={editAssigneeId}
+              onChange={(e) => setEditAssigneeId(e.target.value)}
+              className="text-sm px-3 outline-none rounded-lg border cursor-pointer"
+              style={{ height: '38px', backgroundColor: 'var(--tp-surface)', borderColor: 'var(--tp-border)', color: 'var(--tp-text)' }}
+            >
+              <option value="">Sin asignar</option>
+              {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+            {canEditRecurrence && (
+              <select
+                value={editRecurrence}
+                onChange={(e) => setEditRecurrence(e.target.value as '' | ReminderRecurrence)}
+                title="Repetir"
+                className="text-sm px-3 outline-none rounded-lg border cursor-pointer"
+                style={{ height: '38px', backgroundColor: 'var(--tp-surface)', borderColor: 'var(--tp-border)', color: 'var(--tp-text)' }}
+              >
+                {RECURRENCE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+            )}
+            <button
+              onClick={() => saveEdit(reminder.id, canEditRecurrence)}
+              disabled={!editTitle.trim()}
+              className="flex items-center gap-1.5 px-3 text-sm font-medium rounded-lg transition-all hover:opacity-85 disabled:opacity-40 shrink-0"
+              style={{ height: '38px', backgroundColor: 'var(--tp-dark)', color: '#FFFFFF' }}
+            >
+              <Check className="w-3.5 h-3.5" />
+              Guardar
+            </button>
+            <button
+              onClick={cancelEdit}
+              className="flex items-center gap-1.5 px-3 text-sm font-medium rounded-lg transition-all hover:opacity-85 shrink-0"
+              style={{ height: '38px', backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
+            >
+              <X className="w-3.5 h-3.5" />
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div
         className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl group"
@@ -70,10 +191,13 @@ export function RemindersPanel({ project }: Props) {
           style={{ accentColor: '#111318' }}
         />
         <span
-          className={cn('text-sm flex-1 min-w-0 truncate', reminder.done && 'line-through')}
+          className={cn('text-sm flex-1 min-w-0 truncate flex items-center gap-1.5', reminder.done && 'line-through')}
           style={{ color: reminder.done ? 'var(--tp-text-2)' : 'var(--tp-text)' }}
         >
           {reminder.title}
+          {(reminder.recurrence || reminder.parentReminderId) && (
+            <span title="Recordatorio recurrente" className="shrink-0"><Repeat className="w-3 h-3" style={{ color: 'var(--tp-text-2)' }} /></span>
+          )}
         </span>
         <span className="text-xs shrink-0" style={{ color: overdue ? '#DC2626' : 'var(--tp-text-2)' }}>
           {formatReminderDateTime(reminder)}
@@ -110,6 +234,16 @@ export function RemindersPanel({ project }: Props) {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+        )}
+        {!readOnly && (
+          <button
+            onClick={() => startEdit(reminder)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            style={{ color: 'var(--tp-text-2)' }}
+            title="Editar recordatorio"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
         )}
         {!readOnly && (
           <button
@@ -174,6 +308,15 @@ export function RemindersPanel({ project }: Props) {
           >
             <option value="">Sin asignar</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+          <select
+            value={recurrence}
+            onChange={(e) => setRecurrence(e.target.value as '' | ReminderRecurrence)}
+            title="Repetir"
+            className="text-sm px-3 outline-none rounded-lg border cursor-pointer"
+            style={{ height: '38px', backgroundColor: 'var(--tp-surface)', borderColor: 'var(--tp-border)', color: 'var(--tp-text)' }}
+          >
+            {RECURRENCE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
           </select>
           <button
             onClick={handleCreate}

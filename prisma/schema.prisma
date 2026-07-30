@@ -313,7 +313,18 @@ model Reminder {
   createdBy  String?
   createdAt  DateTime @default(now())
 
+  // Recurrencia: el recordatorio original (parentReminderId = null,
+  // recurrence definido) es la plantilla; cada ocurrencia generada apunta
+  // a ella. Mismo patrón que la recurrencia de tareas (src/lib/recurrence.ts).
+  recurrence         String?
+  recurrenceInterval Int?
+  recurrenceUntil    String?
+  parentReminderId   String?
+  parentReminder     Reminder?  @relation("ReminderRecurrence", fields: [parentReminderId], references: [id], onDelete: SetNull)
+  occurrences        Reminder[] @relation("ReminderRecurrence")
+
   @@index([companyId])
   @@index([projectId])
+  @@index([parentReminderId])
   @@map("reminders")
 }

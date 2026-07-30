@@ -150,6 +150,8 @@ export interface Note {
   updatedAt: string
 }
 
+export type ReminderRecurrence = 'daily' | 'monthly' | 'yearly'
+
 export interface Reminder {
   id: string
   projectId: string
@@ -162,6 +164,10 @@ export interface Reminder {
   assigneeId?: string | null
   createdBy?: string
   createdAt: string
+  recurrence?: ReminderRecurrence | null
+  recurrenceInterval?: number | null
+  recurrenceUntil?: string | null
+  parentReminderId?: string | null
 }
 
 export interface Project {

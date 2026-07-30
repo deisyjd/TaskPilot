@@ -2,6 +2,7 @@ import { Reminder } from '@/types'
 import { formatReminderDateTime } from '@/lib/reminders'
 
 const STORAGE_KEY = 'wipli-reminder-alerts'
+const ALERTED_KEY = 'wipli-alerted-reminders'
 
 export function isReminderAlertsEnabled(): boolean {
   if (typeof window === 'undefined') return false
@@ -11,6 +12,50 @@ export function isReminderAlertsEnabled(): boolean {
 export function setReminderAlertsEnabled(enabled: boolean) {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(STORAGE_KEY, enabled ? 'on' : 'off')
+}
+
+// Recuerda, por navegador, qué recordatorios ya avisaron y para qué fecha —
+// así un recordatorio vencido sigue avisando la primera vez que la app lo ve
+// (aunque eso pase al abrir la pestaña, no solo mientras ya estaba abierta),
+// pero no se repite en cada recarga. Si se pospone a una fecha nueva, el
+// timestamp cambia y vuelve a poder avisar.
+function getAlertedMap(): Record<string, number> {
+  if (typeof window === 'undefined') return {}
+  try {
+    return JSON.parse(window.localStorage.getItem(ALERTED_KEY) ?? '{}')
+  } catch {
+    return {}
+  }
+}
+
+function setAlertedMap(map: Record<string, number>) {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(ALERTED_KEY, JSON.stringify(map))
+}
+
+export function hasAlertedReminder(reminderId: string, dueTimestamp: number): boolean {
+  return getAlertedMap()[reminderId] === dueTimestamp
+}
+
+export function markReminderAlerted(reminderId: string, dueTimestamp: number) {
+  const map = getAlertedMap()
+  map[reminderId] = dueTimestamp
+  setAlertedMap(map)
+}
+
+// Limpia entradas de recordatorios que ya no existen (borrados) para que el
+// mapa en localStorage no crezca indefinidamente.
+export function pruneAlertedReminders(existingIds: string[]) {
+  const map = getAlertedMap()
+  const idSet = new Set(existingIds)
+  let changed = false
+  for (const id of Object.keys(map)) {
+    if (!idSet.has(id)) {
+      delete map[id]
+      changed = true
+    }
+  }
+  if (changed) setAlertedMap(map)
 }
 
 let audioCtx: AudioContext | null = null

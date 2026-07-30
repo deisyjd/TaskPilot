@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { isProjectViewerServer } from '@/lib/projectAccess'
+import { generateDueReminderRecurrences } from '@/lib/reminderRecurrence'
+
+const RECURRENCE_VALUES = ['daily', 'monthly', 'yearly']
 
 export function reminderVisibilityFilter(session: { userRole: string; userId: string }) {
   if (session.userRole === 'admin') return {}
@@ -19,6 +22,8 @@ export async function GET() {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
+  await generateDueReminderRecurrences(session.activeCompanyId)
+
   const reminders = await prisma.reminder.findMany({
     where: { companyId: session.activeCompanyId, ...reminderVisibilityFilter(session) },
     include: { project: { select: { name: true, color: true } } },
@@ -32,10 +37,11 @@ export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  const { projectId, title, dueDate, dueTime, assigneeId } = await req.json()
+  const { projectId, title, dueDate, dueTime, assigneeId, recurrence, recurrenceInterval, recurrenceUntil } = await req.json()
   if (!projectId || !title?.trim() || !dueDate) {
     return NextResponse.json({ error: 'projectId, title y dueDate son requeridos' }, { status: 400 })
   }
+  const hasRecurrence = RECURRENCE_VALUES.includes(recurrence)
 
   const project = await prisma.project.findUnique({ where: { id: projectId } })
   if (!project || project.companyId !== session.activeCompanyId) {
@@ -64,9 +70,18 @@ export async function POST(req: NextRequest) {
       dueTime: dueTime || null,
       assigneeId: validAssigneeId,
       createdBy: actor?.name ?? session.email,
+      recurrence: hasRecurrence ? recurrence : null,
+      recurrenceInterval: hasRecurrence ? (recurrenceInterval || 1) : null,
+      recurrenceUntil: hasRecurrence ? (recurrenceUntil || null) : null,
     },
     include: { project: { select: { name: true, color: true } } },
   })
+
+  // Si es recurrente, generar de una vez la siguiente ocurrencia en vez de
+  // esperar a la próxima carga de la lista.
+  if (hasRecurrence) {
+    await generateDueReminderRecurrences(session.activeCompanyId)
+  }
 
   return NextResponse.json(serializeReminder(reminder), { status: 201 })
 }
