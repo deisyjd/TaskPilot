@@ -8,11 +8,6 @@ import { canEditTask } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { AlertTriangle, Circle, RefreshCw, Eye, CalendarClock, CheckCircle2, Ban, LucideIcon } from 'lucide-react'
 
-const TYPE_ICONS: Record<string, string> = {
-  design: '🎨', copy: '✍️', publication: '📤', review: '🔍',
-  development: '💻', meeting: '📅', strategy: '📊', other: '📌',
-}
-
 const STATUS_ICONS: Record<TaskStatus, LucideIcon> = {
   pending: Circle,
   'in-progress': RefreshCw,
@@ -72,7 +67,6 @@ export function TimelineCard({ task, onClick }: Props) {
     >
       <div className="flex items-start justify-between gap-1.5 mb-2">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-xs shrink-0">{TYPE_ICONS[task.type] ?? '📌'}</span>
           <p
             className={cn('text-xs font-medium leading-snug truncate', done && 'line-through')}
             style={{ color: done ? 'var(--tp-text-2)' : 'var(--tp-text)' }}
