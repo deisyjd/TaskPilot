@@ -25,10 +25,10 @@ const TYPES = Object.entries(TYPE_LABELS) as [TaskType, string][]
 const STATUS_COLORS: Record<TaskStatus, { bg: string; text: string; dot: string }> = {
   pending:    { bg: '#F3F4F6', text: '#6B7280', dot: '#9CA3AF' },
   'in-progress': { bg: '#EFF6FF', text: '#2563EB', dot: '#3B82F6' },
-  review:     { bg: '#FDF4FF', text: '#9333EA', dot: '#A855F7' },
-  scheduled:  { bg: '#FFF7ED', text: '#EA580C', dot: '#F97316' },
+  review:     { bg: '#FFFBEB', text: '#D97706', dot: '#F59E0B' },
+  scheduled:  { bg: '#F5F3FF', text: '#7C3AED', dot: '#8B5CF6' },
   done:       { bg: '#F0FDF4', text: '#16A34A', dot: '#22C55E' },
-  blocked:    { bg: '#FEF2F2', text: '#DC2626', dot: '#EF4444' },
+  blocked:    { bg: '#FFF7ED', text: '#EA580C', dot: '#F97316' },
 }
 
 const PRIORITY_COLORS: Record<Priority, { bg: string; text: string }> = {

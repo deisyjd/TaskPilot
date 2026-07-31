@@ -31,6 +31,15 @@ const STATUS_ICON_COLORS: Record<TaskStatus, string> = {
   blocked: '#EF4444',
 }
 
+const STATUS_CARD_COLORS: Record<TaskStatus, { bg: string; border: string }> = {
+  pending: { bg: '#F3F4F6', border: '#E5E7EB' },
+  'in-progress': { bg: '#EFF6FF', border: '#BFDBFE' },
+  review: { bg: '#FFFBEB', border: '#FDE68A' },
+  scheduled: { bg: '#F5F3FF', border: '#DDD6FE' },
+  done: { bg: '#F0FDF4', border: '#BBF7D0' },
+  blocked: { bg: '#FFF7ED', border: '#FED7AA' },
+}
+
 interface Props { task: Task; onClick: () => void }
 
 export function TimelineCard({ task, onClick }: Props) {
@@ -53,8 +62,8 @@ export function TimelineCard({ task, onClick }: Props) {
       }}
       className="w-full text-left transition-all hover:shadow-md"
       style={{
-        backgroundColor: done ? 'var(--tp-bg-2)' : overdue ? '#FEF2F2' : 'var(--tp-surface)',
-        border: `1px solid ${done ? 'transparent' : overdue ? '#FECACA' : 'var(--tp-border)'}`,
+        backgroundColor: STATUS_CARD_COLORS[task.status].bg,
+        border: `1px solid ${STATUS_CARD_COLORS[task.status].border}`,
         borderRadius: 'var(--tp-r-inner)',
         padding: '10px 12px',
         opacity: done ? 0.7 : 1,
