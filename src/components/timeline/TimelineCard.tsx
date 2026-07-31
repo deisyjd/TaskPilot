@@ -1,16 +1,34 @@
 'use client'
 
-import { Task, STATUS_DOT_COLORS } from '@/types'
+import { Task, TaskStatus, STATUS_LABELS } from '@/types'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
 import { isOverdue } from '@/lib/dates'
 import { canEditTask } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Circle, RefreshCw, Eye, CalendarClock, CheckCircle2, Ban, LucideIcon } from 'lucide-react'
 
 const TYPE_ICONS: Record<string, string> = {
   design: '🎨', copy: '✍️', publication: '📤', review: '🔍',
   development: '💻', meeting: '📅', strategy: '📊', other: '📌',
+}
+
+const STATUS_ICONS: Record<TaskStatus, LucideIcon> = {
+  pending: Circle,
+  'in-progress': RefreshCw,
+  review: Eye,
+  scheduled: CalendarClock,
+  done: CheckCircle2,
+  blocked: Ban,
+}
+
+const STATUS_ICON_COLORS: Record<TaskStatus, string> = {
+  pending: '#9CA3AF',
+  'in-progress': '#3B82F6',
+  review: '#F59E0B',
+  scheduled: '#8B5CF6',
+  done: '#22C55E',
+  blocked: '#EF4444',
 }
 
 interface Props { task: Task; onClick: () => void }
@@ -22,6 +40,7 @@ export function TimelineCard({ task, onClick }: Props) {
   const readOnly = !canEditTask(currentUser, task, project)
   const overdue = isOverdue(task.dueDate, task.status)
   const done = task.status === 'done'
+  const StatusIcon = STATUS_ICONS[task.status]
 
   return (
     <button
@@ -59,7 +78,9 @@ export function TimelineCard({ task, onClick }: Props) {
         <div className="flex items-center gap-1.5">
           <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: project?.color ?? '#94a3b8' }} />
           <span className="text-xs truncate max-w-[70px]" style={{ color: 'var(--tp-text-2)' }}>{project?.name ?? 'Sin proyecto'}</span>
-          <div className={cn('w-1.5 h-1.5 rounded-full', STATUS_DOT_COLORS[task.status])} />
+          <span title={STATUS_LABELS[task.status]} className="shrink-0 flex items-center">
+            <StatusIcon className="w-3.5 h-3.5" style={{ color: STATUS_ICON_COLORS[task.status] }} />
+          </span>
           {task.tags.length > 0 && (
             <span
               className="shrink-0 text-[9px] leading-none px-1 py-0.5 rounded-full font-medium truncate max-w-[50px]"
