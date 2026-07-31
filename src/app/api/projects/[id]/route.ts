@@ -21,13 +21,31 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const isViewer = exists.members[0]?.role === 'viewer'
   const isOwner = exists.createdById === session.userId
-  if (session.userRole !== 'admin' && (isViewer || !isOwner)) {
+
+  // "Destacar" es una preferencia personal (guardada en ProjectFavorite,
+  // por usuario) — cualquiera con acceso al proyecto puede marcarla o
+  // quitarla, sin necesidad de ser dueño/admin. El resto de los campos
+  // sí requiere permisos de gestión del proyecto.
+  const otherKeys = Object.keys(body).filter((k) => k !== 'featured')
+  if (otherKeys.length > 0 && session.userRole !== 'admin' && (isViewer || !isOwner)) {
     return NextResponse.json({ error: 'Sin permisos' }, { status: 403 })
+  }
+
+  if ('featured' in body) {
+    if (body.featured) {
+      await prisma.projectFavorite.upsert({
+        where: { projectId_userId: { projectId: id, userId: session.userId } },
+        create: { projectId: id, userId: session.userId },
+        update: {},
+      })
+    } else {
+      await prisma.projectFavorite.deleteMany({ where: { projectId: id, userId: session.userId } })
+    }
   }
 
   // Whitelist: el cliente envía campos que no son columnas (createdBy, …)
   const data: Record<string, unknown> = {}
-  for (const key of ['name', 'description', 'color', 'status', 'featured', 'coverImageUrl', 'attachments', 'links']) {
+  for (const key of ['name', 'description', 'color', 'status', 'coverImageUrl', 'attachments', 'links']) {
     if (key in body) data[key] = body[key]
   }
 
@@ -58,6 +76,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     include: {
       notes: { where: noteVisibilityFilter(session), include: { shares: { select: { userId: true, role: true } } } },
       members: { select: { userId: true, role: true } },
+      favorites: { where: { userId: session.userId }, select: { userId: true } },
     },
   })
   return NextResponse.json(serializeProject(project!, session.userId))

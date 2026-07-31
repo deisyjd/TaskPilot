@@ -7,13 +7,16 @@ export function serializeProject<
   T extends {
     members: { userId: string; role: string }[]
     notes?: { createdById: string | null; shares: { userId: string; role: string }[] }[]
+    favorites?: { userId: string }[]
   }
 >(project: T, currentUserId?: string) {
+  const { favorites, ...rest } = project
   return {
-    ...project,
+    ...rest,
     members: project.members.map((m) => m.userId),
     viewerUserIds: project.members.filter((m) => m.role === 'viewer').map((m) => m.userId),
     notes: project.notes && currentUserId ? project.notes.map((n) => serializeNote(n, currentUserId)) : project.notes,
+    featured: favorites ? favorites.some((f) => f.userId === currentUserId) : false,
   }
 }
 
@@ -37,6 +40,7 @@ export async function GET() {
         include: { shares: { select: { userId: true, role: true } } },
       },
       members: { select: { userId: true, role: true } },
+      favorites: { where: { userId: session.userId }, select: { userId: true } },
     },
     orderBy: { name: 'asc' },
   })
@@ -61,7 +65,6 @@ export async function POST(req: NextRequest) {
         description,
         color,
         status,
-        featured,
         coverImageUrl,
         companyId: session.activeCompanyId,
         createdById: session.userId,
@@ -76,8 +79,13 @@ export async function POST(req: NextRequest) {
                 },
               }
             : undefined,
+        favorites: featured ? { create: { userId: session.userId } } : undefined,
       },
-      include: { notes: { include: { shares: { select: { userId: true, role: true } } } }, members: { select: { userId: true, role: true } } },
+      include: {
+        notes: { include: { shares: { select: { userId: true, role: true } } } },
+        members: { select: { userId: true, role: true } },
+        favorites: { where: { userId: session.userId }, select: { userId: true } },
+      },
     })
     return NextResponse.json(serializeProject(project, session.userId), { status: 201 })
   } catch (e) {

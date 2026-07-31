@@ -78,15 +78,15 @@ async function main() {
 
   // Projects (Legacy)
   const projects = [
-    { id: 'qenta', name: 'Qenta', color: '#6366f1', featured: true },
-    { id: 'wigilabs', name: 'Wigilabs', color: '#0ea5e9', featured: true },
-    { id: 'ainoa', name: 'Ainoa', color: '#f43f5e', featured: true },
-    { id: 'distrito-padel', name: 'Distrito Pádel', color: '#10b981', featured: true },
-    { id: 'sportspace', name: 'SportSpace', color: '#f59e0b', featured: false },
-    { id: 'nuts', name: 'Nuts', color: '#8b5cf6', featured: false },
-    { id: 'viteri', name: 'Viteri & Co', color: '#ec4899', featured: false },
-    { id: 'planeta-tenis', name: 'Planeta Tenis', color: '#14b8a6', featured: false },
-    { id: 'otros', name: 'Otros', color: '#94a3b8', featured: false },
+    { id: 'qenta', name: 'Qenta', color: '#6366f1' },
+    { id: 'wigilabs', name: 'Wigilabs', color: '#0ea5e9' },
+    { id: 'ainoa', name: 'Ainoa', color: '#f43f5e' },
+    { id: 'distrito-padel', name: 'Distrito Pádel', color: '#10b981' },
+    { id: 'sportspace', name: 'SportSpace', color: '#f59e0b' },
+    { id: 'nuts', name: 'Nuts', color: '#8b5cf6' },
+    { id: 'viteri', name: 'Viteri & Co', color: '#ec4899' },
+    { id: 'planeta-tenis', name: 'Planeta Tenis', color: '#14b8a6' },
+    { id: 'otros', name: 'Otros', color: '#94a3b8' },
   ]
 
   const projectIdByName: Record<string, string> = {}
@@ -103,10 +103,20 @@ async function main() {
   const acmeQenta = await prisma.project.upsert({
     where: { companyId_name: { companyId: 'acme-co', name: 'Qenta' } },
     update: {},
-    create: { id: 'acme-qenta', name: 'Qenta', color: '#0ea5e9', featured: true, companyId: 'acme-co' },
+    create: { id: 'acme-qenta', name: 'Qenta', color: '#0ea5e9', companyId: 'acme-co' },
   })
 
   console.log('✓ Projects created')
+
+  // "Destacados" — preferencia por usuario, solo para tener algo en el
+  // sidebar de Deisy en desarrollo local.
+  for (const name of ['Qenta', 'Wigilabs', 'Ainoa', 'Distrito Pádel']) {
+    await prisma.projectFavorite.upsert({
+      where: { projectId_userId: { projectId: projectIdByName[name], userId: 'deisy' } },
+      update: {},
+      create: { projectId: projectIdByName[name], userId: 'deisy' },
+    })
+  }
 
   // Tasks (Legacy)
   const tasks = [
