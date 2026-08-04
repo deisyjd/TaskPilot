@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { useTaskStore } from '@/store/useTaskStore'
+import { useCurrentUser } from '@/store/useUserStore'
 import { isOverdue, isToday, getWeekDays } from '@/lib/dates'
 import { StatCard } from '@/components/dashboard/StatCard'
 import { WeeklyCompliance } from '@/components/dashboard/WeeklyCompliance'
@@ -12,6 +13,11 @@ import { ListTodo, AlertTriangle, Clock, Send, Briefcase } from 'lucide-react'
 
 export default function DashboardPage() {
   const tasks = useTaskStore((s) => s.tasks)
+  const currentUser = useCurrentUser()
+  const myTasks = useMemo(
+    () => (currentUser ? tasks.filter((t) => t.assigneeIds.includes(currentUser.id)) : []),
+    [tasks, currentUser]
+  )
 
   const stats = useMemo(() => {
     const weekDays = getWeekDays()
@@ -79,7 +85,7 @@ export default function DashboardPage() {
       {/* Tercera fila */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <TopAssignees tasks={tasks} />
-        <AlertsPanel tasks={tasks} />
+        <AlertsPanel tasks={myTasks} />
       </div>
     </div>
   )
