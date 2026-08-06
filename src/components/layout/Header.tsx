@@ -2,13 +2,22 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { Bell, Plus, AlertTriangle, Clock, ChevronRight, Menu, BellRing } from 'lucide-react'
+import { Bell, Plus, AlertTriangle, Clock, ChevronRight, Menu, BellRing, Check, CheckCheck } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useMobileNavStore } from '@/store/useMobileNavStore'
 import { isOverdue } from '@/lib/dates'
-import { isReminderDue, formatReminderDateTime } from '@/lib/reminders'
+import { isReminderDue, formatReminderDateTime, reminderDueTimestamp } from '@/lib/reminders'
+import { loadReadNotifications, markNotificationsRead, pruneReadNotifications } from '@/lib/notificationReads'
 import { ProjectModal } from '@/components/projects/ProjectModal'
 import { Task, Reminder } from '@/types'
+
+function taskNotifId(t: Task & { reason: string }): string {
+  return `task:${t.id}:${t.reason}:${t.dueDate}`
+}
+
+function reminderNotifId(r: Reminder): string {
+  return `reminder:${r.id}:${reminderDueTimestamp(r).getTime()}`
+}
 
 const pageTitles: Record<string, { title: string; sub: string }> = {
   '/dashboard':    { title: 'Dashboard',             sub: 'Resumen de operaciones del día' },
@@ -32,12 +41,12 @@ const PRIORITY_COLORS: Record<string, string> = {
   low:    '#16A34A',
 }
 
-function NotifItem({ task }: { task: Task & { reason: string } }) {
+function NotifItem({ task, onMarkRead }: { task: Task & { reason: string }; onMarkRead: () => void }) {
   const color = PRIORITY_COLORS[task.priority] ?? '#6B7280'
   const projectName = useTaskStore((s) => s.projects.find((p) => p.id === task.projectId)?.name) ?? 'Sin proyecto'
   return (
     <div
-      className="flex items-start gap-3 px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-[var(--tp-bg)]"
+      className="group flex items-start gap-3 px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-[var(--tp-bg)]"
       style={{ borderColor: 'var(--tp-border)' }}
     >
       <div
@@ -73,16 +82,24 @@ function NotifItem({ task }: { task: Task & { reason: string } }) {
           </p>
         )}
       </div>
+      <button
+        onClick={onMarkRead}
+        title="Marcar como leída"
+        className="shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-70"
+        style={{ color: 'var(--tp-text-2)' }}
+      >
+        <Check className="w-3.5 h-3.5" />
+      </button>
     </div>
   )
 }
 
-function ReminderNotifItem({ reminder }: { reminder: Reminder }) {
+function ReminderNotifItem({ reminder, onMarkRead }: { reminder: Reminder; onMarkRead: () => void }) {
   const overdue = isOverdue(reminder.dueDate, 'pending')
   const color = overdue ? '#DC2626' : '#8B5CF6'
   return (
     <div
-      className="flex items-start gap-3 px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-[var(--tp-bg)]"
+      className="group flex items-start gap-3 px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-[var(--tp-bg)]"
       style={{ borderColor: 'var(--tp-border)' }}
     >
       <div
@@ -108,6 +125,14 @@ function ReminderNotifItem({ reminder }: { reminder: Reminder }) {
           {formatReminderDateTime(reminder)}
         </p>
       </div>
+      <button
+        onClick={onMarkRead}
+        title="Marcar como leído"
+        className="shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-70"
+        style={{ color: 'var(--tp-text-2)' }}
+      >
+        <Check className="w-3.5 h-3.5" />
+      </button>
     </div>
   )
 }
@@ -121,9 +146,24 @@ export function Header() {
   const [projectModalOpen, setProjectModalOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
+  const [readIds, setReadIds] = useState<Set<string>>(new Set())
+
+  // El registro de leídas vive en localStorage — se hidrata después del
+  // primer render (no antes) para que el HTML de servidor y cliente
+  // coincidan; por eso el setState vive en un efecto a propósito.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReadIds(loadReadNotifications())
+  }, [])
+
+  useEffect(() => {
+    if (tasks.length === 0 && reminders.length === 0) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setReadIds(pruneReadNotifications(tasks.map((t) => t.id), reminders.map((r) => r.id)))
+  }, [tasks, reminders])
 
   // Build notification list: overdue + urgent (not done/blocked)
-  const notifTasks = tasks
+  const allNotifTasks = tasks
     .filter((t) => t.status !== 'done')
     .reduce<(Task & { reason: string })[]>((acc, t) => {
       if (isOverdue(t.dueDate, t.status)) {
@@ -140,11 +180,23 @@ export function Header() {
     })
 
   // Recordatorios cuya fecha/hora ya llegó, sin marcar como hechos.
-  const notifReminders = reminders
+  const allNotifReminders = reminders
     .filter(isReminderDue)
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || (a.dueTime ?? '').localeCompare(b.dueTime ?? ''))
 
+  const notifTasks = allNotifTasks.filter((t) => !readIds.has(taskNotifId(t)))
+  const notifReminders = allNotifReminders.filter((r) => !readIds.has(reminderNotifId(r)))
+
   const alertCount = notifTasks.length + notifReminders.length
+
+  function markRead(id: string) {
+    setReadIds(markNotificationsRead([id]))
+  }
+
+  function markAllRead() {
+    const ids = [...allNotifTasks.map(taskNotifId), ...allNotifReminders.map(reminderNotifId)]
+    setReadIds(markNotificationsRead(ids))
+  }
 
   // Close panel on outside click
   useEffect(() => {
@@ -251,13 +303,25 @@ export function Header() {
                     </span>
                   )}
                 </div>
-                <button
-                  onClick={() => setNotifOpen(false)}
-                  className="text-xs font-medium transition-all hover:opacity-70"
-                  style={{ color: 'var(--tp-text-2)' }}
-                >
-                  Cerrar
-                </button>
+                <div className="flex items-center gap-3">
+                  {alertCount > 0 && (
+                    <button
+                      onClick={markAllRead}
+                      title="Marcar todas como leídas"
+                      className="flex items-center gap-1 text-xs font-medium transition-all hover:opacity-70"
+                      style={{ color: 'var(--tp-text-2)' }}
+                    >
+                      <CheckCheck className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setNotifOpen(false)}
+                    className="text-xs font-medium transition-all hover:opacity-70"
+                    style={{ color: 'var(--tp-text-2)' }}
+                  >
+                    Cerrar
+                  </button>
+                </div>
               </div>
 
               {/* List */}
@@ -276,8 +340,12 @@ export function Header() {
                   </div>
                 ) : (
                   <>
-                    {notifTasks.map((t) => <NotifItem key={t.id} task={t} />)}
-                    {notifReminders.map((r) => <ReminderNotifItem key={r.id} reminder={r} />)}
+                    {notifTasks.map((t) => (
+                      <NotifItem key={t.id} task={t} onMarkRead={() => markRead(taskNotifId(t))} />
+                    ))}
+                    {notifReminders.map((r) => (
+                      <ReminderNotifItem key={r.id} reminder={r} onMarkRead={() => markRead(reminderNotifId(r))} />
+                    ))}
                   </>
                 )}
               </div>
