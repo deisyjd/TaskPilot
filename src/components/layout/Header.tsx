@@ -4,10 +4,12 @@ import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { Bell, Plus, AlertTriangle, Clock, ChevronRight, Menu, BellRing, Check, CheckCheck } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
+import { useCurrentUser } from '@/store/useUserStore'
 import { useMobileNavStore } from '@/store/useMobileNavStore'
 import { isOverdue } from '@/lib/dates'
 import { isReminderDue, formatReminderDateTime, reminderDueTimestamp } from '@/lib/reminders'
 import { loadReadNotifications, markNotificationsRead, pruneReadNotifications } from '@/lib/notificationReads'
+import { canEditTask } from '@/lib/permissions'
 import { ProjectModal } from '@/components/projects/ProjectModal'
 import { Task, Reminder } from '@/types'
 
@@ -142,6 +144,8 @@ export function Header() {
   const page = pageTitles[pathname] ?? { title: 'Wipli', sub: '' }
   const tasks = useTaskStore((s) => s.tasks)
   const reminders = useTaskStore((s) => s.reminders)
+  const projects = useTaskStore((s) => s.projects)
+  const currentUser = useCurrentUser()
   const { toggle: toggleMobileNav } = useMobileNavStore()
   const [projectModalOpen, setProjectModalOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
@@ -162,9 +166,12 @@ export function Header() {
     setReadIds(pruneReadNotifications(tasks.map((t) => t.id), reminders.map((r) => r.id)))
   }, [tasks, reminders])
 
-  // Build notification list: overdue + urgent (not done/blocked)
+  // Build notification list: overdue + urgent (not done/blocked), y solo
+  // tareas que el usuario puede editar — nada de tareas/proyectos donde
+  // solo tiene acceso de "solo ver".
   const allNotifTasks = tasks
     .filter((t) => t.status !== 'done')
+    .filter((t) => canEditTask(currentUser, t, projects.find((p) => p.id === t.projectId)))
     .reduce<(Task & { reason: string })[]>((acc, t) => {
       if (isOverdue(t.dueDate, t.status)) {
         acc.push({ ...t, reason: 'overdue' })
