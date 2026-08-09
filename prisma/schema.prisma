@@ -55,6 +55,8 @@ model User {
   status              String   @default("active")
   dailyDigestEmail    Boolean  @default(false)
   taskAssignedEmail   Boolean  @default(false)
+  twoFactorEnabled    Boolean  @default(false)
+  twoFactorSecret     String?  @db.Text
   lastActiveCompanyId String?
   lastActiveCompany   Company? @relation("UserLastActiveCompany", fields: [lastActiveCompanyId], references: [id], onDelete: SetNull)
   createdAt           DateTime @default(now())
@@ -71,6 +73,7 @@ model User {
   createdNotes             Note[]                     @relation("NoteCreator")
   noteShares               NoteShare[]
   favoriteProjects         ProjectFavorite[]
+  twoFactorBackupCodes     TwoFactorBackupCode[]
 
   @@map("users")
 }
@@ -116,6 +119,18 @@ model ProjectFavorite {
   @@index([projectId])
   @@index([userId])
   @@map("project_favorites")
+}
+
+model TwoFactorBackupCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("two_factor_backup_codes")
 }
 
 model Task {

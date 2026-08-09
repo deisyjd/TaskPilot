@@ -39,6 +39,7 @@ export async function GET() {
     color: user.color,
     avatarUrl: user.avatarUrl,
     status: user.status,
+    twoFactorEnabled: user.twoFactorEnabled,
     activeCompanyId: active.companyId,
     companies: memberships.map((m) => ({ id: m.company.id, name: m.company.name, slug: m.company.slug, color: m.company.color, role: m.role })),
   })

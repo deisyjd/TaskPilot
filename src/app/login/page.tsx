@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore } from '@/store/useUserStore'
-import { Eye, EyeOff, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { Eye, EyeOff, ArrowRight, CheckCircle2, ShieldCheck, ArrowLeft } from 'lucide-react'
 
 const features = [
   'Tablero Kanban con arrastrar y soltar',
@@ -25,6 +25,17 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [stage, setStage] = useState<'password' | 'code'>('password')
+  const [code, setCode] = useState('')
+  const [useBackupCode, setUseBackupCode] = useState(false)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function finishLogin(data: any) {
+    login(data)
+    fetchAll()
+    fetchUsers()
+    router.replace('/dashboard')
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -50,15 +61,56 @@ export default function LoginPage() {
         return
       }
 
-      login(data)
-      fetchAll()
-      fetchUsers()
-      router.replace('/dashboard')
+      if (data.twoFactorRequired) {
+        setStage('code')
+        return
+      }
+
+      finishLogin(data)
     } catch {
       setError('Error de conexión. Intenta de nuevo.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleVerifyCode = async (e: FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    if (!code.trim()) {
+      setError('Ingresa el código.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await fetch('/api/auth/verify-2fa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code.trim() }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error ?? 'Código inválido.')
+        return
+      }
+
+      finishLogin(data)
+    } catch {
+      setError('Error de conexión. Intenta de nuevo.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function backToPassword() {
+    setStage('password')
+    setCode('')
+    setUseBackupCode(false)
+    setError('')
   }
 
   return (
@@ -178,6 +230,17 @@ export default function LoginPage() {
         >
           {/* Heading */}
           <div className="mb-8">
+            {stage === 'code' && (
+              <button
+                type="button"
+                onClick={backToPassword}
+                className="flex items-center gap-1.5 text-xs font-medium mb-3 transition-opacity hover:opacity-70"
+                style={{ color: 'var(--tp-text-2)' }}
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Volver
+              </button>
+            )}
             <h2
               className="text-2xl font-bold mb-1.5"
               style={{
@@ -185,13 +248,103 @@ export default function LoginPage() {
                 color: 'var(--tp-text)',
               }}
             >
-              Bienvenida de vuelta
+              {stage === 'password' ? 'Bienvenida de vuelta' : 'Verificación en dos pasos'}
             </h2>
             <p className="text-sm" style={{ color: 'var(--tp-text-2)' }}>
-              Ingresa con tus credenciales para continuar.
+              {stage === 'password'
+                ? 'Ingresa con tus credenciales para continuar.'
+                : useBackupCode
+                  ? 'Ingresa uno de tus códigos de respaldo.'
+                  : 'Ingresa el código de 6 dígitos de tu app autenticadora.'}
             </p>
           </div>
 
+          {stage === 'code' ? (
+            <form onSubmit={handleVerifyCode} className="space-y-4">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="code"
+                  className="text-xs font-semibold uppercase tracking-wide"
+                  style={{ color: 'var(--tp-text-2)' }}
+                >
+                  {useBackupCode ? 'Código de respaldo' : 'Código de verificación'}
+                </label>
+                <div className="relative">
+                  <input
+                    id="code"
+                    type="text"
+                    inputMode={useBackupCode ? 'text' : 'numeric'}
+                    autoComplete="one-time-code"
+                    autoFocus
+                    placeholder={useBackupCode ? 'XXXXX-XXXXX' : '123456'}
+                    value={code}
+                    onChange={(e) => { setCode(e.target.value); setError('') }}
+                    className="tp-input w-full text-sm text-center tracking-widest font-semibold"
+                    style={{
+                      height: '44px',
+                      padding: '0 14px',
+                      outline: 'none',
+                      color: 'var(--tp-text)',
+                      fontSize: '16px',
+                      transition: 'box-shadow 0.15s',
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.boxShadow = `0 0 0 3px rgba(223,255,95,0.35)`
+                      e.currentTarget.style.borderColor = 'var(--tp-lime)'
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.boxShadow = 'none'
+                      e.currentTarget.style.borderColor = ''
+                    }}
+                  />
+                  <ShieldCheck
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4"
+                    style={{ color: 'var(--tp-text-2)' }}
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div
+                  className="text-xs font-medium px-4 py-3 rounded-xl"
+                  style={{ backgroundColor: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
+                >
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 text-sm font-semibold transition-all hover:opacity-88 disabled:opacity-60"
+                style={{
+                  height: '46px',
+                  marginTop: '8px',
+                  backgroundColor: 'var(--tp-dark)',
+                  color: '#FFFFFF',
+                  borderRadius: 'var(--tp-r-btn)',
+                }}
+              >
+                {loading ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Verificar
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setUseBackupCode((v) => !v); setCode(''); setError('') }}
+                className="w-full text-center text-xs font-medium transition-opacity hover:opacity-70"
+                style={{ color: 'var(--tp-text-2)' }}
+              >
+                {useBackupCode ? 'Usar el código de mi app autenticadora' : '¿Perdiste tu app? Usa un código de respaldo'}
+              </button>
+            </form>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div className="space-y-1.5">
@@ -315,11 +468,14 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+          )}
 
           {/* Hint */}
-          <p className="text-center text-xs mt-6" style={{ color: 'var(--tp-text-2)' }}>
-            Acceso restringido · Solo equipo Wipli
-          </p>
+          {stage === 'password' && (
+            <p className="text-center text-xs mt-6" style={{ color: 'var(--tp-text-2)' }}>
+              Acceso restringido · Solo equipo Wipli
+            </p>
+          )}
         </div>
       </div>
     </div>
