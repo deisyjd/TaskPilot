@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { Plus, Trash2, StickyNote, Save, Check, Lock, Users, X } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useCurrentUser, useUserStore } from '@/store/useUserStore'
 import { isProjectViewer } from '@/lib/permissions'
 import { Note, Project } from '@/types'
+import { toEditableHtml, htmlToPlainPreview } from '@/lib/richText'
+import { RichTextEditor, RichTextEditorHandle } from './RichTextEditor'
 
 type ShareEntry = { userId: string; role: 'editor' | 'viewer' }
 
@@ -35,9 +37,8 @@ function formatDate(iso: string): string {
 }
 
 function getPreview(note: Note): string {
-  const text = note.content.trim()
-  if (!text) return 'Nota vacía…'
-  return text.slice(0, 80) + (text.length > 80 ? '…' : '')
+  const text = htmlToPlainPreview(note.content, 80)
+  return text || 'Nota vacía…'
 }
 
 interface Props {
@@ -64,7 +65,7 @@ export function NotesPanel({ project }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [savedFlash, setSavedFlash] = useState(false)
   const [error, setError] = useState('')
-  const contentRef = useRef<HTMLTextAreaElement>(null)
+  const editorRef = useRef<RichTextEditorHandle>(null)
 
   const selectedNote = notes.find((n) => n.id === selectedId) ?? null
   const noteReadOnly = projectReadOnly || (selectedNote ? !canEditNoteClient(selectedNote, currentUser?.id) : false)
@@ -87,14 +88,6 @@ export function NotesPanel({ project }: Props) {
     setIsDirty(true)
   }
 
-  // Auto-grow textarea
-  useEffect(() => {
-    const el = contentRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
-  }, [editContent])
-
   // ─── Save helper ─────────────────────────────────────────────
   async function saveCurrentNote(id: string | null = selectedId) {
     if (!id) return
@@ -114,7 +107,7 @@ export function NotesPanel({ project }: Props) {
     if (isDirty && selectedId) saveCurrentNote(selectedId)
     setSelectedId(note.id)
     setEditTitle(note.title)
-    setEditContent(note.content)
+    setEditContent(toEditableHtml(note.content))
     setEditColor(note.color ?? NOTE_COLORS[0])
     setShareWith(note.sharedWith ?? [])
     setShowSharePicker(false)
@@ -140,7 +133,7 @@ export function NotesPanel({ project }: Props) {
     setShowSharePicker(false)
     setConfirmDelete(false)
     setIsDirty(false)
-    setTimeout(() => contentRef.current?.focus(), 50)
+    setTimeout(() => editorRef.current?.focus(), 50)
   }
 
   // ─── Delete note ─────────────────────────────────────────────
@@ -157,7 +150,7 @@ export function NotesPanel({ project }: Props) {
     if (next) {
       setSelectedId(next.id)
       setEditTitle(next.title)
-      setEditContent(next.content)
+      setEditContent(toEditableHtml(next.content))
       setEditColor(next.color ?? NOTE_COLORS[0])
       setShareWith(next.sharedWith ?? [])
     } else {
@@ -515,20 +508,15 @@ export function NotesPanel({ project }: Props) {
             />
           </div>
 
-          {/* Content textarea */}
-          <div className="flex-1 px-6 pb-6 overflow-y-auto">
-            <textarea
-              ref={contentRef}
-              value={editContent}
-              onChange={(e) => { setEditContent(e.target.value); setIsDirty(true) }}
+          {/* Content editor */}
+          <div className="flex-1 px-6 pb-6 flex flex-col min-h-0">
+            <RichTextEditor
+              key={selectedNote.id}
+              ref={editorRef}
+              content={editContent}
+              editable={!noteReadOnly}
+              onChange={(html) => { setEditContent(html); setIsDirty(true) }}
               placeholder="Escribe aquí tu apunte… (Cmd+S para guardar)"
-              readOnly={noteReadOnly}
-              className="w-full bg-transparent outline-none resize-none text-sm leading-relaxed placeholder:opacity-30"
-              style={{
-                color: 'var(--tp-text)',
-                border: 'none',
-                minHeight: '300px',
-              }}
             />
           </div>
 

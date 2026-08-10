@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { isProjectViewerServer } from '@/lib/projectAccess'
 import { canEditNoteServer, canManageNoteSharingServer, serializeNote } from '@/lib/noteAccess'
+import { sanitizeNoteHtml } from '@/lib/richText'
 import { validAssigneeIds } from '@/app/api/tasks/route'
 
 type Params = { params: Promise<{ id: string }> }
@@ -27,7 +28,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body = await req.json()
   const data: Record<string, unknown> = {}
   for (const key of ['title', 'content', 'color']) {
-    if (key in body) data[key] = body[key]
+    if (key in body) data[key] = key === 'content' ? sanitizeNoteHtml(body[key] ?? '') : body[key]
   }
 
   if (Object.keys(data).length > 0) {

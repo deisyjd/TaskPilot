@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { isProjectViewerServer } from '@/lib/projectAccess'
 import { serializeNote } from '@/lib/noteAccess'
+import { sanitizeNoteHtml } from '@/lib/richText'
 import { validAssigneeIds } from '@/app/api/tasks/route'
 
 export async function POST(req: NextRequest) {
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
       projectId,
       companyId: session.activeCompanyId,
       title: title ?? '',
-      content: content ?? '',
+      content: sanitizeNoteHtml(content ?? ''),
       color,
       createdBy: user?.name,
       createdById: session.userId,
