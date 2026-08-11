@@ -1,13 +1,16 @@
-import DOMPurify from 'isomorphic-dompurify'
+import sanitizeHtml from 'sanitize-html'
 
 const ALLOWED_TAGS = ['p', 'br', 'strong', 'em', 's', 'mark', 'a', 'h1', 'h2', 'h3', 'ul', 'ol', 'li']
-const ALLOWED_ATTR = ['href', 'target', 'rel']
 
 // Único punto de confianza: el HTML que entra aquí puede venir de cualquier
 // cliente (no solo del editor de la app), así que se sanitiza sin asumir que
 // ya pasó por Tiptap — las notas se comparten con otras personas reales.
 export function sanitizeNoteHtml(html: string): string {
-  return DOMPurify.sanitize(html ?? '', { ALLOWED_TAGS, ALLOWED_ATTR })
+  return sanitizeHtml(html ?? '', {
+    allowedTags: ALLOWED_TAGS,
+    allowedAttributes: { a: ['href', 'target', 'rel'] },
+    allowedSchemes: ['http', 'https', 'mailto'],
+  })
 }
 
 const HTML_TAG_PATTERN = /<\/?(p|br|strong|em|b|i|s|mark|a|h[1-3]|ul|ol|li|div)\b/i
