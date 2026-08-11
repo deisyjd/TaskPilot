@@ -6,7 +6,7 @@ import { useTaskStore } from '@/store/useTaskStore'
 import { useCurrentUser, useUserStore } from '@/store/useUserStore'
 import { isProjectViewer } from '@/lib/permissions'
 import { Note, Project } from '@/types'
-import { toEditableHtml, htmlToPlainPreview } from '@/lib/richText'
+import { toEditableHtml } from '@/lib/richText'
 import { RichTextEditor, RichTextEditorHandle } from './RichTextEditor'
 
 type ShareEntry = { userId: string; role: 'editor' | 'viewer' }
@@ -34,11 +34,6 @@ function formatDate(iso: string): string {
     month: 'short',
     year: 'numeric',
   })
-}
-
-function getPreview(note: Note): string {
-  const text = htmlToPlainPreview(note.content, 80)
-  return text || 'Nota vacía…'
 }
 
 interface Props {
@@ -225,14 +220,15 @@ export function NotesPanel({ project }: Props) {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: '520px' }}>
+          <div className="flex flex-col gap-1.5 overflow-y-auto" style={{ maxHeight: '520px' }}>
             {notes.map((note) => {
               const active = note.id === selectedId
               return (
                 <button
                   key={note.id}
                   onClick={() => handleSelect(note)}
-                  className="w-full text-left p-3.5 transition-all hover:opacity-90"
+                  title={note.title.trim() || 'Sin título'}
+                  className="w-full text-left px-3.5 py-2.5 transition-all hover:opacity-90 flex items-center gap-1.5"
                   style={{
                     backgroundColor: note.color ?? 'var(--tp-surface)',
                     borderRadius: 'var(--tp-r-card)',
@@ -242,33 +238,19 @@ export function NotesPanel({ project }: Props) {
                     boxShadow: active ? `0 0 0 1px ${project.color}33` : 'none',
                   }}
                 >
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <p
-                      className="text-xs font-semibold truncate flex-1"
-                      style={{ color: 'var(--tp-text)' }}
-                    >
-                      {note.title.trim() || 'Sin título'}
-                    </p>
-                    {note.isOwner && (
-                      note.sharedWith && note.sharedWith.length > 0 ? (
-                        <span title="Compartida" className="shrink-0"><Users className="w-3 h-3" style={{ color: 'var(--tp-text-2)' }} /></span>
-                      ) : (
-                        <span title="Privada" className="shrink-0"><Lock className="w-3 h-3" style={{ color: 'var(--tp-text-2)', opacity: 0.6 }} /></span>
-                      )
-                    )}
-                  </div>
                   <p
-                    className="text-xs line-clamp-2 leading-relaxed"
-                    style={{ color: 'var(--tp-text-2)' }}
+                    className="text-xs font-semibold truncate flex-1"
+                    style={{ color: 'var(--tp-text)' }}
                   >
-                    {getPreview(note)}
+                    {note.title.trim() || 'Sin título'}
                   </p>
-                  <p
-                    className="text-[10px] mt-2"
-                    style={{ color: 'var(--tp-text-2)', opacity: 0.7 }}
-                  >
-                    {formatDate(note.updatedAt)}
-                  </p>
+                  {note.isOwner && (
+                    note.sharedWith && note.sharedWith.length > 0 ? (
+                      <span title="Compartida" className="shrink-0"><Users className="w-3 h-3" style={{ color: 'var(--tp-text-2)' }} /></span>
+                    ) : (
+                      <span title="Privada" className="shrink-0"><Lock className="w-3 h-3" style={{ color: 'var(--tp-text-2)', opacity: 0.6 }} /></span>
+                    )
+                  )}
                 </button>
               )
             })}
