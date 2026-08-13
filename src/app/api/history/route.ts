@@ -6,8 +6,11 @@ export async function GET() {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
+  const actor = await prisma.user.findUnique({ where: { id: session.userId } })
+  const authorName = actor?.name ?? session.email
+
   const events = await prisma.historyEvent.findMany({
-    where: { companyId: session.activeCompanyId },
+    where: { companyId: session.activeCompanyId, user: authorName },
     orderBy: { timestamp: 'desc' },
     take: 200,
   })
