@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { Sidebar } from '@/components/layout/Sidebar'
+import { Sidebar, ADMIN_ONLY_PATHS } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore } from '@/store/useUserStore'
+import { useCurrentUser } from '@/store/useUserStore'
 import { useChatStore } from '@/store/useChatStore'
 import { useAuthStore } from '@/store/useAuthStore'
+import { can } from '@/lib/permissions'
 import { isReminderDue, reminderDueTimestamp } from '@/lib/reminders'
 import {
   isReminderAlertsEnabled,
@@ -27,6 +29,8 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
   const fetchUsers = useUserStore((s) => s.fetchUsers)
   const pathname = usePathname()
   const router = useRouter()
+  const currentUser = useCurrentUser()
+  const isAdmin = can(currentUser, 'create_user')
 
   const fetchConversations = useChatStore((s) => s.fetchConversations)
   const fetchReminders = useTaskStore((s) => s.fetchReminders)
@@ -85,7 +89,10 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
     if (!ready) return
     if (!isLoggedIn && pathname !== '/login') router.replace('/login')
     if (isLoggedIn && pathname === '/login') router.replace('/dashboard')
-  }, [ready, isLoggedIn, pathname, router])
+    if (isLoggedIn && !isAdmin && ADMIN_ONLY_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
+      router.replace('/dashboard')
+    }
+  }, [ready, isLoggedIn, isAdmin, pathname, router])
 
   if (!ready) {
     return (
@@ -103,6 +110,12 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
   }
 
   if (!isLoggedIn) {
+    return <div className="h-screen" style={{ backgroundColor: 'var(--tp-bg)' }} />
+  }
+
+  const isBlockedForNonAdmin =
+    !isAdmin && ADMIN_ONLY_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
+  if (isBlockedForNonAdmin) {
     return <div className="h-screen" style={{ backgroundColor: 'var(--tp-bg)' }} />
   }
 

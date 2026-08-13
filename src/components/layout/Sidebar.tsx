@@ -30,13 +30,15 @@ const mainNav = [
   { label: 'Tablero',          href: '/board',           icon: Columns3 },
   { label: 'Proyectos',        href: '/projects',        icon: FolderOpen },
   { label: 'Línea de tiempo',  href: '/timeline',        icon: CalendarDays },
-  { label: 'Revisión semanal', href: '/weekly-review',   icon: ClipboardCheck },
-  { label: 'Reporte mensual',  href: '/reports/monthly', icon: FileBarChart },
-  { label: 'Responsables',     href: '/users',           icon: Users },
+  { label: 'Revisión semanal', href: '/weekly-review',   icon: ClipboardCheck, adminOnly: true },
+  { label: 'Reporte mensual',  href: '/reports/monthly', icon: FileBarChart,   adminOnly: true },
+  { label: 'Responsables',     href: '/users',           icon: Users,          adminOnly: true },
   { label: 'Chats',            href: '/chats',           icon: MessageSquare },
   { label: 'Historial',        href: '/history',         icon: History },
   { label: 'Configuración',    href: '/settings',        icon: Settings },
 ]
+
+export const ADMIN_ONLY_PATHS = mainNav.filter((item) => item.adminOnly).map((item) => item.href)
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
@@ -82,7 +84,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
       {/* Main nav */}
       <nav className="px-3 py-2 space-y-0.5">
-        {mainNav.map(({ label, href, icon: Icon }) => {
+        {mainNav.filter((item) => !item.adminOnly || isAdmin).map(({ label, href, icon: Icon }) => {
           const active = isActive(href)
           return (
             <Link
