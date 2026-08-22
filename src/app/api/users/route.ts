@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { name, email, password, role, userRole, initials, color, status } = body
+  const { name, email, password, confirmPassword, role, userRole, initials, color, status } = body
 
   if (!email) {
     return NextResponse.json({ error: 'Campos requeridos faltantes' }, { status: 400 })
@@ -45,6 +45,14 @@ export async function POST(req: NextRequest) {
   } else {
     if (!name || !password) {
       return NextResponse.json({ error: 'Campos requeridos faltantes' }, { status: 400 })
+    }
+    if (typeof password !== 'string' || password.length < 6) {
+      return NextResponse.json({ error: 'La contraseña debe tener al menos 6 caracteres' }, { status: 400 })
+    }
+    // Coincidencia con "repetir contraseña" — el cliente ya lo valida, pero lo
+    // reforzamos aquí para que la regla sea autoritativa.
+    if (confirmPassword !== undefined && confirmPassword !== password) {
+      return NextResponse.json({ error: 'Las contraseñas no coinciden' }, { status: 400 })
     }
     const hashed = await bcrypt.hash(password, 12)
     user = await prisma.user.create({

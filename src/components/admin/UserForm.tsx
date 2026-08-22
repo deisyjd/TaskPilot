@@ -74,10 +74,13 @@ export function UserForm({ open, user, onClose }: Props) {
   const [showConfirm, setShowConfirm] = useState(false)
   const [testDigestStatus, setTestDigestStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   const [testDigestError, setTestDigestError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   useEffect(() => {
     if (open) {
       if (user) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setForm({
           name: user.name ?? '',
           email: user.email ?? '',
@@ -99,6 +102,8 @@ export function UserForm({ open, user, onClose }: Props) {
       setShowConfirm(false)
       setTestDigestStatus('idle')
       setTestDigestError('')
+      setSaving(false)
+      setSubmitError('')
     }
   }, [open, user])
 
@@ -137,44 +142,53 @@ export function UserForm({ open, user, onClose }: Props) {
     return Object.keys(errs).length === 0
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!validate()) return
-
-    if (isNew) {
-      const newUser: User = {
-        id: `usr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        name: form.name.trim(),
-        email: form.email.trim(),
-        role: form.role.trim(),
-        userRole: form.userRole,
-        initials: generateInitials(form.name),
-        color: randomColor(),
-        avatarUrl: form.avatarUrl || undefined,
-        status: 'active',
-        password: form.password,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+    setSaving(true)
+    setSubmitError('')
+    try {
+      if (isNew) {
+        const created = await addUser({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          role: form.role.trim(),
+          userRole: form.userRole,
+          initials: generateInitials(form.name),
+          color: randomColor(),
+          avatarUrl: form.avatarUrl || undefined,
+          status: 'active',
+          password: form.password,
+          confirmPassword: form.confirmPassword,
+        })
+        if (!created) {
+          setSubmitError(useUserStore.getState().error ?? 'No se pudo crear el usuario.')
+          return
+        }
+      } else if (user) {
+        const updates: Partial<User> = {
+          name: form.name.trim(),
+          email: form.email.trim(),
+          role: form.role.trim(),
+          userRole: form.userRole,
+          initials: generateInitials(form.name),
+          avatarUrl: form.avatarUrl || undefined,
+          status: form.status,
+        }
+        if (showPasswordSection && form.password) {
+          updates.password = form.password
+        }
+        updates.dailyDigestEmail = form.dailyDigestEmail
+        updates.taskAssignedEmail = form.taskAssignedEmail
+        const ok = await updateUser(user.id, updates)
+        if (!ok) {
+          setSubmitError(useUserStore.getState().error ?? 'No se pudieron guardar los cambios.')
+          return
+        }
       }
-      addUser(newUser)
-    } else if (user) {
-      const updates: Partial<User> = {
-        name: form.name.trim(),
-        email: form.email.trim(),
-        role: form.role.trim(),
-        userRole: form.userRole,
-        initials: generateInitials(form.name),
-        avatarUrl: form.avatarUrl || undefined,
-        status: form.status,
-      }
-      if (showPasswordSection && form.password) {
-        updates.password = form.password
-      }
-      updates.dailyDigestEmail = form.dailyDigestEmail
-      updates.taskAssignedEmail = form.taskAssignedEmail
-      updateUser(user.id, updates)
+      onClose()
+    } finally {
+      setSaving(false)
     }
-
-    onClose()
   }
 
   function field(id: keyof typeof EMPTY_FORM) {
@@ -573,25 +587,32 @@ export function UserForm({ open, user, onClose }: Props) {
 
         {/* Footer */}
         <div
-          className="px-6 py-4 border-t flex items-center justify-end gap-3"
+          className="px-6 py-4 border-t flex flex-col gap-3"
           style={{ borderColor: 'var(--tp-border)' }}
         >
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-[var(--tp-r-btn)] text-sm font-medium border transition-all hover:bg-[var(--tp-surface)] active:scale-95"
-            style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-text-2)' }}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="px-6 py-2.5 rounded-[var(--tp-r-btn)] text-sm font-semibold transition-all active:scale-95"
-            style={{ background: 'var(--tp-darker)', color: 'var(--tp-lime)' }}
-          >
-            {isNew ? 'Crear usuario' : 'Guardar cambios'}
-          </button>
+          {submitError && (
+            <p className="text-xs text-red-500 text-right">{submitError}</p>
+          )}
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="px-5 py-2.5 rounded-[var(--tp-r-btn)] text-sm font-medium border transition-all hover:bg-[var(--tp-surface)] active:scale-95 disabled:opacity-50"
+              style={{ borderColor: 'var(--tp-border)', color: 'var(--tp-text-2)' }}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="px-6 py-2.5 rounded-[var(--tp-r-btn)] text-sm font-semibold transition-all active:scale-95 disabled:opacity-60"
+              style={{ background: 'var(--tp-darker)', color: 'var(--tp-lime)' }}
+            >
+              {saving ? (isNew ? 'Creando…' : 'Guardando…') : (isNew ? 'Crear usuario' : 'Guardar cambios')}
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

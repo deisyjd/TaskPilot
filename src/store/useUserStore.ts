@@ -28,8 +28,8 @@ interface UserStore {
   loading: boolean
   error: string | null
   fetchUsers: () => Promise<void>
-  addUser: (user: Partial<User>) => Promise<User | null>
-  updateUser: (id: string, updates: Partial<User>) => Promise<void>
+  addUser: (user: Partial<User> & { confirmPassword?: string }) => Promise<User | null>
+  updateUser: (id: string, updates: Partial<User> & { confirmPassword?: string }) => Promise<boolean>
   deleteUser: (id: string) => Promise<void>
   deactivateUser: (id: string) => Promise<void>
   activateUser: (id: string) => Promise<void>
@@ -57,6 +57,7 @@ export const useUserStore = create<UserStore>()((set, get) => ({
   },
 
   addUser: async (user) => {
+    set({ error: null })
     try {
       const created = await api<User>('/api/users', { method: 'POST', body: JSON.stringify(user) })
       set((s) => ({ users: [...s.users, created] }))
@@ -68,11 +69,14 @@ export const useUserStore = create<UserStore>()((set, get) => ({
   },
 
   updateUser: async (id, updates) => {
+    set({ error: null })
     try {
       const updated = await api<User>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(updates) })
       set((s) => ({ users: s.users.map((u) => (u.id === id ? updated : u)) }))
+      return true
     } catch (e) {
       set({ error: e instanceof Error ? e.message : 'Error al actualizar usuario' })
+      return false
     }
   },
 
