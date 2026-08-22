@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Plus, Search, FolderOpen, Users, CheckSquare, Star, Archive, ArchiveRestore } from 'lucide-react'
+import { Plus, Search, FolderOpen, Users, CheckSquare, Star, Archive, ArchiveRestore, LayoutGrid, List } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useCurrentUser } from '@/store/useUserStore'
 import { can, canManageProject } from '@/lib/permissions'
@@ -208,6 +208,102 @@ function ProjectCard({ project, taskCount, onToggleFeatured, onArchive, onRestor
   )
 }
 
+function ProjectRow({ project, taskCount, onToggleFeatured, onArchive, onRestore, canManage }: CardProps) {
+  const memberCount = project.members?.length ?? 0
+  const featured = project.featured ?? false
+  const isInactive = project.status === 'inactive'
+  const [confirmArchive, setConfirmArchive] = useState(false)
+
+  return (
+    <div
+      className="group flex items-center gap-3 px-4 py-3 transition-all hover:shadow-sm"
+      style={{
+        backgroundColor: 'var(--tp-surface)',
+        borderRadius: 'var(--tp-r-card)',
+        border: `1px solid ${featured ? project.color + '55' : 'var(--tp-border)'}`,
+      }}
+    >
+      <Link href={`/projects/${project.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+        <div
+          className="w-10 h-10 rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
+          style={{ backgroundColor: `${project.color}22` }}
+        >
+          {project.coverImageUrl ? (
+            <img src={project.coverImageUrl} alt={project.name} className="w-full h-full object-cover" />
+          ) : (
+            <FolderOpen className="w-4 h-4" style={{ color: project.color }} />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: project.color }} />
+            <h3 className="text-sm font-semibold truncate" style={{ color: 'var(--tp-text)' }}>{project.name}</h3>
+            {featured && <Star className="w-3 h-3 shrink-0" fill={project.color} style={{ color: project.color }} />}
+            {isInactive && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0" style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>
+                Inactivo
+              </span>
+            )}
+          </div>
+          {project.description && (
+            <p className="text-xs truncate mt-0.5" style={{ color: 'var(--tp-text-2)' }}>{project.description}</p>
+          )}
+        </div>
+      </Link>
+
+      <div className="hidden sm:flex items-center gap-4 shrink-0" style={{ color: 'var(--tp-text-2)' }}>
+        <span className="flex items-center gap-1 text-xs"><CheckSquare className="w-3 h-3" />{taskCount}</span>
+        {memberCount > 0 && <span className="flex items-center gap-1 text-xs"><Users className="w-3 h-3" />{memberCount}</span>}
+      </div>
+
+      <button
+        onClick={() => onToggleFeatured(project.id, featured)}
+        title={featured ? 'Quitar del sidebar' : 'Destacar en sidebar'}
+        className="w-7 h-7 flex items-center justify-center rounded-full shrink-0 transition-all hover:bg-[var(--tp-bg-2)]"
+      >
+        <Star className="w-3.5 h-3.5" fill={featured ? project.color : 'none'} style={{ color: featured ? project.color : 'var(--tp-text-2)' }} />
+      </button>
+
+      {canManage && (isInactive ? (
+        <button
+          onClick={() => onRestore(project.id)}
+          title="Restaurar"
+          className="w-7 h-7 flex items-center justify-center rounded-full shrink-0 transition-all hover:bg-[var(--tp-bg-2)]"
+          style={{ color: '#16A34A' }}
+        >
+          <ArchiveRestore className="w-3.5 h-3.5" />
+        </button>
+      ) : confirmArchive ? (
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={() => { onArchive(project.id); setConfirmArchive(false) }}
+            className="text-xs px-2 py-1 rounded-lg font-medium"
+            style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}
+          >
+            Archivar
+          </button>
+          <button
+            onClick={() => setConfirmArchive(false)}
+            className="text-xs px-2 py-1 rounded-lg font-medium"
+            style={{ backgroundColor: 'var(--tp-bg-2)', color: 'var(--tp-text-2)' }}
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setConfirmArchive(true)}
+          title="Archivar"
+          className="w-7 h-7 flex items-center justify-center rounded-full shrink-0 transition-all hover:bg-[var(--tp-bg-2)] opacity-0 group-hover:opacity-100"
+          style={{ color: 'var(--tp-text-2)' }}
+        >
+          <Archive className="w-3.5 h-3.5" />
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function ProjectsPage() {
   const projects = useTaskStore((s) => s.projects)
   const updateProject = useTaskStore((s) => s.updateProject)
@@ -218,6 +314,19 @@ export default function ProjectsPage() {
   const [filter, setFilter] = useState<Filter>('all')
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+
+  // La preferencia de vista (cuadrícula/lista) vive en localStorage.
+  useEffect(() => {
+    const saved = localStorage.getItem('tp-projects-view')
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (saved === 'list' || saved === 'grid') setViewMode(saved)
+  }, [])
+
+  const changeView = (mode: 'grid' | 'list') => {
+    setViewMode(mode)
+    localStorage.setItem('tp-projects-view', mode)
+  }
 
   const handleToggleFeatured = (id: string, current: boolean) => {
     updateProject(id, { featured: !current })
@@ -306,11 +415,40 @@ export default function ProjectsPage() {
           ))}
         </div>
 
+        {/* View toggle: cuadrícula / lista */}
+        <div
+          className="flex items-center gap-0.5 p-0.5 rounded-lg ml-auto"
+          style={{ backgroundColor: 'var(--tp-surface)', border: '1px solid var(--tp-border)' }}
+        >
+          <button
+            onClick={() => changeView('grid')}
+            title="Vista de cuadrícula"
+            className="flex items-center justify-center w-8 h-7 rounded-md transition-colors"
+            style={{
+              backgroundColor: viewMode === 'grid' ? 'var(--tp-dark)' : 'transparent',
+              color: viewMode === 'grid' ? 'var(--tp-lime)' : 'var(--tp-text-2)',
+            }}
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => changeView('list')}
+            title="Vista de lista"
+            className="flex items-center justify-center w-8 h-7 rounded-md transition-colors"
+            style={{
+              backgroundColor: viewMode === 'list' ? 'var(--tp-dark)' : 'transparent',
+              color: viewMode === 'list' ? 'var(--tp-lime)' : 'var(--tp-text-2)',
+            }}
+          >
+            <List className="w-4 h-4" />
+          </button>
+        </div>
+
         {/* New project button */}
         {can(currentUser, 'create_project') && (
           <button
             onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-85 ml-auto"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all hover:opacity-85"
             style={{
               backgroundColor: 'var(--tp-dark)',
               color: '#fff',
@@ -356,6 +494,20 @@ export default function ProjectsPage() {
                   : 'Crea tu primer proyecto con el botón de arriba'}
             </p>
           </div>
+        </div>
+      ) : viewMode === 'list' ? (
+        <div className="flex flex-col gap-2">
+          {visible.map((project) => (
+            <ProjectRow
+              key={project.id}
+              project={project}
+              taskCount={taskCountByProject[project.id] ?? 0}
+              onToggleFeatured={handleToggleFeatured}
+              onArchive={archiveProject}
+              onRestore={restoreProject}
+              canManage={canManageProject(currentUser, project)}
+            />
+          ))}
         </div>
       ) : (
         <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>

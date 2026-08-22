@@ -25,6 +25,7 @@ import {
   ArchiveRestore,
   List,
   GanttChartSquare,
+  FileSpreadsheet,
 } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
@@ -32,6 +33,7 @@ import { can, canManageProject, isProjectViewer } from '@/lib/permissions'
 import { uploadFile } from '@/lib/uploadFile'
 import { TaskModal } from '@/components/board/TaskModal'
 import { ProjectGantt } from '@/components/projects/ProjectGantt'
+import { TaskImportExportModal } from '@/components/projects/TaskImportExportModal'
 import {
   Project,
   Attachment,
@@ -134,6 +136,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [confirmArchive, setConfirmArchive] = useState(false)
   const [tasksView, setTasksView] = useState<'list' | 'gantt'>('list')
+  const [showImportExport, setShowImportExport] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Derived data
@@ -468,6 +471,21 @@ export function ProjectDetail({ project, onEdit }: Props) {
                     Gantt
                   </button>
                 </div>
+                {!isViewer && (
+                  <button
+                    onClick={() => setShowImportExport(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all hover:opacity-75"
+                    style={{
+                      backgroundColor: 'var(--tp-bg)',
+                      color: 'var(--tp-text)',
+                      border: '1px solid var(--tp-border)',
+                      borderRadius: 'var(--tp-r-btn)',
+                    }}
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    Importar / Exportar
+                  </button>
+                )}
                 {can(currentUser, 'create_task') && !isViewer && (
                   <button
                     onClick={openNewTask}
@@ -958,6 +976,15 @@ export function ProjectDetail({ project, onEdit }: Props) {
         defaultProject={project.id}
         open={taskModalOpen}
         onClose={closeTaskModal}
+      />
+
+      <TaskImportExportModal
+        open={showImportExport}
+        onClose={() => setShowImportExport(false)}
+        projectId={project.id}
+        projectName={project.name}
+        tasks={projectTasks}
+        users={users}
       />
     </div>
   )
