@@ -6,10 +6,11 @@ import { useTaskStore } from '@/store/useTaskStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useCurrentUser } from '@/store/useUserStore'
 import { can } from '@/lib/permissions'
-import { Database, TriangleAlert, Pencil, Users, BellRing, Volume2 } from 'lucide-react'
+import { Database, TriangleAlert, Pencil, Users, BellRing, Volume2, FileBarChart } from 'lucide-react'
 import { DeleteCompanyModal } from '@/components/admin/DeleteCompanyModal'
 import { CompanyModal } from '@/components/admin/CompanyModal'
 import { ApiTokensPanel } from '@/components/settings/ApiTokensPanel'
+import { ReportModal } from '@/components/reports/ReportModal'
 import { isReminderAlertsEnabled, setReminderAlertsEnabled, playReminderChime } from '@/lib/reminderAlerts'
 
 export default function SettingsPage() {
@@ -25,6 +26,7 @@ export default function SettingsPage() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [alertsEnabled, setAlertsEnabled] = useState(false)
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>('default')
+  const [showReport, setShowReport] = useState(false)
 
   // localStorage/Notification solo existen en el navegador — no en el render de servidor.
   useEffect(() => {
@@ -155,6 +157,29 @@ export default function SettingsPage() {
         )}
       </div>
 
+      <div
+        className="p-6"
+        style={{ backgroundColor: 'var(--tp-surface)', borderRadius: 'var(--tp-r-card)', border: '1px solid var(--tp-border)' }}
+      >
+        <h2 className="font-semibold text-base mb-1 flex items-center gap-2" style={{ color: 'var(--tp-text)' }}>
+          <FileBarChart className="w-4 h-4" style={{ color: 'var(--tp-text-2)' }} />
+          Reportes de avance
+        </h2>
+        <p className="text-xs mb-5" style={{ color: 'var(--tp-text-2)' }}>
+          Genera un reporte de avance de la empresa (todos los proyectos) en el rango que elijas y recíbelo por correo
+          en mailing, PDF y/o Excel. Para un proyecto puntual, usa el botón &quot;Reporte&quot; dentro del proyecto.
+        </p>
+        <button
+          onClick={() => setShowReport(true)}
+          disabled={!activeCompany}
+          className="flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold rounded-full transition-all hover:opacity-85 disabled:opacity-40"
+          style={{ backgroundColor: 'var(--tp-dark)', color: 'var(--tp-lime)' }}
+        >
+          <FileBarChart className="w-4 h-4" />
+          Generar reporte de la empresa
+        </button>
+      </div>
+
       <ApiTokensPanel />
 
       <div
@@ -219,6 +244,12 @@ export default function SettingsPage() {
             open={showDeleteModal}
             company={activeCompany}
             onClose={() => setShowDeleteModal(false)}
+          />
+          <ReportModal
+            open={showReport}
+            onClose={() => setShowReport(false)}
+            scope="company"
+            companyName={activeCompany.name}
           />
         </>
       )}

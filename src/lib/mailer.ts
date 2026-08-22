@@ -18,20 +18,28 @@ const transporter = globalForMailer.mailTransporter ?? buildTransporter()
 
 if (process.env.NODE_ENV !== 'production') globalForMailer.mailTransporter = transporter
 
-interface SendMailInput {
-  to: string
-  subject: string
-  html: string
+interface MailAttachment {
+  filename: string
+  content: Buffer
+  contentType?: string
 }
 
-export async function sendMail({ to, subject, html }: SendMailInput) {
+interface SendMailInput {
+  to: string | string[]
+  subject: string
+  html: string
+  attachments?: MailAttachment[]
+}
+
+export async function sendMail({ to, subject, html, attachments }: SendMailInput) {
   if (!process.env.SMTP_HOST) {
     throw new Error('SMTP_HOST no está configurado — revisa las variables de entorno SMTP_*')
   }
   return transporter.sendMail({
     from: process.env.SMTP_FROM || process.env.SMTP_USER,
-    to,
+    to: Array.isArray(to) ? to.join(', ') : to,
     subject,
     html,
+    attachments,
   })
 }

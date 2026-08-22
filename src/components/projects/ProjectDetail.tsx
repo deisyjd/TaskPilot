@@ -26,6 +26,7 @@ import {
   List,
   GanttChartSquare,
   FileSpreadsheet,
+  FileBarChart,
 } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
@@ -34,6 +35,7 @@ import { uploadFile } from '@/lib/uploadFile'
 import { TaskModal } from '@/components/board/TaskModal'
 import { ProjectGantt } from '@/components/projects/ProjectGantt'
 import { TaskImportExportModal } from '@/components/projects/TaskImportExportModal'
+import { ReportModal } from '@/components/reports/ReportModal'
 import {
   Project,
   Attachment,
@@ -137,6 +139,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
   const [confirmArchive, setConfirmArchive] = useState(false)
   const [tasksView, setTasksView] = useState<'list' | 'gantt'>('list')
   const [showImportExport, setShowImportExport] = useState(false)
+  const [showReport, setShowReport] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Derived data
@@ -500,6 +503,19 @@ export function ProjectDetail({ project, onEdit }: Props) {
                     Nueva tarea
                   </button>
                 )}
+                <button
+                  onClick={() => setShowReport(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all hover:opacity-75"
+                  style={{
+                    backgroundColor: 'var(--tp-bg)',
+                    color: 'var(--tp-text)',
+                    border: '1px solid var(--tp-border)',
+                    borderRadius: 'var(--tp-r-btn)',
+                  }}
+                >
+                  <FileBarChart className="w-3.5 h-3.5" />
+                  Reporte
+                </button>
                 <Link
                   href="/board"
                   className="flex items-center gap-1 text-xs font-medium transition-all hover:opacity-70"
@@ -985,6 +1001,15 @@ export function ProjectDetail({ project, onEdit }: Props) {
         projectName={project.name}
         tasks={projectTasks}
         users={users}
+      />
+
+      <ReportModal
+        open={showReport}
+        onClose={() => setShowReport(false)}
+        scope="project"
+        companyName=""
+        projectId={project.id}
+        projectName={project.name}
       />
     </div>
   )
