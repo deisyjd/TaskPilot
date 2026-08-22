@@ -34,6 +34,30 @@ async function getTask(taskId: string, ctx: McpContext): Promise<TaskShape> {
   return (await ctx.api(`/api/tasks/${taskId}`)) as TaskShape
 }
 
+interface UserShape {
+  id: string
+  name: string
+  email?: string
+}
+
+// Resuelve un responsable a su ID a partir de un nombre o correo. Prioriza
+// coincidencia exacta de correo, luego de nombre, y por último parcial (si es
+// única). Lanza un error claro si no hay coincidencia o es ambigua.
+async function resolveAssignee(query: string, ctx: McpContext): Promise<string> {
+  const q = query.trim().toLowerCase()
+  const users = (await ctx.api('/api/users')) as UserShape[]
+  const byEmail = users.find((u) => (u.email ?? '').toLowerCase() === q)
+  if (byEmail) return byEmail.id
+  const byName = users.find((u) => u.name.trim().toLowerCase() === q)
+  if (byName) return byName.id
+  const partial = users.filter((u) => u.name.toLowerCase().includes(q) || (u.email ?? '').toLowerCase().includes(q))
+  if (partial.length === 1) return partial[0].id
+  if (partial.length > 1) {
+    throw new Error(`Varios usuarios coinciden con "${query}": ${partial.map((u) => u.name).join(', ')}. Especifica mejor o usa assigneeId.`)
+  }
+  throw new Error(`No encontré un usuario con nombre o correo "${query}". Usa list_users para ver los disponibles.`)
+}
+
 export const TOOLS: McpTool[] = [
   {
     name: 'whoami',
@@ -72,10 +96,11 @@ export const TOOLS: McpTool[] = [
   },
   {
     name: 'list_tasks',
-    description: 'Lista tareas de la empresa activa. Filtra en el servidor por proyecto, estado y/o responsable (más eficiente). Usa mine=true para ver solo las tuyas.',
+    description: 'Lista tareas de la empresa activa. Filtra en el servidor por proyecto, estado y/o responsable (más eficiente). Al responsable puedes pasarlo por nombre/correo (assignee) o por ID (assigneeId); usa mine=true para ver solo las tuyas.',
     inputSchema: obj({
       projectId: str('Filtra por proyecto (opcional).'),
       status: { type: 'string', enum: ['pending', 'in-progress', 'review', 'scheduled', 'done', 'blocked'], description: 'Filtra por estado (opcional).' },
+      assignee: str('Filtra por responsable — nombre o correo (opcional; alternativa a assigneeId).'),
       assigneeId: str('Filtra por responsable — ID de usuario (usa list_users), opcional.'),
       mine: { type: 'boolean', description: 'Si es true, solo tus tareas (las del usuario del token).' },
     }),
@@ -87,6 +112,9 @@ export const TOOLS: McpTool[] = [
       if (!assigneeId && args.mine) {
         const me = (await ctx.api('/api/auth/me')) as { id: string }
         assigneeId = me.id
+      }
+      if (!assigneeId && args.assignee) {
+        assigneeId = await resolveAssignee(String(args.assignee), ctx)
       }
       if (assigneeId) params.set('assigneeId', assigneeId)
       const qs = params.toString()
