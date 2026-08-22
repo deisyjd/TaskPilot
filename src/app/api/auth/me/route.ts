@@ -23,9 +23,13 @@ export async function GET() {
     return NextResponse.json({ error: 'Usuario sin empresa asignada' }, { status: 403 })
   }
 
-  let active = memberships.find((m) => m.companyId === session.activeCompanyId)
-  if (!active) {
-    active = memberships[0]
+  const active = memberships.find((m) => m.companyId === session.activeCompanyId) ?? memberships[0]
+
+  // Mantener la cookie de sesión sincronizada con la BD: el rol viaja dentro del
+  // JWT, así que si a alguien lo ascendieron a admin (o le cambiaron la empresa
+  // activa) hay que re-emitir el token — si no, el servidor seguiría usando el
+  // rol viejo y rechazaría acciones aunque la UI ya lo muestre como admin.
+  if (session.userRole !== active.role || session.activeCompanyId !== active.companyId) {
     await createSession({ userId: user.id, email: user.email, userRole: active.role, activeCompanyId: active.companyId })
   }
 
