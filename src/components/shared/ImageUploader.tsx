@@ -1,11 +1,14 @@
 'use client'
 
-// Las imágenes se redimensionan + comprimen con Canvas y luego se suben al
-// volumen del servidor (/api/uploads); en la BD se guarda solo la URL.
+// Al seleccionar una imagen se abre un recorte (crop) para elegir qué se ve;
+// las portadas son horizontales (16:9) y los avatares cuadrados. El resultado
+// se comprime y se sube al volumen del servidor (/api/uploads); en la BD se
+// guarda solo la URL.
 
 import { useRef, useState } from 'react'
 import { Upload, X, RefreshCw, ImageIcon } from 'lucide-react'
 import { uploadFile } from '@/lib/uploadFile'
+import { ImageCropModal } from '@/components/shared/ImageCropModal'
 
 interface Props {
   value?: string
@@ -15,62 +18,8 @@ interface Props {
   aspectRatio?: 'square' | 'cover'
 }
 
-const MAX_SIZE_BYTES = 5 * 1024 * 1024 // 5 MB — raw file limit before compression
+const MAX_SIZE_BYTES = 5 * 1024 * 1024 // 5 MB — límite del archivo original
 const ALLOWED_TYPES = ['image/png', 'image/jpg', 'image/jpeg', 'image/webp']
-
-// Max output dimensions after canvas resize
-const MAX_DIMS: Record<'square' | 'cover', { w: number; h: number }> = {
-  square: { w: 160, h: 160 },   // ~10-20 KB JPEG at 0.75
-  cover:  { w: 640, h: 360 },   // ~50-80 KB JPEG at 0.80
-}
-const QUALITY: Record<'square' | 'cover', number> = {
-  square: 0.75,
-  cover:  0.80,
-}
-
-function compressImage(
-  file: File,
-  mode: 'square' | 'cover',
-  onDone: (blob: Blob) => void,
-  onError: (msg: string) => void
-) {
-  const url = URL.createObjectURL(file)
-  const img = new window.Image()
-
-  img.onload = () => {
-    URL.revokeObjectURL(url)
-    const { w: maxW, h: maxH } = MAX_DIMS[mode]
-    const { naturalWidth: sw, naturalHeight: sh } = img
-
-    // Scale down proportionally
-    const ratio = Math.min(maxW / sw, maxH / sh, 1) // never upscale
-    const tw = Math.round(sw * ratio)
-    const th = Math.round(sh * ratio)
-
-    const canvas = document.createElement('canvas')
-    canvas.width = tw
-    canvas.height = th
-    const ctx = canvas.getContext('2d')
-    if (!ctx) { onError('Error al procesar la imagen.'); return }
-
-    ctx.drawImage(img, 0, 0, tw, th)
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) { onError('Error al procesar la imagen.'); return }
-        onDone(blob)
-      },
-      'image/jpeg',
-      QUALITY[mode]
-    )
-  }
-
-  img.onerror = () => {
-    URL.revokeObjectURL(url)
-    onError('No se pudo leer la imagen.')
-  }
-
-  img.src = url
-}
 
 export function ImageUploader({
   value,
@@ -83,6 +32,9 @@ export function ImageUploader({
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [cropFile, setCropFile] = useState<File | null>(null)
+
+  const cropAspect = aspectRatio === 'cover' ? 16 / 9 : 1
 
   const containerClass =
     aspectRatio === 'cover'
@@ -101,25 +53,21 @@ export function ImageUploader({
       return
     }
 
+    // Abre el recorte; la subida ocurre al confirmar (handleCropped).
+    setCropFile(file)
+  }
+
+  async function handleCropped(blob: Blob) {
+    setCropFile(null)
     setLoading(true)
-    compressImage(
-      file,
-      aspectRatio,
-      async (blob) => {
-        try {
-          const url = await uploadFile(blob, 'image.jpg')
-          onChange(url)
-        } catch (err) {
-          setError(err instanceof Error ? err.message : 'No se pudo subir la imagen.')
-        } finally {
-          setLoading(false)
-        }
-      },
-      (msg) => {
-        setLoading(false)
-        setError(msg)
-      }
-    )
+    try {
+      const url = await uploadFile(blob, 'image.jpg')
+      onChange(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo subir la imagen.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -137,6 +85,15 @@ export function ImageUploader({
 
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
+      {cropFile && (
+        <ImageCropModal
+          file={cropFile}
+          aspect={cropAspect}
+          onCancel={() => setCropFile(null)}
+          onCropped={handleCropped}
+        />
+      )}
+
       {label && (
         <label className="text-sm font-medium text-center block" style={{ color: 'var(--tp-text-2)' }}>
           {label}

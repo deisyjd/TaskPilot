@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { serializeProject } from '../route'
 import { noteVisibilityFilter } from '@/lib/noteAccess'
+import { pickFields } from '@/lib/apiBody'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -43,11 +44,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
   }
 
-  // Whitelist: el cliente envía campos que no son columnas (createdBy, …)
-  const data: Record<string, unknown> = {}
-  for (const key of ['name', 'description', 'color', 'status', 'coverImageUrl', 'attachments', 'links']) {
-    if (key in body) data[key] = body[key]
-  }
+  // Whitelist: el cliente envía campos que no son columnas (createdBy, …).
+  // description y coverImageUrl son nullables: '' → null para poder limpiarlos.
+  const data = pickFields(
+    body,
+    ['name', 'description', 'color', 'status', 'coverImageUrl', 'attachments', 'links'],
+    ['description', 'coverImageUrl']
+  )
 
   if (Object.keys(data).length > 0) {
     await prisma.project.update({ where: { id }, data })

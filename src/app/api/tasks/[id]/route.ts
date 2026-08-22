@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth'
 import { recordHistoryEvent } from '@/lib/history'
 import { serializeTask, validAssigneeIds, taskVisibilityFilter, canUserEditTaskServer } from '../route'
 import { notifyTaskAssigned } from '@/lib/taskAssignedNotification'
+import { pickFields } from '@/lib/apiBody'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -37,13 +38,15 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const body = await req.json()
 
-  const data: Record<string, unknown> = {}
-  for (const key of [
-    'title', 'description', 'status', 'startDate', 'dueDate', 'priority', 'type', 'projectId', 'tags',
-    'recurrence', 'recurrenceInterval', 'recurrenceUntil', 'coverImageUrl', 'attachments', 'links',
-  ]) {
-    if (key in body) data[key] = body[key]
-  }
+  // description/coverImageUrl/startDate son nullables: '' → null para limpiarlos.
+  const data = pickFields(
+    body,
+    [
+      'title', 'description', 'status', 'startDate', 'dueDate', 'priority', 'type', 'projectId', 'tags',
+      'recurrence', 'recurrenceInterval', 'recurrenceUntil', 'coverImageUrl', 'attachments', 'links',
+    ],
+    ['description', 'coverImageUrl', 'startDate']
+  )
 
   if (data.tags) data.tags = JSON.stringify(data.tags)
 

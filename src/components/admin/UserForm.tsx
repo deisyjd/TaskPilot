@@ -171,7 +171,8 @@ export function UserForm({ open, user, onClose }: Props) {
           role: form.role.trim(),
           userRole: form.userRole,
           initials: generateInitials(form.name),
-          avatarUrl: form.avatarUrl || undefined,
+          // '' (no undefined) para poder quitar la foto al guardar.
+          avatarUrl: form.avatarUrl,
           status: form.status,
         }
         if (showPasswordSection && form.password) {

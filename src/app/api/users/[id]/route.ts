@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { pickFields } from '@/lib/apiBody'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -20,11 +21,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body = await req.json()
   const { password, userRole } = body
 
-  // Whitelist: el cliente envía campos que no son columnas del modelo User
-  const userData: Record<string, unknown> = {}
-  for (const key of ['name', 'role', 'initials', 'color', 'avatarUrl', 'status', 'dailyDigestEmail', 'taskAssignedEmail']) {
-    if (key in body) userData[key] = body[key]
-  }
+  // Whitelist: el cliente envía campos que no son columnas del modelo User.
+  // avatarUrl es nullable: '' → null para poder quitar la foto.
+  const userData = pickFields(
+    body,
+    ['name', 'role', 'initials', 'color', 'avatarUrl', 'status', 'dailyDigestEmail', 'taskAssignedEmail'],
+    ['avatarUrl']
+  )
   if (body.email) userData.email = body.email.toLowerCase()
   if (password) userData.password = await bcrypt.hash(password, 12)
 

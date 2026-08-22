@@ -45,6 +45,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
   // Populate fields when editing
   useEffect(() => {
     if (existingProject) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(existingProject.name)
       setColor(existingProject.color)
       setDescription(existingProject.description ?? '')
@@ -86,6 +87,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
     const baseId = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
 
     const newProject: Project = {
+      // eslint-disable-next-line react-hooks/purity
       id: existingProject?.id ?? `${baseId}-${Date.now()}`,
       name: name.trim(),
       color,
@@ -107,8 +109,9 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
       updateProject(existingProject.id, {
         name: newProject.name,
         color: newProject.color,
-        description: newProject.description,
-        coverImageUrl: newProject.coverImageUrl,
+        // '' (no undefined) para que el servidor pueda limpiar el campo.
+        description: description.trim(),
+        coverImageUrl: coverPreview ?? '',
         status: newProject.status,
         members: newProject.members,
         memberIds: selectedMembers,

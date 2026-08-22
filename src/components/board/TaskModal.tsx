@@ -125,6 +125,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
   const [editingChecklistText, setEditingChecklistText] = useState('')
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(task ?? emptyTask(defaultStatus, resolvedDefaultProject, defaultAssigneeIds, defaultDueDate))
     setTagInput(''); setCheckInput(''); setCommentInput('')
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -454,7 +455,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
               ) : (
               <ImageUploader
                 value={form.coverImageUrl}
-                onChange={(url) => setField('coverImageUrl', url ?? undefined)}
+                onChange={(url) => setField('coverImageUrl', url ?? '')}
                 aspectRatio="cover"
               />
               )}
