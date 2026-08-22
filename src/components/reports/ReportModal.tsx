@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
+import { useTaskStore } from '@/store/useTaskStore'
 import { FileBarChart, Mail, FileText, FileSpreadsheet, Check } from 'lucide-react'
 
 interface Props {
@@ -30,10 +31,13 @@ function presetRange(kind: 'today' | 'week' | 'month'): { start: string; end: st
 }
 
 export function ReportModal({ open, onClose, scope, companyName, projectId, projectName }: Props) {
+  const allProjects = useTaskStore((s) => s.projects)
+
   const [start, setStart] = useState('')
   const [end, setEnd] = useState('')
   const [emails, setEmails] = useState('')
   const [formats, setFormats] = useState({ mailing: true, pdf: true, excel: true })
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([])
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -44,10 +48,14 @@ export function ReportModal({ open, onClose, scope, companyName, projectId, proj
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setStart(r.start)
       setEnd(r.end)
+      setSelectedProjects([])
       setResult(null)
       setError(null)
     }
   }, [open])
+
+  const toggleProject = (id: string) =>
+    setSelectedProjects((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]))
 
   const setPreset = (kind: 'today' | 'week' | 'month') => {
     const r = presetRange(kind)
@@ -69,7 +77,15 @@ export function ReportModal({ open, onClose, scope, companyName, projectId, proj
       const res = await fetch('/api/reports/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scope, projectId, start, end, emails, formats: selected }),
+        body: JSON.stringify({
+          scope,
+          projectId,
+          projectIds: scope === 'company' ? selectedProjects : undefined,
+          start,
+          end,
+          emails,
+          formats: selected,
+        }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) { setError(data.error ?? 'No se pudo enviar el reporte.'); return }
@@ -122,6 +138,42 @@ export function ReportModal({ open, onClose, scope, companyName, projectId, proj
         </div>
 
         <div className="px-6 py-5 space-y-5">
+          {/* Proyectos (solo alcance empresa) */}
+          {scope === 'company' && (
+            <div>
+              <p className="text-xs font-semibold mb-2" style={{ color: 'var(--tp-text-2)' }}>
+                Proyectos <span style={{ fontWeight: 400 }}>· déjalo vacío para incluir todos</span>
+              </p>
+              <div
+                className="flex flex-col gap-1 max-h-40 overflow-y-auto p-2 rounded-xl"
+                style={{ border: '1px solid var(--tp-border)', backgroundColor: 'var(--tp-bg)' }}
+              >
+                {allProjects.length === 0 && (
+                  <p className="text-xs px-1 py-2" style={{ color: 'var(--tp-text-2)' }}>No hay proyectos.</p>
+                )}
+                {allProjects.map((p) => {
+                  const checked = selectedProjects.includes(p.id)
+                  return (
+                    <label
+                      key={p.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors"
+                      style={{ backgroundColor: checked ? 'var(--tp-bg-2)' : 'transparent' }}
+                    >
+                      <input type="checkbox" checked={checked} onChange={() => toggleProject(p.id)} style={{ accentColor: 'var(--tp-dark)' }} />
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                      <span className="text-xs truncate" style={{ color: 'var(--tp-text)' }}>{p.name}</span>
+                    </label>
+                  )
+                })}
+              </div>
+              {selectedProjects.length > 0 && (
+                <p className="text-[11px] mt-1.5" style={{ color: 'var(--tp-text-2)' }}>
+                  {selectedProjects.length} proyecto{selectedProjects.length !== 1 ? 's' : ''} seleccionado{selectedProjects.length !== 1 ? 's' : ''}.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Rango */}
           <div>
             <p className="text-xs font-semibold mb-2" style={{ color: 'var(--tp-text-2)' }}>Rango de fechas</p>

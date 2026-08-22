@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { KeyRound, Copy, Check, Trash2, Plus, TriangleAlert } from 'lucide-react'
+import { KeyRound, Copy, Check, Trash2, Plus, TriangleAlert, Plug } from 'lucide-react'
+import { McpInstallModal } from '@/components/settings/McpInstallModal'
 
 interface ApiToken {
   id: string
@@ -25,6 +26,7 @@ export function ApiTokensPanel() {
   const [newToken, setNewToken] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [copiedCmd, setCopiedCmd] = useState(false)
+  const [showInstall, setShowInstall] = useState(false)
   const [error, setError] = useState('')
 
   async function load() {
@@ -101,10 +103,21 @@ export function ApiTokensPanel() {
         <KeyRound className="w-4 h-4" style={{ color: 'var(--tp-text-2)' }} />
         Acceso por API / MCP
       </h2>
-      <p className="text-xs mb-5" style={{ color: 'var(--tp-text-2)' }}>
+      <p className="text-xs mb-3" style={{ color: 'var(--tp-text-2)' }}>
         Genera un token para conectar asistentes (Claude, Codex…) vía MCP y gestionar tus proyectos desde ahí. El token
         actúa con tu rol en la empresa activa. Guárdalo bien: se muestra una sola vez.
       </p>
+
+      <button
+        onClick={() => setShowInstall(true)}
+        className="flex items-center gap-1.5 mb-5 px-3 py-1.5 rounded-full text-xs font-medium transition-all hover:opacity-80"
+        style={{ backgroundColor: 'var(--tp-bg)', color: 'var(--tp-text)', border: '1px solid var(--tp-border)' }}
+      >
+        <Plug className="w-3.5 h-3.5" />
+        ¿Cómo conectar? Ver instrucciones
+      </button>
+
+      <McpInstallModal open={showInstall} onClose={() => setShowInstall(false)} />
 
       {/* Token recién creado — se muestra una única vez */}
       {newToken && (

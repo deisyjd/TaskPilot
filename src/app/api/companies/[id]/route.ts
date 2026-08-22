@@ -44,6 +44,16 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'No puedes eliminar tu única empresa' }, { status: 400 })
   }
 
+  // No se permite eliminar una empresa con proyectos (evita perder datos por el
+  // borrado en cascada). Hay que archivar/eliminar sus proyectos primero.
+  const projectCount = await prisma.project.count({ where: { companyId: id } })
+  if (projectCount > 0) {
+    return NextResponse.json(
+      { error: `Esta empresa tiene ${projectCount} proyecto${projectCount !== 1 ? 's' : ''}. Archívalos o elimínalos antes de poder eliminar la empresa.` },
+      { status: 409 }
+    )
+  }
+
   await prisma.company.delete({ where: { id } })
 
   const nextMembership = await prisma.companyMembership.findFirst({ where: { userId: session.userId } })

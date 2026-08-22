@@ -9,7 +9,7 @@ export async function buildReportExcel(data: ReportData): Promise<Buffer> {
   resumen.columns = [{ width: 26 }, { width: 42 }]
   resumen.addRow(['Reporte de avance', '']).font = { bold: true, size: 14 }
   resumen.addRow(['Empresa', data.companyName])
-  resumen.addRow(['Proyecto', data.projectName ?? 'Todos'])
+  resumen.addRow(['Alcance', data.scopeLabel])
   resumen.addRow(['Periodo', `${data.start} a ${data.end}`])
   resumen.addRow(['Generado por', data.generatedBy])
   resumen.addRow([])

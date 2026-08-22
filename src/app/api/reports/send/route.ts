@@ -55,17 +55,33 @@ export async function POST(req: NextRequest) {
   const company = await prisma.company.findUnique({ where: { id: session.activeCompanyId }, select: { name: true } })
   if (!company) return NextResponse.json({ error: 'Empresa no encontrada' }, { status: 404 })
 
-  let projectId: string | null = null
-  let projectName: string | null = null
-  if (scope === 'project') {
-    if (!body.projectId) return NextResponse.json({ error: 'projectId requerido para reporte de proyecto' }, { status: 400 })
-    const project = await prisma.project.findFirst({
-      where: { id: String(body.projectId), companyId: session.activeCompanyId },
+  // Determina los proyectos del reporte y una etiqueta de alcance.
+  //  - scope 'project'  → un proyecto (projectId).
+  //  - scope 'company'  → projectIds[] elegidos, o todos (null) si no eligió.
+  let projectIds: string[] | null = null
+  let scopeLabel = `Empresa: ${company.name} (todos los proyectos)`
+  let slugBase = company.name
+
+  const requestedIds: string[] = Array.isArray(body.projectIds)
+    ? body.projectIds.map((x: unknown) => String(x))
+    : scope === 'project' && body.projectId
+      ? [String(body.projectId)]
+      : []
+
+  if (requestedIds.length > 0) {
+    const projects = await prisma.project.findMany({
+      where: { id: { in: requestedIds }, companyId: session.activeCompanyId },
       select: { id: true, name: true },
     })
-    if (!project) return NextResponse.json({ error: 'Proyecto no encontrado' }, { status: 404 })
-    projectId = project.id
-    projectName = project.name
+    if (projects.length === 0) return NextResponse.json({ error: 'Proyecto(s) no encontrado(s)' }, { status: 404 })
+    projectIds = projects.map((p) => p.id)
+    if (projects.length === 1) {
+      scopeLabel = `Proyecto: ${projects[0].name}`
+      slugBase = projects[0].name
+    } else {
+      scopeLabel = `${company.name} · ${projects.length} proyectos`
+      slugBase = `${company.name}-${projects.length}-proyectos`
+    }
   }
 
   const actor = await prisma.user.findUnique({ where: { id: session.userId }, select: { name: true } })
@@ -75,14 +91,14 @@ export async function POST(req: NextRequest) {
     userRole: session.userRole,
     companyId: session.activeCompanyId,
     companyName: company.name,
-    projectId,
-    projectName,
+    projectIds,
+    scopeLabel,
     start,
     end,
     generatedBy: actor?.name ?? session.email,
   })
 
-  const base = `reporte-${slug(projectName ?? company.name)}-${start}_a_${end}`
+  const base = `reporte-${slug(slugBase)}-${start}_a_${end}`
   const attachments: { filename: string; content: Buffer; contentType?: string }[] = []
   if (formats.includes('pdf')) {
     attachments.push({ filename: `${base}.pdf`, content: await buildReportPdf(data), contentType: 'application/pdf' })
@@ -96,8 +112,9 @@ export async function POST(req: NextRequest) {
   }
 
   const full = formats.includes('mailing')
-  const html = renderReportEmail(data, full, attachments.length > 0)
-  const subjectScope = projectName ? projectName : company.name
+  const appUrl = process.env.APP_URL?.replace(/\/+$/, '') ?? ''
+  const html = renderReportEmail(data, full, attachments.length > 0, appUrl)
+  const subjectScope = data.scopeLabel.replace(/^(Empresa|Proyecto):\s*/, '')
 
   try {
     await sendMail({

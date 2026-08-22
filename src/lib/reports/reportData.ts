@@ -3,9 +3,20 @@ import { prisma } from '@/lib/prisma'
 import { taskVisibilityFilter } from '@/app/api/tasks/route'
 import { STATUS_LABELS, PRIORITY_LABELS, TaskStatus, Priority } from '@/types'
 
-// Agrega el "avance" de una empresa (o un proyecto) en un rango de fechas.
-// Se filtra por dueDate dentro del rango y respeta la visibilidad del usuario
-// que genera el reporte.
+// Agrega el "avance" de una empresa (o de uno/varios proyectos) en un rango de
+// fechas. Se filtra por dueDate dentro del rango y respeta la visibilidad del
+// usuario que genera el reporte.
+
+// Colores (hex) por estado — equivalentes a las clases Tailwind del tablero,
+// para pintar las gráficas del correo y del PDF de forma consistente.
+const STATUS_HEX: Record<TaskStatus, string> = {
+  pending: '#9CA3AF',
+  'in-progress': '#3B82F6',
+  review: '#F59E0B',
+  scheduled: '#8B5CF6',
+  done: '#22C55E',
+  blocked: '#EF4444',
+}
 
 export interface ReportTaskRow {
   title: string
@@ -18,13 +29,13 @@ export interface ReportTaskRow {
 
 export interface ReportData {
   companyName: string
-  projectName: string | null
+  scopeLabel: string
   start: string
   end: string
   generatedBy: string
   totals: { total: number; done: number; pending: number; completionRate: number }
-  byStatus: { label: string; count: number }[]
-  byProject: { name: string; total: number; done: number }[]
+  byStatus: { label: string; count: number; color: string }[]
+  byProject: { name: string; total: number; done: number; color: string }[]
   byAssignee: { name: string; total: number; done: number }[]
   tasks: ReportTaskRow[]
 }
@@ -34,8 +45,8 @@ interface BuildOpts {
   userRole: string
   companyId: string
   companyName: string
-  projectId?: string | null
-  projectName?: string | null
+  projectIds: string[] | null // null = todos los proyectos de la empresa
+  scopeLabel: string
   start: string
   end: string
   generatedBy: string
@@ -49,12 +60,12 @@ export async function buildReportData(opts: BuildOpts): Promise<ReportData> {
     dueDate: { gte: opts.start, lte: opts.end },
     ...taskVisibilityFilter({ userRole: opts.userRole, userId: opts.userId }),
   }
-  if (opts.projectId) where.projectId = opts.projectId
+  if (opts.projectIds && opts.projectIds.length > 0) where.projectId = { in: opts.projectIds }
 
   const [tasks, memberships] = await Promise.all([
     prisma.task.findMany({
       where,
-      include: { project: { select: { name: true } }, assignees: { select: { userId: true } } },
+      include: { project: { select: { name: true, color: true } }, assignees: { select: { userId: true } } },
       orderBy: [{ dueDate: 'asc' }],
     }),
     prisma.companyMembership.findMany({ where: { companyId: opts.companyId }, include: { user: { select: { id: true, name: true } } } }),
@@ -67,13 +78,13 @@ export async function buildReportData(opts: BuildOpts): Promise<ReportData> {
   const completionRate = total ? Math.round((done / total) * 100) : 0
 
   const byStatus = STATUS_ORDER
-    .map((s) => ({ label: STATUS_LABELS[s], count: tasks.filter((t) => t.status === s).length }))
+    .map((s) => ({ label: STATUS_LABELS[s], count: tasks.filter((t) => t.status === s).length, color: STATUS_HEX[s] }))
     .filter((r) => r.count > 0)
 
-  const projMap = new Map<string, { name: string; total: number; done: number }>()
+  const projMap = new Map<string, { name: string; total: number; done: number; color: string }>()
   const asgMap = new Map<string, { name: string; total: number; done: number }>()
   for (const t of tasks) {
-    const pe = projMap.get(t.project.name) ?? { name: t.project.name, total: 0, done: 0 }
+    const pe = projMap.get(t.project.name) ?? { name: t.project.name, total: 0, done: 0, color: t.project.color }
     pe.total++
     if (t.status === 'done') pe.done++
     projMap.set(t.project.name, pe)
@@ -89,7 +100,7 @@ export async function buildReportData(opts: BuildOpts): Promise<ReportData> {
 
   return {
     companyName: opts.companyName,
-    projectName: opts.projectName ?? null,
+    scopeLabel: opts.scopeLabel,
     start: opts.start,
     end: opts.end,
     generatedBy: opts.generatedBy,

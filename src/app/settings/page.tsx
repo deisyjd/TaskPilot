@@ -16,6 +16,7 @@ import { isReminderAlertsEnabled, setReminderAlertsEnabled, playReminderChime } 
 export default function SettingsPage() {
   const tasks = useTaskStore((s) => s.tasks)
   const history = useTaskStore((s) => s.history)
+  const projects = useTaskStore((s) => s.projects)
   const companies = useAuthStore((s) => s.companies)
   const activeCompanyId = useAuthStore((s) => s.activeCompanyId)
   const activeCompany = companies.find((c) => c.id === activeCompanyId)
@@ -215,21 +216,27 @@ export default function SettingsPage() {
             Zona de peligro
           </h2>
           <p className="text-xs mb-5" style={{ color: 'var(--tp-text-2)' }}>
-            Eliminar la empresa activa borra permanentemente sus proyectos, tareas e historial.
+            Eliminar la empresa activa borra permanentemente sus proyectos, tareas e historial. Una empresa con
+            proyectos no se puede eliminar: primero archiva o elimina sus proyectos.
           </p>
           <button
             onClick={() => setShowDeleteModal(true)}
-            disabled={companies.length <= 1}
+            disabled={companies.length <= 1 || projects.length > 0}
             className="px-5 py-2.5 text-sm font-semibold rounded-full transition-all hover:opacity-85 disabled:opacity-40"
             style={{ backgroundColor: 'rgba(239,68,68,0.12)', color: '#ef4444' }}
           >
             Eliminar &quot;{activeCompany.name}&quot;
           </button>
-          {companies.length <= 1 && (
+          {projects.length > 0 ? (
+            <p className="text-xs mt-2.5" style={{ color: 'var(--tp-text-2)' }}>
+              Esta empresa tiene {projects.length} proyecto{projects.length !== 1 ? 's' : ''}. Archívalos o elimínalos
+              para poder eliminar la empresa.
+            </p>
+          ) : companies.length <= 1 ? (
             <p className="text-xs mt-2.5" style={{ color: 'var(--tp-text-2)' }}>
               No puedes eliminar tu única empresa.
             </p>
-          )}
+          ) : null}
         </div>
       )}
 
