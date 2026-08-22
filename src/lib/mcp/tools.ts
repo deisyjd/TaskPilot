@@ -184,4 +184,99 @@ export const TOOLS: McpTool[] = [
         body: JSON.stringify({ assigneeIds: Array.isArray(args.assigneeIds) ? args.assigneeIds : [] }),
       }),
   },
+  {
+    name: 'set_checklist_item',
+    description: 'Marca o desmarca un ítem del checklist de una tarea, identificándolo por su texto.',
+    inputSchema: obj(
+      {
+        taskId: str('ID de la tarea.'),
+        text: str('Texto del ítem del checklist a marcar/desmarcar.'),
+        done: { type: 'boolean', description: 'true para marcar como hecho (por defecto), false para desmarcar.' },
+      },
+      ['taskId', 'text']
+    ),
+    handler: async (args, ctx) => {
+      const task = await getTask(args.taskId as string, ctx)
+      const items = task.checklist ?? []
+      const target = (args.text as string).trim().toLowerCase()
+      const idx = items.findIndex((c) => c.text.trim().toLowerCase() === target)
+      if (idx < 0) throw new Error(`No se encontró un ítem de checklist con el texto "${args.text}".`)
+      const done = args.done === undefined ? true : Boolean(args.done)
+      const checklist = items.map((c, i) => ({
+        text: c.text,
+        done: i === idx ? done : c.done,
+        assigneeId: c.assigneeId ?? null,
+      }))
+      return ctx.api(`/api/tasks/${args.taskId as string}`, { method: 'PATCH', body: JSON.stringify({ checklist }) })
+    },
+  },
+  {
+    name: 'list_notes',
+    description: 'Lista las notas de un proyecto.',
+    inputSchema: obj({ projectId: str('ID del proyecto.') }, ['projectId']),
+    handler: async (args, ctx) => {
+      const projects = (await ctx.api('/api/projects')) as { id: string; notes?: unknown[] }[]
+      const proj = projects.find((p) => p.id === args.projectId)
+      if (!proj) throw new Error('Proyecto no encontrado.')
+      return proj.notes ?? []
+    },
+  },
+  {
+    name: 'create_note',
+    description: 'Crea una nota en un proyecto.',
+    inputSchema: obj(
+      {
+        projectId: str('ID del proyecto.'),
+        title: str('Título de la nota.'),
+        content: str('Contenido de la nota (texto).'),
+      },
+      ['projectId']
+    ),
+    handler: (args, ctx) =>
+      ctx.api('/api/notes', {
+        method: 'POST',
+        body: JSON.stringify({ projectId: args.projectId, title: args.title ?? '', content: args.content ?? '' }),
+      }),
+  },
+  {
+    name: 'list_reminders',
+    description: 'Lista los recordatorios de la empresa activa, con filtro opcional por proyecto.',
+    inputSchema: obj({ projectId: str('Filtra por proyecto (opcional).') }),
+    handler: async (args, ctx) => {
+      const reminders = (await ctx.api('/api/reminders')) as Record<string, unknown>[]
+      return args.projectId ? reminders.filter((r) => r.projectId === args.projectId) : reminders
+    },
+  },
+  {
+    name: 'create_reminder',
+    description: 'Crea un recordatorio en un proyecto. Requiere projectId, title y dueDate.',
+    inputSchema: obj(
+      {
+        projectId: str('ID del proyecto.'),
+        title: str('Título del recordatorio.'),
+        dueDate: str('Fecha ISO (YYYY-MM-DD).'),
+        dueTime: str('Hora HH:MM (opcional).'),
+        assigneeId: str('ID del responsable (usa list_users), opcional.'),
+      },
+      ['projectId', 'title', 'dueDate']
+    ),
+    handler: (args, ctx) =>
+      ctx.api('/api/reminders', {
+        method: 'POST',
+        body: JSON.stringify({
+          projectId: args.projectId,
+          title: args.title,
+          dueDate: args.dueDate,
+          dueTime: args.dueTime ?? null,
+          assigneeId: args.assigneeId ?? null,
+        }),
+      }),
+  },
+  {
+    name: 'complete_reminder',
+    description: 'Marca un recordatorio como completado.',
+    inputSchema: obj({ reminderId: str('ID del recordatorio.') }, ['reminderId']),
+    handler: (args, ctx) =>
+      ctx.api(`/api/reminders/${args.reminderId as string}`, { method: 'PATCH', body: JSON.stringify({ done: true }) }),
+  },
 ]
