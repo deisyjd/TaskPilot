@@ -11,6 +11,7 @@ import { isReminderDue, formatReminderDateTime, reminderDueTimestamp } from '@/l
 import { loadReadNotifications, markNotificationsRead, pruneReadNotifications } from '@/lib/notificationReads'
 import { canEditTask } from '@/lib/permissions'
 import { ProjectModal } from '@/components/projects/ProjectModal'
+import { SearchBar } from '@/components/layout/SearchBar'
 import { Task, Reminder } from '@/types'
 
 function taskNotifId(t: Task & { reason: string }): string {
@@ -245,6 +246,11 @@ export function Header() {
             </p>
           )}
         </div>
+      </div>
+
+      {/* Buscador global (desktop) */}
+      <div className="hidden md:block flex-1 max-w-md mx-4">
+        <SearchBar />
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
