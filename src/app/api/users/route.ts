@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { sendWelcomeEmail } from '@/lib/welcomeEmail'
 
 export async function GET() {
   const session = await getSession()
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
 
   const normalizedEmail = email.toLowerCase()
   let user = await prisma.user.findUnique({ where: { email: normalizedEmail } })
+  let isNewUser = false
 
   if (user) {
     const already = await prisma.companyMembership.findUnique({
@@ -58,10 +60,29 @@ export async function POST(req: NextRequest) {
     user = await prisma.user.create({
       data: { name, email: normalizedEmail, password: hashed, role, initials, color: color ?? 'bg-violet-500', status: status ?? 'active' },
     })
+    isNewUser = true
   }
 
   const membership = await prisma.companyMembership.create({
     data: { userId: user.id, companyId: session.activeCompanyId, role: userRole ?? 'member' },
+  })
+
+  // Correo de bienvenida / invitación (no bloquea la respuesta). A los usuarios
+  // nuevos les llega su contraseña temporal; a los ya existentes, solo el aviso
+  // de que ahora tienen acceso a esta empresa.
+  const recipient = user
+  after(async () => {
+    const [company, inviter] = await Promise.all([
+      prisma.company.findUnique({ where: { id: session.activeCompanyId }, select: { name: true } }),
+      prisma.user.findUnique({ where: { id: session.userId }, select: { name: true } }),
+    ])
+    await sendWelcomeEmail({
+      toEmail: recipient.email,
+      recipientName: recipient.name,
+      invitedByName: inviter?.name ?? 'Tu equipo',
+      companyName: company?.name ?? 'Wipli',
+      tempPassword: isNewUser ? password : null,
+    })
   })
 
   const { password: _pw, ...userWithoutPassword } = user
