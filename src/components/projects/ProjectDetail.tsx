@@ -29,6 +29,7 @@ import {
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
 import { can, canManageProject, isProjectViewer } from '@/lib/permissions'
+import { uploadFile } from '@/lib/uploadFile'
 import { TaskModal } from '@/components/board/TaskModal'
 import { ProjectGantt } from '@/components/projects/ProjectGantt'
 import {
@@ -156,25 +157,24 @@ export function ProjectDetail({ project, onEdit }: Props) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const attachment: Attachment = {
-        id: `att-${Date.now()}`,
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        url: reader.result as string, // base64; in production: upload to Supabase/S3
-        uploadedBy: currentUser?.name ?? '',
-        uploadedAt: new Date().toISOString(),
-      }
-      setAttachmentError(null)
+    setAttachmentError(null)
+    void (async () => {
       try {
+        const url = await uploadFile(file)
+        const attachment: Attachment = {
+          id: `att-${Date.now()}`,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          url,
+          uploadedBy: currentUser?.name ?? '',
+          uploadedAt: new Date().toISOString(),
+        }
         await updateProject(project.id, { attachments: [...allAttachments, attachment] })
       } catch {
         setAttachmentError('No se pudo guardar el archivo. Intenta de nuevo.')
       }
-    }
-    reader.readAsDataURL(file)
+    })()
     // Reset input so the same file can be re-selected
     e.target.value = ''
   }

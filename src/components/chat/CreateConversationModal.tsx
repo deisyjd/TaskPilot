@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useChatStore } from '@/store/useChatStore'
 import { useCurrentUser, useUserStore } from '@/store/useUserStore'
 import { cn } from '@/lib/utils'
+import { uploadFile } from '@/lib/uploadFile'
 
 interface Props {
   open: boolean
@@ -61,12 +62,15 @@ export function CreateConversationModal({ open, onClose }: Props) {
 
   const otherUsers = allUsers.filter((u) => u.id !== currentUser?.id && u.status !== 'inactive')
 
-  function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setGroupCoverBase64(reader.result as string)
-    reader.readAsDataURL(file)
+    try {
+      const url = await uploadFile(file)
+      setGroupCoverBase64(url)
+    } catch {
+      setError('No se pudo subir la imagen de portada.')
+    }
   }
 
   function toggleMember(id: string) {

@@ -20,6 +20,9 @@
 # production
 /build
 
+# archivos subidos (se guardan en el volumen del servidor, no en git)
+/uploads
+
 # misc
 .DS_Store
 *.pem

@@ -1,10 +1,12 @@
 'use client'
 
-// In production: upload to S3/Supabase Storage, store URL not base64
+// Los archivos se suben al volumen del servidor (/api/uploads) y en la BD se
+// guarda solo la URL, no el base64.
 
 import { useRef, useState } from 'react'
-import { Upload, X, ExternalLink, FileUp } from 'lucide-react'
+import { X, ExternalLink, FileUp } from 'lucide-react'
 import { Attachment } from '@/types'
+import { uploadFile } from '@/lib/uploadFile'
 
 interface Props {
   value: Attachment[]
@@ -58,52 +60,61 @@ export function FileUploader({
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
-  function processFile(file: File) {
+  // Subida secuencial, acumulando sobre una copia local para no perder
+  // adjuntos por closures obsoletos cuando se suben varios a la vez.
+  async function addFiles(files: File[]) {
     setError(null)
-
-    const detectedType = ALLOWED_MIME[file.type]
-    if (!detectedType) {
-      setError(`Tipo de archivo no permitido: ${file.name}`)
-      return
-    }
-    if (file.size > MAX_SIZE_BYTES) {
-      setError(`"${file.name}" supera el límite de 10 MB.`)
-      return
-    }
-    if (value.length >= maxFiles) {
-      setError(`Máximo ${maxFiles} archivos permitidos.`)
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const url = e.target?.result as string
-      const attachment: Attachment = {
-        id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        name: file.name,
-        type: detectedType,
-        size: file.size,
-        url,
-        uploadedBy,
-        uploadedAt: new Date().toISOString(),
+    setUploading(true)
+    let current = value
+    try {
+      for (const file of files) {
+        const detectedType = ALLOWED_MIME[file.type]
+        if (!detectedType) {
+          setError(`Tipo de archivo no permitido: ${file.name}`)
+          continue
+        }
+        if (file.size > MAX_SIZE_BYTES) {
+          setError(`"${file.name}" supera el límite de 10 MB.`)
+          continue
+        }
+        if (current.length >= maxFiles) {
+          setError(`Máximo ${maxFiles} archivos permitidos.`)
+          break
+        }
+        try {
+          const url = await uploadFile(file)
+          const attachment: Attachment = {
+            id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            name: file.name,
+            type: detectedType,
+            size: file.size,
+            url,
+            uploadedBy,
+            uploadedAt: new Date().toISOString(),
+          }
+          current = [...current, attachment]
+          onChange(current)
+        } catch (err) {
+          setError(err instanceof Error ? err.message : `No se pudo subir "${file.name}".`)
+        }
       }
-      onChange([...value, attachment])
+    } finally {
+      setUploading(false)
     }
-    reader.readAsDataURL(file)
   }
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
-    files.forEach(processFile)
+    addFiles(files)
     e.target.value = ''
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragging(false)
-    const files = Array.from(e.dataTransfer.files)
-    files.forEach(processFile)
+    addFiles(Array.from(e.dataTransfer.files))
   }
 
   function removeFile(id: string) {
@@ -142,7 +153,7 @@ export function FileUploader({
           </div>
           <div className="text-center">
             <p className="text-sm font-medium" style={{ color: 'var(--tp-text)' }}>
-              Arrastra archivos aquí
+              {uploading ? 'Subiendo…' : 'Arrastra archivos aquí'}
             </p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--tp-text-2)' }}>
               o{' '}

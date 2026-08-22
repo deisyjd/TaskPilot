@@ -40,6 +40,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/bcryptjs ./node_modu
 COPY --chown=nextjs:nodejs docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
+# Carpeta de subidas de archivos. Se monta un volumen persistente aquí en
+# Dokploy (/app/uploads). La creamos con dueño nextjs para que, al montar un
+# volumen nombrado vacío, herede permisos de escritura del usuario de la app.
+RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
+
 USER nextjs
 
 EXPOSE 3000

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { isSameDay } from '@/lib/dates'
 import { useChatStore } from '@/store/useChatStore'
 import { useUserStore } from '@/store/useUserStore'
+import { uploadFile } from '@/lib/uploadFile'
 import { MessageBubble } from './MessageBubble'
 
 interface Props {
@@ -111,6 +112,7 @@ export function ChatWindow({ conversation, currentUser }: Props) {
 
   useEffect(() => {
     if (conversation) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNameInput(conversation.name)
     }
   }, [conversation?.id])
@@ -174,25 +176,26 @@ export function ChatWindow({ conversation, currentUser }: Props) {
       'application/vnd.openxmlformats', 'text/']
     const maxBytes = 10 * 1024 * 1024
 
-    files.forEach((file) => {
+    files.forEach(async (file) => {
       const isAllowed = allowed.some((t) => file.type.startsWith(t))
       if (!isAllowed) return
       if (file.size > maxBytes) return
 
-      const reader = new FileReader()
-      reader.onload = () => {
+      try {
+        const url = await uploadFile(file)
         const att: Attachment = {
           id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           name: file.name,
           type: file.type,
           size: file.size,
-          url: reader.result as string,
+          url,
           uploadedBy: currentUser.id,
           uploadedAt: new Date().toISOString(),
         }
         setPendingAttachments((prev) => [...prev, att])
+      } catch {
+        // ignoramos el archivo que falló; el resto sigue
       }
-      reader.readAsDataURL(file)
     })
 
     // Reset input so same file can be re-selected

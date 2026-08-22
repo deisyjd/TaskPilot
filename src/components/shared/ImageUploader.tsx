@@ -1,10 +1,11 @@
 'use client'
 
-// In production: upload to S3/Supabase Storage/Firebase Storage, store URL instead of base64.
-// For localStorage mode, images are resized + compressed via Canvas before storing.
+// Las imágenes se redimensionan + comprimen con Canvas y luego se suben al
+// volumen del servidor (/api/uploads); en la BD se guarda solo la URL.
 
 import { useRef, useState } from 'react'
 import { Upload, X, RefreshCw, ImageIcon } from 'lucide-react'
+import { uploadFile } from '@/lib/uploadFile'
 
 interface Props {
   value?: string
@@ -30,7 +31,7 @@ const QUALITY: Record<'square' | 'cover', number> = {
 function compressImage(
   file: File,
   mode: 'square' | 'cover',
-  onDone: (dataUrl: string) => void,
+  onDone: (blob: Blob) => void,
   onError: (msg: string) => void
 ) {
   const url = URL.createObjectURL(file)
@@ -39,7 +40,7 @@ function compressImage(
   img.onload = () => {
     URL.revokeObjectURL(url)
     const { w: maxW, h: maxH } = MAX_DIMS[mode]
-    let { naturalWidth: sw, naturalHeight: sh } = img
+    const { naturalWidth: sw, naturalHeight: sh } = img
 
     // Scale down proportionally
     const ratio = Math.min(maxW / sw, maxH / sh, 1) // never upscale
@@ -53,8 +54,14 @@ function compressImage(
     if (!ctx) { onError('Error al procesar la imagen.'); return }
 
     ctx.drawImage(img, 0, 0, tw, th)
-    const dataUrl = canvas.toDataURL('image/jpeg', QUALITY[mode])
-    onDone(dataUrl)
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) { onError('Error al procesar la imagen.'); return }
+        onDone(blob)
+      },
+      'image/jpeg',
+      QUALITY[mode]
+    )
   }
 
   img.onerror = () => {
@@ -98,9 +105,15 @@ export function ImageUploader({
     compressImage(
       file,
       aspectRatio,
-      (dataUrl) => {
-        setLoading(false)
-        onChange(dataUrl)
+      async (blob) => {
+        try {
+          const url = await uploadFile(blob, 'image.jpg')
+          onChange(url)
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'No se pudo subir la imagen.')
+        } finally {
+          setLoading(false)
+        }
       },
       (msg) => {
         setLoading(false)
