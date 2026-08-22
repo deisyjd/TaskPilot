@@ -117,7 +117,8 @@ export const TOOLS: McpTool[] = [
           status: args.status ?? 'pending',
           priority: args.priority ?? 'medium',
           type: 'other',
-          dueDate: args.dueDate ?? null,
+          // dueDate es String no nulo en el modelo: si no se da, usa hoy.
+          dueDate: (args.dueDate as string) || new Date().toISOString().slice(0, 10),
           tags: [],
           assigneeIds: Array.isArray(args.assigneeIds) ? args.assigneeIds : [],
         }),
