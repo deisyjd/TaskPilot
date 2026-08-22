@@ -10,10 +10,10 @@
 
 const mode = process.argv[2] || 'env'
 
-function describeSecret(name) {
+function describeSecret(name, optional = false) {
   const value = process.env[name]
   if (!value) {
-    console.log(`  ✗ ${name}: NO definida`)
+    console.log(optional ? `  – ${name}: no definida (opcional)` : `  ✗ ${name}: NO definida`)
     return
   }
   const warnings = []
@@ -44,6 +44,11 @@ function checkEnv() {
 
   describeSecret('JWT_SECRET')
   describeSecret('SEED_USER_PASSWORD')
+
+  // Login con Google (solo se habilita en producción). Opcionales: sin ellas el
+  // botón "Continuar con Google" simplemente no aparece.
+  describeSecret('GOOGLE_CLIENT_ID', true)
+  describeSecret('GOOGLE_CLIENT_SECRET', true)
 }
 
 async function checkDb() {

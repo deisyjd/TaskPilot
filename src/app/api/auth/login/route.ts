@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
-import { createPendingTwoFactorToken } from '@/lib/auth'
 import { completeLogin } from '@/lib/loginSuccess'
 
 export async function POST(req: NextRequest) {
@@ -20,11 +19,6 @@ export async function POST(req: NextRequest) {
   const valid = await bcrypt.compare(password, user.password)
   if (!valid) {
     return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 })
-  }
-
-  if (user.twoFactorEnabled) {
-    await createPendingTwoFactorToken(user.id)
-    return NextResponse.json({ twoFactorRequired: true })
   }
 
   const result = await completeLogin(user.id)

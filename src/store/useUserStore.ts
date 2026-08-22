@@ -149,7 +149,6 @@ export function useCurrentUser(): User | null {
       userRole: authUser.userRole as UserRole,
       avatarUrl: authUser.avatarUrl ?? undefined,
       status: 'active',
-      twoFactorEnabled: authUser.twoFactorEnabled,
     }
   }, [authUser])
 }

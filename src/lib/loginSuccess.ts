@@ -1,9 +1,9 @@
 import { prisma } from '@/lib/prisma'
 import { createSession } from '@/lib/auth'
 
-// Cola compartida entre el login normal (sin 2FA) y la verificación del
-// segundo factor (POST /api/auth/verify-2fa) — ambos terminan en exactamente
-// la misma sesión y forma de respuesta.
+// Paso final compartido por el login con contraseña (POST /api/auth/login) y
+// el login con Google (GET /api/auth/google/callback) — ambos terminan en
+// exactamente la misma sesión y forma de respuesta.
 export async function completeLogin(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) return null
@@ -31,7 +31,6 @@ export async function completeLogin(userId: string) {
       color: user.color,
       avatarUrl: user.avatarUrl,
       status: user.status,
-      twoFactorEnabled: user.twoFactorEnabled,
     },
     activeCompanyId: active.companyId,
     companies: memberships.map((m) => ({ id: m.company.id, name: m.company.name, slug: m.company.slug, color: m.company.color, role: m.role })),

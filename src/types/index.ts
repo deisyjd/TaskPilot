@@ -113,7 +113,6 @@ export interface User {
   password?: string
   dailyDigestEmail?: boolean
   taskAssignedEmail?: boolean
-  twoFactorEnabled?: boolean
   createdAt?: string
   updatedAt?: string
 }
@@ -136,7 +135,6 @@ export interface AuthUser {
   initials: string
   color: string
   avatarUrl?: string | null
-  twoFactorEnabled?: boolean
 }
 
 export interface Note {

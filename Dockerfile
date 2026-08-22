@@ -46,4 +46,8 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
+# El entrypoint aplica automáticamente las migraciones pendientes de Prisma
+# (`prisma migrate deploy`) ANTES de arrancar el servidor. Así, cuando se sube
+# un cambio de base de datos (una nueva migración en prisma/migrations), se
+# aplica sola en cada despliegue — no hay que correr nada a mano.
 ENTRYPOINT ["./docker-entrypoint.sh"]
