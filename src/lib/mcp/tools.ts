@@ -72,18 +72,25 @@ export const TOOLS: McpTool[] = [
   },
   {
     name: 'list_tasks',
-    description: 'Lista tareas de la empresa activa, con filtros opcionales por proyecto y estado.',
+    description: 'Lista tareas de la empresa activa. Filtra en el servidor por proyecto, estado y/o responsable (más eficiente). Usa mine=true para ver solo las tuyas.',
     inputSchema: obj({
       projectId: str('Filtra por proyecto (opcional).'),
       status: { type: 'string', enum: ['pending', 'in-progress', 'review', 'scheduled', 'done', 'blocked'], description: 'Filtra por estado (opcional).' },
+      assigneeId: str('Filtra por responsable — ID de usuario (usa list_users), opcional.'),
+      mine: { type: 'boolean', description: 'Si es true, solo tus tareas (las del usuario del token).' },
     }),
     handler: async (args, ctx) => {
-      const tasks = (await ctx.api('/api/tasks')) as Record<string, unknown>[]
-      return tasks.filter(
-        (t) =>
-          (!args.projectId || t.projectId === args.projectId) &&
-          (!args.status || t.status === args.status)
-      )
+      const params = new URLSearchParams()
+      if (args.projectId) params.set('projectId', String(args.projectId))
+      if (args.status) params.set('status', String(args.status))
+      let assigneeId = args.assigneeId ? String(args.assigneeId) : ''
+      if (!assigneeId && args.mine) {
+        const me = (await ctx.api('/api/auth/me')) as { id: string }
+        assigneeId = me.id
+      }
+      if (assigneeId) params.set('assigneeId', assigneeId)
+      const qs = params.toString()
+      return ctx.api('/api/tasks' + (qs ? `?${qs}` : ''))
     },
   },
   {

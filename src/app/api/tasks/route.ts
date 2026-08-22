@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse, after } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { recordHistoryEvent } from '@/lib/history'
@@ -46,14 +47,29 @@ export function serializeTask<T extends { assignees: { userId: string; role: str
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
   await generateDueRecurrences(session.activeCompanyId)
 
+  // Filtros del lado del servidor (no traer todo para filtrar en memoria).
+  // Se combinan (AND) con el filtro de visibilidad del usuario.
+  const { searchParams } = req.nextUrl
+  const projectId = searchParams.get('projectId')
+  const status = searchParams.get('status')
+  const assigneeId = searchParams.get('assigneeId')
+
+  const where: Prisma.TaskWhereInput = {
+    companyId: session.activeCompanyId,
+    ...taskVisibilityFilter(session),
+  }
+  if (projectId) where.projectId = projectId
+  if (status) where.status = status
+  if (assigneeId) where.assignees = { some: { userId: assigneeId } }
+
   const tasks = await prisma.task.findMany({
-    where: { companyId: session.activeCompanyId, ...taskVisibilityFilter(session) },
+    where,
     include: { checklist: true, comments: true, assignees: { select: { userId: true, role: true } } },
     orderBy: { createdAt: 'desc' },
   })
