@@ -24,6 +24,7 @@ export function ApiTokensPanel() {
   const [creating, setCreating] = useState(false)
   const [newToken, setNewToken] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [copiedCmd, setCopiedCmd] = useState(false)
   const [error, setError] = useState('')
 
   async function load() {
@@ -79,6 +80,18 @@ export function ApiTokensPanel() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const mcpEndpoint = typeof window !== 'undefined' ? `${window.location.origin}/api/mcp` : '/api/mcp'
+  const claudeCmd = newToken
+    ? `claude mcp add --scope user --transport http wiplitask ${mcpEndpoint} --header "Authorization: Bearer ${newToken}"`
+    : ''
+
+  function copyClaudeCmd() {
+    if (!claudeCmd) return
+    navigator.clipboard.writeText(claudeCmd).catch(() => {})
+    setCopiedCmd(true)
+    setTimeout(() => setCopiedCmd(false), 2000)
+  }
+
   return (
     <div
       className="p-6"
@@ -116,6 +129,30 @@ export function ApiTokensPanel() {
               {copied ? 'Copiado' : 'Copiar'}
             </button>
           </div>
+
+          {/* Comando listo para Claude Code */}
+          <p className="text-xs font-semibold mt-3 mb-1.5" style={{ color: 'var(--tp-text-2)' }}>
+            Conectar en Claude Code:
+          </p>
+          <div className="flex items-center gap-2">
+            <code
+              className="flex-1 text-[11px] px-3 py-2 rounded-lg break-all"
+              style={{ backgroundColor: 'var(--tp-bg)', color: 'var(--tp-text)', fontFamily: 'monospace' }}
+            >
+              {claudeCmd}
+            </code>
+            <button
+              onClick={copyClaudeCmd}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold shrink-0 transition-all hover:opacity-85"
+              style={{ backgroundColor: 'var(--tp-dark)', color: 'var(--tp-lime)' }}
+            >
+              {copiedCmd ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedCmd ? 'Copiado' : 'Copiar'}
+            </button>
+          </div>
+          <p className="text-[11px] mt-2" style={{ color: 'var(--tp-text-2)' }}>
+            Para Codex, Cursor, VS Code y más, mira <code style={{ fontFamily: 'monospace' }}>mcp-server/README.md</code> en el repositorio.
+          </p>
         </div>
       )}
 
