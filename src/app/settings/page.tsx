@@ -9,6 +9,7 @@ import { can } from '@/lib/permissions'
 import { Database, TriangleAlert, Pencil, Users, BellRing, Volume2 } from 'lucide-react'
 import { DeleteCompanyModal } from '@/components/admin/DeleteCompanyModal'
 import { CompanyModal } from '@/components/admin/CompanyModal'
+import { ApiTokensPanel } from '@/components/settings/ApiTokensPanel'
 import { isReminderAlertsEnabled, setReminderAlertsEnabled, playReminderChime } from '@/lib/reminderAlerts'
 
 export default function SettingsPage() {
@@ -153,6 +154,8 @@ export default function SettingsPage() {
           </p>
         )}
       </div>
+
+      <ApiTokensPanel />
 
       <div
         className="p-6"

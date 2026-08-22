@@ -24,6 +24,7 @@ model Company {
   conversations     Conversation[]
   reminders         Reminder[]
   lastActiveForUser User[]              @relation("UserLastActiveCompany")
+  apiTokens         ApiToken[]
 
   @@map("companies")
 }
@@ -71,8 +72,29 @@ model User {
   createdNotes             Note[]                     @relation("NoteCreator")
   noteShares               NoteShare[]
   favoriteProjects         ProjectFavorite[]
+  apiTokens                ApiToken[]
 
   @@map("users")
+}
+
+// Tokens de acceso de máquina (PAT) para clientes headless como el servidor
+// MCP. Se guarda solo el hash SHA-256; el token en claro se muestra una única
+// vez al crearlo. Va atado a una empresa: la sesión derivada usa ese company
+// y el rol vigente del usuario en ella.
+model ApiToken {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId  String
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name       String
+  tokenHash  String    @unique
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@map("api_tokens")
 }
 
 model Project {

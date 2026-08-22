@@ -47,8 +47,14 @@ export async function createSession(payload: SessionPayload) {
 export async function getSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies()
   const token = cookieStore.get(COOKIE_NAME)?.value
-  if (!token) return null
-  return verifyToken(token)
+  if (token) {
+    const session = await verifyToken(token)
+    if (session) return session
+  }
+  // Sin cookie válida: intenta un token de máquina (PAT) del header Authorization.
+  // Import diferido para evitar cargar Prisma en cada verificación de cookie.
+  const { sessionFromBearer } = await import('@/lib/apiTokens')
+  return sessionFromBearer()
 }
 
 export async function deleteSession() {
