@@ -149,7 +149,11 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
         body: JSON.stringify({ content: text, attachments, links }),
       })
       set((s) => ({
-        messages: [...s.messages, created],
+        // Dedupe por id: el eco por SSE (receiveMessage) puede llegar antes que
+        // la respuesta del POST. Sin esto, el mensaje se añadiría dos veces.
+        messages: s.messages.some((m) => m.id === created.id)
+          ? s.messages
+          : [...s.messages, created],
         conversations: s.conversations.map((c) =>
           c.id === conversationId
             ? { ...c, lastMessageAt: created.createdAt, updatedAt: created.createdAt, unreadCount: 0 }
