@@ -12,7 +12,27 @@ interface Props {
 const DAY_MS = 86400000
 const DAY_WIDTH = 28
 const ROW_HEIGHT = 40
+const SUBTASK_ROW_HEIGHT = 30
 const LABEL_COL_WIDTH = 200
+
+interface TaskRow {
+  kind: 'task'
+  key: string
+  task: Task
+  start: Date
+  due: Date
+}
+
+interface SubtaskRow {
+  kind: 'subtask'
+  key: string
+  task: Task
+  label: string
+  due: Date
+  done: boolean
+}
+
+type Row = TaskRow | SubtaskRow
 
 function daysBetween(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / DAY_MS)
@@ -22,7 +42,7 @@ const MONTH_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'se
 
 export function ProjectGantt({ tasks, onTaskClick }: Props) {
   const rows = useMemo(() => {
-    return tasks
+    const taskRows = tasks
       .map((task) => {
         const due = parseLocal(task.dueDate)
         let start = task.startDate ? parseLocal(task.startDate) : due
@@ -30,6 +50,23 @@ export function ProjectGantt({ tasks, onTaskClick }: Props) {
         return { task, start, due }
       })
       .sort((a, b) => a.start.getTime() - b.start.getTime())
+
+    const flat: Row[] = []
+    for (const { task, start, due } of taskRows) {
+      flat.push({ kind: 'task', key: task.id, task, start, due })
+      for (const item of task.checklist) {
+        if (!item.dueDate) continue
+        flat.push({
+          kind: 'subtask',
+          key: `${task.id}-${item.id}`,
+          task,
+          label: item.text,
+          due: parseLocal(item.dueDate),
+          done: item.done,
+        })
+      }
+    }
+    return flat
   }, [tasks])
 
   const { rangeStart, totalDays, todayOffset } = useMemo(() => {
@@ -40,10 +77,11 @@ export function ProjectGantt({ tasks, onTaskClick }: Props) {
       return { rangeStart: today, totalDays: 14, todayOffset: 0 }
     }
 
-    let min = rows[0].start
+    let min = rows[0].kind === 'task' ? rows[0].start : rows[0].due
     let max = rows[0].due
     for (const r of rows) {
-      if (r.start < min) min = r.start
+      const rStart = r.kind === 'task' ? r.start : r.due
+      if (rStart < min) min = rStart
       if (r.due > max) max = r.due
     }
     if (min > today) min = today
@@ -79,7 +117,8 @@ export function ProjectGantt({ tasks, onTaskClick }: Props) {
   }
 
   const totalWidth = totalDays * DAY_WIDTH
-  const statusesUsed = Array.from(new Set(rows.map((r) => r.task.status))) as TaskStatus[]
+  const statusesUsed = Array.from(new Set(tasks.map((t) => t.status))) as TaskStatus[]
+  const hasSubtasks = rows.some((r) => r.kind === 'subtask')
 
   return (
     <div>
@@ -95,18 +134,39 @@ export function ProjectGantt({ tasks, onTaskClick }: Props) {
           >
             Tarea
           </div>
-          {rows.map(({ task }) => (
-            <button
-              key={task.id}
-              onClick={() => onTaskClick(task)}
-              className="flex items-center gap-2 px-3 w-full text-left transition-colors hover:opacity-75"
-              style={{ height: ROW_HEIGHT, borderTop: '1px solid var(--tp-border)' }}
-              title={task.title}
-            >
-              <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT_COLORS[task.status]}`} />
-              <span className="text-xs truncate" style={{ color: 'var(--tp-text)' }}>{task.title}</span>
-            </button>
-          ))}
+          {rows.map((row) =>
+            row.kind === 'task' ? (
+              <button
+                key={row.key}
+                onClick={() => onTaskClick(row.task)}
+                className="flex items-center gap-2 px-3 w-full text-left transition-colors hover:opacity-75"
+                style={{ height: ROW_HEIGHT, borderTop: '1px solid var(--tp-border)' }}
+                title={row.task.title}
+              >
+                <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT_COLORS[row.task.status]}`} />
+                <span className="text-xs truncate" style={{ color: 'var(--tp-text)' }}>{row.task.title}</span>
+              </button>
+            ) : (
+              <button
+                key={row.key}
+                onClick={() => onTaskClick(row.task)}
+                className="flex items-center gap-2 pl-7 pr-3 w-full text-left transition-colors hover:opacity-75"
+                style={{ height: SUBTASK_ROW_HEIGHT, borderTop: '1px solid var(--tp-border)' }}
+                title={row.label}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ backgroundColor: row.done ? '#22C55E' : 'var(--tp-text-2)' }}
+                />
+                <span
+                  className="text-[11px] truncate"
+                  style={{ color: 'var(--tp-text-2)', textDecoration: row.done ? 'line-through' : 'none' }}
+                >
+                  {row.label}
+                </span>
+              </button>
+            )
+          )}
         </div>
 
         {/* Scrollable timeline */}
@@ -134,19 +194,39 @@ export function ProjectGantt({ tasks, onTaskClick }: Props) {
             </div>
 
             {/* Rows */}
-            {rows.map(({ task, start, due }) => {
-              const left = daysBetween(rangeStart, start) * DAY_WIDTH
-              const width = Math.max((daysBetween(start, due) + 1) * DAY_WIDTH - 4, DAY_WIDTH - 4)
+            {rows.map((row) => {
+              if (row.kind === 'task') {
+                const left = daysBetween(rangeStart, row.start) * DAY_WIDTH
+                const width = Math.max((daysBetween(row.start, row.due) + 1) * DAY_WIDTH - 4, DAY_WIDTH - 4)
+                return (
+                  <div key={row.key} style={{ height: ROW_HEIGHT, position: 'relative', borderTop: '1px solid var(--tp-border)' }}>
+                    <button
+                      onClick={() => onTaskClick(row.task)}
+                      className={`absolute flex items-center px-2 rounded-lg transition-opacity hover:opacity-85 ${STATUS_DOT_COLORS[row.task.status]}`}
+                      style={{ left: left + 2, width, top: 6, height: ROW_HEIGHT - 12 }}
+                      title={`${row.task.title} (${STATUS_LABELS[row.task.status]})`}
+                    >
+                      <span className="text-[11px] font-medium text-white truncate">{row.task.title}</span>
+                    </button>
+                  </div>
+                )
+              }
+              const centerLeft = daysBetween(rangeStart, row.due) * DAY_WIDTH + DAY_WIDTH / 2
               return (
-                <div key={task.id} style={{ height: ROW_HEIGHT, position: 'relative', borderTop: '1px solid var(--tp-border)' }}>
+                <div key={row.key} style={{ height: SUBTASK_ROW_HEIGHT, position: 'relative', borderTop: '1px solid var(--tp-border)' }}>
                   <button
-                    onClick={() => onTaskClick(task)}
-                    className={`absolute flex items-center px-2 rounded-lg transition-opacity hover:opacity-85 ${STATUS_DOT_COLORS[task.status]}`}
-                    style={{ left: left + 2, width, top: 6, height: ROW_HEIGHT - 12 }}
-                    title={`${task.title} (${STATUS_LABELS[task.status]})`}
-                  >
-                    <span className="text-[11px] font-medium text-white truncate">{task.title}</span>
-                  </button>
+                    onClick={() => onTaskClick(row.task)}
+                    className="absolute rounded-full transition-opacity hover:opacity-85"
+                    style={{
+                      left: centerLeft - 5,
+                      top: SUBTASK_ROW_HEIGHT / 2 - 5,
+                      width: 10,
+                      height: 10,
+                      backgroundColor: row.done ? '#22C55E' : '#9CA3AF',
+                      border: '2px solid var(--tp-surface)',
+                    }}
+                    title={`${row.label} (${row.done ? 'Completado' : 'Pendiente'})`}
+                  />
                 </div>
               )
             })}
@@ -171,6 +251,18 @@ export function ProjectGantt({ tasks, onTaskClick }: Props) {
             <span className="text-xs" style={{ color: 'var(--tp-text-2)' }}>{STATUS_LABELS[status]}</span>
           </div>
         ))}
+        {hasSubtasks && (
+          <>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#9CA3AF' }} />
+              <span className="text-xs" style={{ color: 'var(--tp-text-2)' }}>Subtarea pendiente</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#22C55E' }} />
+              <span className="text-xs" style={{ color: 'var(--tp-text-2)' }}>Subtarea completada</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
