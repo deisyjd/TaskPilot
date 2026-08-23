@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/ui/user_avatar.dart';
 import '../../data/models/enums.dart';
 import '../auth/auth_controller.dart';
+import '../system/sync_indicator.dart';
 import '../tasks/task_tile.dart';
 import '../tasks/tasks_providers.dart';
 
@@ -43,6 +44,10 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
         actions: [
+          const Padding(
+            padding: EdgeInsets.only(right: 4),
+            child: Center(child: SyncIndicator()),
+          ),
           IconButton(
             tooltip: 'Línea de tiempo',
             icon: const Icon(Icons.calendar_view_week),

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/network/api_exception.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/task.dart';
+import '../auth/auth_controller.dart';
 
 /// Abre la hoja de edición y devuelve la tarea actualizada (o null si se canceló).
 Future<Task?> showTaskEditSheet(BuildContext context, Task task) {
@@ -69,20 +69,35 @@ class _TaskEditSheetState extends ConsumerState<_TaskEditSheet> {
       );
       return;
     }
+    final companyId = ref.read(authControllerProvider).session?.activeCompanyId;
+    if (companyId == null) {
+      setState(() => _saving = false);
+      return;
+    }
     setState(() => _saving = true);
+    final fields = {
+      'title': _title.text.trim(),
+      'description': _desc.text.trim(),
+      'status': _status.api,
+      'priority': _priority.api,
+      if (_due != null) 'dueDate': _fmt(_due!),
+    };
+    final optimistic = widget.task.copyWith(
+      title: _title.text.trim(),
+      description: _desc.text.trim(),
+      status: _status,
+      priority: _priority,
+      dueDate: _due != null ? _fmt(_due!) : null,
+    );
     try {
-      final updated = await ref.read(tasksRepositoryProvider).update(widget.task.id, {
-        'title': _title.text.trim(),
-        'description': _desc.text.trim(),
-        'status': _status.api,
-        'priority': _priority.api,
-        if (_due != null) 'dueDate': _fmt(_due!),
-      });
+      final updated = await ref
+          .read(taskMutationsProvider)
+          .updateFields(companyId, widget.task, fields, optimistic);
       if (mounted) Navigator.of(context).pop(updated);
-    } on ApiException catch (e) {
+    } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
       }
     }
   }

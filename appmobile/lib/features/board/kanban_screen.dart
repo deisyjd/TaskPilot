@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/network/api_exception.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/task.dart';
+import '../auth/auth_controller.dart';
+import '../system/sync_controller.dart';
 import '../tasks/tasks_providers.dart';
 
 /// Tablero Kanban: una columna por estado, con arrastrar/soltar para mover una
@@ -23,6 +24,8 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
 
   Future<void> _move(Task task, TaskStatus to) async {
     if (task.status == to || _tasks == null) return;
+    final companyId = ref.read(authControllerProvider).session?.activeCompanyId;
+    if (companyId == null) return;
     final previous = _tasks!;
     final idx = previous.indexWhere((t) => t.id == task.id);
     if (idx < 0) return;
@@ -32,12 +35,13 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
       _tasks = next;
     });
     try {
-      await ref.read(tasksRepositoryProvider).updateStatus(task.id, to);
+      await ref.read(taskMutationsProvider).updateStatus(companyId, task, to);
+      await ref.read(syncControllerProvider.notifier).refreshPending();
       ref.invalidate(companyTasksProvider);
-    } on ApiException catch (e) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _tasks = previous);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
   }
 

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/network/api_exception.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/ui/user_avatar.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/task.dart';
+import '../auth/auth_controller.dart';
 import '../projects/project_detail_screen.dart';
+import '../system/sync_controller.dart';
 import '../users/users_providers.dart';
 import 'task_edit_sheet.dart';
 import 'tasks_providers.dart';
@@ -35,29 +36,33 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     final updated = await showTaskEditSheet(context, _task);
     if (updated != null && mounted) {
       setState(() => _task = updated);
+      await ref.read(syncControllerProvider.notifier).refreshPending();
       _invalidateLists();
     }
   }
 
   Future<void> _toggleChecklist(int index) async {
     if (_busy) return;
-    final current = _task.checklist;
-    final optimistic = [...current];
-    optimistic[index] = current[index].copyWith(done: !current[index].done);
-    final previous = _task;
+    final base = _task;
+    final companyId = ref.read(authControllerProvider).session?.activeCompanyId;
+    if (companyId == null) return;
+    final optimistic = [...base.checklist];
+    optimistic[index] = base.checklist[index].copyWith(done: !base.checklist[index].done);
     setState(() {
-      _task = _task.copyWith(checklist: optimistic);
+      _task = base.copyWith(checklist: optimistic);
       _busy = true;
     });
     try {
-      final updated = await ref.read(tasksRepositoryProvider).setChecklist(_task.id, optimistic);
+      final updated =
+          await ref.read(taskMutationsProvider).setChecklist(companyId, base, optimistic);
       if (!mounted) return;
       setState(() => _task = updated);
+      await ref.read(syncControllerProvider.notifier).refreshPending();
       _invalidateLists();
-    } on ApiException catch (e) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _task = previous);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      setState(() => _task = base);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

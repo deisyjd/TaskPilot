@@ -8,14 +8,15 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/note.dart';
 import '../../data/models/project.dart';
 import '../../data/models/task.dart';
-import '../auth/auth_controller.dart';
 import '../tasks/task_tile.dart';
+import '../tasks/tasks_providers.dart';
 
-/// Tareas de un proyecto. Family por projectId; se recarga al cambiar empresa.
+/// Tareas de un proyecto. Derivan del provider offline-first de la empresa
+/// (así el detalle de proyecto también funciona sin conexión).
 final projectTasksProvider =
     FutureProvider.autoDispose.family<List<Task>, String>((ref, projectId) async {
-  ref.watch(authControllerProvider.select((s) => s.session?.activeCompanyId));
-  return ref.read(tasksRepositoryProvider).list(projectId: projectId);
+  final all = await ref.watch(companyTasksProvider.future);
+  return all.where((t) => t.projectId == projectId).toList();
 });
 
 /// Notas de un proyecto.
@@ -39,7 +40,7 @@ class ProjectDetailScreen extends ConsumerWidget {
       body: RefreshIndicator(
         color: AppColors.lime,
         onRefresh: () async {
-          ref.invalidate(projectTasksProvider(project.id));
+          ref.invalidate(companyTasksProvider); // fuerza refresco de red
           ref.invalidate(projectNotesProvider(project.id));
         },
         child: ListView(

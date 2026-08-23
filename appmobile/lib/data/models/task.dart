@@ -39,6 +39,9 @@ class ChecklistItem {
         'dueDate': dueDate,
         'assigneeId': assigneeId,
       };
+
+  /// Igual que [toJson] pero conservando el id (para la caché local).
+  Map<String, dynamic> toCacheJson() => {'id': id, ...toJson()};
 }
 
 /// Comentario de una tarea. Espejo de `Comment`.
@@ -61,6 +64,13 @@ class Comment {
         text: json['text'] as String? ?? '',
         createdAt: json['createdAt'] as String? ?? '',
       );
+
+  Map<String, dynamic> toCacheJson() => {
+        'id': id,
+        'author': author,
+        'text': text,
+        'createdAt': createdAt,
+      };
 }
 
 /// Tarea. Espejo de `Task` (el API serializa `assigneeIds`, `viewerAssigneeIds`
@@ -170,4 +180,27 @@ class Task {
     if (value is List) return value.map((e) => e.toString()).toList();
     return const [];
   }
+
+  /// Serialización para la caché local (SQLite). Espeja la forma que produce el
+  /// backend, de modo que [Task.fromJson] la reconstruye tal cual.
+  Map<String, dynamic> toCacheJson() => {
+        'id': id,
+        'title': title,
+        'projectId': projectId,
+        'companyId': companyId,
+        'description': description,
+        'status': status.api,
+        'assigneeIds': assigneeIds,
+        'viewerAssigneeIds': viewerAssigneeIds,
+        'startDate': startDate,
+        'dueDate': dueDate,
+        'priority': priority.api,
+        'type': type.api,
+        'tags': tags,
+        'checklist': checklist.map((c) => c.toCacheJson()).toList(),
+        'comments': comments.map((c) => c.toCacheJson()).toList(),
+        'createdAt': createdAt,
+        'updatedAt': updatedAt,
+        'coverImageUrl': coverImageUrl,
+      };
 }

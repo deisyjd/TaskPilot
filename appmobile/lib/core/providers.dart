@@ -1,5 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/offline/outbox.dart';
+import '../data/offline/task_cache.dart';
+import '../data/offline/task_mutations.dart';
 import '../data/repositories/auth_repository.dart';
 import '../data/repositories/notes_repository.dart';
 import '../data/repositories/projects_repository.dart';
@@ -7,8 +10,10 @@ import '../data/repositories/reminders_repository.dart';
 import '../data/repositories/tasks_repository.dart';
 import '../data/repositories/users_repository.dart';
 import '../features/auth/auth_controller.dart';
+import '../features/system/connectivity.dart';
 import 'network/api_client.dart';
 import 'network/session_manager.dart';
+import 'storage/local_db.dart';
 import 'storage/secure_store.dart';
 
 /// Providers base (infraestructura). Los providers de estado de features viven
@@ -53,3 +58,21 @@ final Provider<NotesRepository> notesRepositoryProvider =
 
 final Provider<RemindersRepository> remindersRepositoryProvider =
     Provider<RemindersRepository>((ref) => RemindersRepository(ref.read(apiClientProvider)));
+
+// ─── Offline (F2b) ────────────────────────────────────────────────
+final Provider<LocalDb> localDbProvider = Provider<LocalDb>((ref) => LocalDb.instance);
+
+final Provider<TaskCache> taskCacheProvider =
+    Provider<TaskCache>((ref) => TaskCache(ref.read(localDbProvider)));
+
+final Provider<OutboxStore> outboxProvider =
+    Provider<OutboxStore>((ref) => OutboxStore(ref.read(localDbProvider)));
+
+final Provider<TaskMutations> taskMutationsProvider = Provider<TaskMutations>(
+  (ref) => TaskMutations(
+    ref.read(tasksRepositoryProvider),
+    ref.read(taskCacheProvider),
+    ref.read(outboxProvider),
+    ref.read(connectivityServiceProvider),
+  ),
+);
