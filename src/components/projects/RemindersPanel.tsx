@@ -214,7 +214,7 @@ export function RemindersPanel({ project }: Props) {
         {!reminder.done && !readOnly && (
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+              className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0"
               style={{ color: 'var(--tp-text-2)' }}
               title="Posponer"
             >
@@ -239,7 +239,7 @@ export function RemindersPanel({ project }: Props) {
         {!readOnly && (
           <button
             onClick={() => startEdit(reminder)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0"
             style={{ color: 'var(--tp-text-2)' }}
             title="Editar recordatorio"
           >
@@ -249,7 +249,7 @@ export function RemindersPanel({ project }: Props) {
         {!readOnly && (
           <button
             onClick={() => deleteReminder(reminder.id)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0"
             style={{ color: '#DC2626' }}
             title="Eliminar recordatorio"
           >

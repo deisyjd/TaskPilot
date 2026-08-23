@@ -182,12 +182,9 @@ export function NotesPanel({ project }: Props) {
           {error}
         </div>
       )}
-      <div className="flex gap-5">
+      <div className="flex flex-col md:flex-row gap-4 md:gap-5">
       {/* ── Left: list ─────────────────────────────────────────── */}
-      <div
-        className="flex flex-col gap-3 shrink-0"
-        style={{ width: '230px' }}
-      >
+      <div className="flex flex-col gap-3 w-full md:w-[230px] md:shrink-0">
         {/* New note button */}
         {!projectReadOnly && (
           <button
@@ -220,7 +217,7 @@ export function NotesPanel({ project }: Props) {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-1.5 overflow-y-auto" style={{ maxHeight: '520px' }}>
+          <div className="flex flex-col gap-1.5 overflow-y-auto max-h-56 md:max-h-[520px]">
             {notes.map((note) => {
               const active = note.id === selectedId
               return (
@@ -304,7 +301,7 @@ export function NotesPanel({ project }: Props) {
         >
           {/* Editor toolbar */}
           <div
-            className="flex items-center gap-3 px-5 py-3 shrink-0"
+            className="flex items-center flex-wrap gap-2 px-4 md:px-5 py-3 shrink-0"
             style={{
               borderBottom: '1px solid rgba(0,0,0,0.06)',
               backgroundColor: 'rgba(0,0,0,0.02)',
@@ -348,7 +345,7 @@ export function NotesPanel({ project }: Props) {
               </span>
             )}
 
-            <div className="flex-1" />
+            <div className="hidden md:block flex-1" />
 
             {!noteReadOnly && (
               <>
