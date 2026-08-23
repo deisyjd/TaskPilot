@@ -27,6 +27,9 @@ dependencies:
   # Login con Google (mismo criterio invitación-solo del backend)
   google_sign_in: ^6.2.1
 
+  # Selección de imágenes para adjuntos del chat (F4)
+  image_picker: ^1.1.2
+
   # Detección de conexión (offline / sincronización — F2b)
   connectivity_plus: ^6.0.3
 

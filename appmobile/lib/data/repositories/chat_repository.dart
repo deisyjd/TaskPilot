@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../../core/network/api_client.dart';
 import '../models/conversation.dart';
 import '../models/message.dart';
@@ -22,12 +24,29 @@ class ChatRepository {
         .toList();
   }
 
-  Future<Message> send(String conversationId, String content) async {
+  Future<Message> sendMessage(
+    String conversationId, {
+    String content = '',
+    List<Map<String, dynamic>> attachments = const [],
+  }) async {
     final res = await _api.post<Map<String, dynamic>>(
       '/api/conversations/$conversationId/messages',
-      data: {'content': content},
+      data: {
+        'content': content,
+        if (attachments.isNotEmpty) 'attachments': attachments,
+      },
     );
     return Message.fromJson(res.data!);
+  }
+
+  /// Sube un archivo a /api/uploads y devuelve el objeto guardado
+  /// ({url, name, size, type}) listo para adjuntar a un mensaje.
+  Future<Map<String, dynamic>> uploadFile(String filePath, String filename) async {
+    final form = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath, filename: filename),
+    });
+    final res = await _api.upload<Map<String, dynamic>>('/api/uploads', form);
+    return res.data!;
   }
 
   Future<void> markRead(String conversationId) async {

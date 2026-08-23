@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/providers.dart';
@@ -83,15 +84,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (text.isEmpty || _sending) return;
     setState(() => _sending = true);
     try {
-      final msg = await ref.read(chatRepositoryProvider).send(widget.conversation.id, text);
+      final msg = await ref.read(chatRepositoryProvider).sendMessage(
+            widget.conversation.id,
+            content: text,
+          );
       _input.clear();
-      if (!_seen.contains(msg.id)) {
-        setState(() {
-          _messages.add(msg);
-          _seen.add(msg.id);
-        });
-        _scrollToBottom();
-      }
+      _appendSent(msg);
       ref.invalidate(conversationsProvider);
     } catch (e) {
       if (mounted) {
@@ -100,6 +98,42 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  Future<void> _attach() async {
+    if (_sending) return;
+    final XFile? file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
+    if (file == null) return;
+    setState(() => _sending = true);
+    try {
+      final saved = await ref.read(chatRepositoryProvider).uploadFile(file.path, file.name);
+      final msg = await ref.read(chatRepositoryProvider).sendMessage(
+            widget.conversation.id,
+            content: _input.text.trim(),
+            attachments: [saved],
+          );
+      _input.clear();
+      _appendSent(msg);
+      ref.invalidate(conversationsProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  void _appendSent(Message msg) {
+    if (_seen.contains(msg.id)) return;
+    setState(() {
+      _messages.add(msg);
+      _seen.add(msg.id);
+    });
+    _scrollToBottom();
   }
 
   void _scrollToBottom() {
@@ -176,6 +210,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
         child: Row(
           children: [
+            IconButton(
+              tooltip: 'Adjuntar imagen',
+              onPressed: _sending ? null : _attach,
+              icon: const Icon(Icons.attach_file, color: AppColors.textSecondary),
+            ),
             Expanded(
               child: TextField(
                 controller: _input,

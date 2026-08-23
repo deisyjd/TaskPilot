@@ -85,6 +85,15 @@ class ApiClient {
   Future<Response<T>> post<T>(String path, {Object? data}) =>
       _guard(() => _dio.post<T>(path, data: data));
 
+  /// Subida multipart (dio calcula el boundary a partir del [FormData]).
+  Future<Response<T>> upload<T>(String path, FormData form) => _guard(
+        () => _dio.post<T>(
+          path,
+          data: form,
+          options: Options(contentType: 'multipart/form-data'),
+        ),
+      );
+
   Future<Response<T>> patch<T>(String path, {Object? data}) =>
       _guard(() => _dio.patch<T>(path, data: data));
 
