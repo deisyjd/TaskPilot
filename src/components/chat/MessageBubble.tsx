@@ -1,8 +1,11 @@
 'use client'
 
+import { useState } from 'react'
+import { Eye, Download } from 'lucide-react'
 import { Message, Attachment } from '@/types'
 import { cn } from '@/lib/utils'
 import { formatDateTime } from '@/lib/dates'
+import { AttachmentViewer } from './AttachmentViewer'
 
 interface Props {
   message: Message
@@ -55,35 +58,55 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-function AttachmentView({ attachment, isOwn }: { attachment: Attachment; isOwn: boolean }) {
+function AttachmentView({
+  attachment,
+  isOwn,
+  onView,
+}: {
+  attachment: Attachment
+  isOwn: boolean
+  onView: () => void
+}) {
   const isImage = attachment.type?.startsWith('image/')
 
   if (isImage) {
     return (
-      <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="block">
+      <button
+        type="button"
+        onClick={onView}
+        title="Ver"
+        className="group/att relative block rounded-xl overflow-hidden border border-black/10 max-w-full"
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={attachment.url}
           alt={attachment.name}
-          className="rounded-xl max-w-full max-h-56 object-cover border border-black/10"
+          className="max-w-full max-h-56 object-cover"
         />
-      </a>
+        {/* Overlay con ojito al pasar el cursor */}
+        <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover/att:bg-black/30 transition-colors">
+          <span className="opacity-0 group-hover/att:opacity-100 transition-opacity w-9 h-9 rounded-full bg-black/55 flex items-center justify-center">
+            <Eye className="w-4 h-4 text-white" />
+          </span>
+        </span>
+      </button>
     )
   }
 
+  const iconBtn = cn(
+    'shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
+    isOwn ? 'hover:bg-white/20' : 'hover:bg-black/10'
+  )
+
   return (
-    <a
-      href={attachment.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      download={attachment.name}
+    <div
       className={cn(
-        'inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors max-w-[240px]',
-        isOwn ? 'bg-white/15 hover:bg-white/25 text-white' : 'bg-black/[0.06] hover:bg-black/[0.1] text-[var(--tp-text)]'
+        'inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium max-w-[260px]',
+        isOwn ? 'bg-white/15 text-white' : 'bg-black/[0.06] text-[var(--tp-text)]'
       )}
     >
       <span className="text-base leading-none">📎</span>
-      <span className="flex flex-col min-w-0">
+      <span className="flex flex-col min-w-0 flex-1">
         <span className="truncate">{attachment.name}</span>
         {attachment.size > 0 && (
           <span className={cn('text-[10px]', isOwn ? 'text-white/60' : 'text-[var(--tp-text-2)]')}>
@@ -91,7 +114,20 @@ function AttachmentView({ attachment, isOwn }: { attachment: Attachment; isOwn: 
           </span>
         )}
       </span>
-    </a>
+      <button type="button" onClick={onView} title="Ver" className={iconBtn}>
+        <Eye className="w-3.5 h-3.5" />
+      </button>
+      <a
+        href={attachment.url}
+        download={attachment.name}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Descargar"
+        className={iconBtn}
+      >
+        <Download className="w-3.5 h-3.5" />
+      </a>
+    </div>
   )
 }
 
@@ -123,6 +159,7 @@ export function MessageBubble({
   senderAvatar,
   showSender = false,
 }: Props) {
+  const [viewerAtt, setViewerAtt] = useState<Attachment | null>(null)
   const hasAttachments = message.attachments && message.attachments.length > 0
   const hasLinks = message.links && message.links.length > 0
 
@@ -170,7 +207,7 @@ export function MessageBubble({
           {hasAttachments && (
             <div className="flex flex-col gap-1.5 mt-2">
               {message.attachments!.map((att) => (
-                <AttachmentView key={att.id} attachment={att} isOwn={isOwn} />
+                <AttachmentView key={att.id} attachment={att} isOwn={isOwn} onView={() => setViewerAtt(att)} />
               ))}
             </div>
           )}
@@ -190,6 +227,8 @@ export function MessageBubble({
           {formatDateTime(message.createdAt)}
         </span>
       </div>
+
+      <AttachmentViewer attachment={viewerAtt} onClose={() => setViewerAtt(null)} />
     </div>
   )
 }
