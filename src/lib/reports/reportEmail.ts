@@ -247,7 +247,7 @@ export function renderReportEmail(data: ReportData, full: boolean, hasAttachment
         <tr><td style="padding:2px 28px 26px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid ${BORDER};"><tr>
             <td style="padding-top:14px;font-family:${FONT};font-size:12px;font-weight:700;color:${DARK};">Wipli</td>
-            <td align="right" style="padding-top:14px;font-family:${FONT};font-size:11px;color:${TEXT2};">Generado por ${esc(data.generatedBy)} el ${longDate(new Date())} · wipli.app</td>
+            <td align="right" style="padding-top:14px;font-family:${FONT};font-size:11px;color:${TEXT2};">Generado por ${esc(data.generatedBy)} el ${longDate(new Date())} · wiplitask.com</td>
           </tr></table>
         </td></tr>
 
