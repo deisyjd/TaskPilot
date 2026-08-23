@@ -295,10 +295,10 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
         </div>
 
         {/* ── Body ── */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-y-auto md:overflow-hidden">
 
           {/* ── Left: content ── */}
-          <div className="flex-1 overflow-y-auto px-7 py-6 space-y-7 min-w-0">
+          <div className="flex-1 md:overflow-y-auto px-5 sm:px-7 py-6 space-y-7 min-w-0">
 
             {/* Description */}
             <div>
@@ -557,15 +557,10 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
             </div>
           </div>
 
-          {/* ── Right: metadata ── */}
+          {/* ── Right: metadata (apilado en mobile, lateral en desktop) ── */}
           <div
-            className="overflow-y-auto py-6 px-5 space-y-5"
-            style={{
-              width: '272px',
-              minWidth: '272px',
-              borderLeft: '1px solid var(--tp-border)',
-              backgroundColor: 'var(--tp-bg)',
-            }}
+            className="w-full md:w-[272px] md:min-w-[272px] md:overflow-y-auto py-6 px-5 space-y-5 border-t md:border-t-0 md:border-l"
+            style={{ borderColor: 'var(--tp-border)', backgroundColor: 'var(--tp-bg)' }}
           >
             {/* Status */}
             <div>

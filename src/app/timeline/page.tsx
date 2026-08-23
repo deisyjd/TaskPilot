@@ -208,7 +208,7 @@ export default function TimelinePage() {
 
         {/* Project filter */}
         <Select value={projectFilter} onValueChange={(v) => setProjectFilter(v ?? 'all')}>
-          <SelectTrigger className="w-44 h-9 bg-white text-sm">
+          <SelectTrigger className="w-full sm:w-44 h-9 bg-white text-sm">
             <SelectValue placeholder="Proyecto">
               {(v: string) => (v === 'all' ? 'Todos los proyectos' : projects.find((p) => p.id === v)?.name ?? 'Proyecto')}
             </SelectValue>
@@ -223,7 +223,7 @@ export default function TimelinePage() {
 
         {/* Assignee filter */}
         <Select value={assigneeFilter} onValueChange={(v) => setAssigneeFilter(v ?? 'all')}>
-          <SelectTrigger className="w-52 h-9 bg-white text-sm">
+          <SelectTrigger className="w-full sm:w-52 h-9 bg-white text-sm">
             <SelectValue placeholder="Responsable">
               {(v: string) => (v === 'all' ? 'Todos los responsables' : users.find((u) => u.id === v)?.name ?? 'Responsable')}
             </SelectValue>

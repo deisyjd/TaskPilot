@@ -29,8 +29,13 @@ export default function ChatsPage() {
 
   return (
     <div className="flex h-[calc(100vh-80px)] overflow-hidden rounded-[var(--tp-r-card)] border border-[var(--tp-border)] shadow-sm bg-[var(--tp-surface)]">
-      {/* Left sidebar — conversation list */}
-      <div className="w-[280px] flex-shrink-0 border-r border-[var(--tp-border)] bg-[var(--tp-surface)] overflow-hidden flex flex-col">
+      {/* Left sidebar — conversation list. En mobile se muestra solo cuando no
+          hay una conversación abierta. */}
+      <div
+        className={`w-full md:w-[280px] flex-shrink-0 border-r border-[var(--tp-border)] bg-[var(--tp-surface)] overflow-hidden flex-col ${
+          activeConversation ? 'hidden md:flex' : 'flex'
+        }`}
+      >
         <ChatList
           conversations={conversations}
           activeId={activeId}
@@ -39,11 +44,12 @@ export default function ChatsPage() {
         />
       </div>
 
-      {/* Main chat area */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Main chat area — en mobile se muestra solo cuando hay conversación. */}
+      <div className={`flex-1 overflow-hidden ${activeConversation ? 'flex' : 'hidden md:flex'}`}>
         <ChatWindow
           conversation={activeConversation}
           currentUser={currentUser}
+          onBack={() => setActiveId(null)}
         />
       </div>
 

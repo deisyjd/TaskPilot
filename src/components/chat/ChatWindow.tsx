@@ -7,11 +7,13 @@ import { isSameDay } from '@/lib/dates'
 import { useChatStore } from '@/store/useChatStore'
 import { useUserStore } from '@/store/useUserStore'
 import { uploadFile } from '@/lib/uploadFile'
+import { ArrowLeft } from 'lucide-react'
 import { MessageBubble } from './MessageBubble'
 
 interface Props {
   conversation: Conversation | null
   currentUser: User
+  onBack?: () => void
 }
 
 function DateDivider({ label }: { label: string }) {
@@ -81,7 +83,7 @@ function LinkPreviewPill({
   )
 }
 
-export function ChatWindow({ conversation, currentUser }: Props) {
+export function ChatWindow({ conversation, currentUser, onBack }: Props) {
   const [input, setInput] = useState('')
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([])
   const [pendingLinks, setPendingLinks] = useState<ReferenceLink[]>([])
@@ -264,6 +266,17 @@ export function ChatWindow({ conversation, currentUser }: Props) {
     <div className="flex-1 flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[var(--tp-border)] bg-[var(--tp-surface)] flex-shrink-0">
+        {/* Volver — solo mobile */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="md:hidden w-8 h-8 -ml-1 flex items-center justify-center rounded-lg shrink-0 hover:bg-[var(--tp-bg)]"
+            style={{ color: 'var(--tp-text-2)' }}
+            title="Volver"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+        )}
         {/* Avatar / cover */}
         {conversation.coverImageUrl ? (
           <img

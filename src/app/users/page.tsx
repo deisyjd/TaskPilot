@@ -119,7 +119,7 @@ function UserCard({ userId }: { userId: string }) {
 
         {/* Stats row */}
         <div
-          className="grid grid-cols-4 gap-2 py-3 mb-4 rounded-2xl"
+          className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-3 mb-4 rounded-2xl"
           style={{ backgroundColor: 'var(--tp-bg)', padding: '12px 16px' }}
         >
           <StatPill value={stats.total} label="Total" color="var(--tp-text)" />
@@ -250,7 +250,7 @@ export default function UsersPage() {
     <div className="space-y-6">
       {/* Summary bar */}
       <div
-        className="grid grid-cols-4 gap-4 p-5"
+        className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5"
         style={{
           backgroundColor: 'var(--tp-dark)',
           borderRadius: 'var(--tp-r-card)',

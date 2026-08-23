@@ -379,7 +379,7 @@ export default function ProjectsPage() {
       {/* Top bar */}
       <div className="flex items-center gap-3 flex-wrap">
         {/* Search */}
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
             style={{ color: 'var(--tp-text-2)' }}
@@ -388,14 +388,13 @@ export default function ProjectsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar proyecto..."
-            className="pl-9 pr-4 text-sm outline-none"
+            className="pl-9 pr-4 text-sm outline-none w-full sm:w-[200px]"
             style={{
               height: '38px',
               borderRadius: 'var(--tp-r-input)',
               border: '1px solid var(--tp-border)',
               backgroundColor: 'var(--tp-surface)',
               color: 'var(--tp-text)',
-              width: '200px',
             }}
           />
         </div>
