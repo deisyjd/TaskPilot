@@ -24,7 +24,7 @@ class SyncIndicator extends ConsumerWidget {
     } else if (!s.online) {
       icon = Icons.cloud_off;
       label = 'Sin conexión';
-      color = AppColors.textMuted;
+      color = context.colors.textMuted;
     } else if (s.pending > 0) {
       icon = Icons.cloud_upload_outlined;
       label = '${s.pending} pendiente${s.pending == 1 ? '' : 's'}';

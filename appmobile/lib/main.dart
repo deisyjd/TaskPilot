@@ -18,7 +18,9 @@ class WipliApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Wipli',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
       routerConfig: router,
       locale: const Locale('es'),
       supportedLocales: const [Locale('es'), Locale('en')],

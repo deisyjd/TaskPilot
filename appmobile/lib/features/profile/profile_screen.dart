@@ -33,9 +33,9 @@ class ProfileScreen extends ConsumerWidget {
                         children: [
                           Text(user.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                           const SizedBox(height: 2),
-                          Text(user.email, style: const TextStyle(color: AppColors.textSecondary)),
+                          Text(user.email, style: TextStyle(color: context.colors.textSecondary)),
                           if (user.role.isNotEmpty)
-                            Text(user.role, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                            Text(user.role, style: TextStyle(fontSize: 12, color: context.colors.textMuted)),
                         ],
                       ),
                     ),
@@ -69,7 +69,7 @@ class ProfileScreen extends ConsumerWidget {
                     final ok = await showDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
-                        backgroundColor: AppColors.surface,
+                        backgroundColor: ctx.colors.surface,
                         title: const Text('Cerrar sesión'),
                         content: const Text('¿Seguro que quieres salir?'),
                         actions: [
@@ -92,10 +92,10 @@ class ProfileScreen extends ConsumerWidget {
                   label: const Text('Cerrar sesión', style: TextStyle(color: AppColors.danger)),
                 ),
                 const SizedBox(height: 24),
-                const Center(
+                Center(
                   child: Text(
                     'Wipli · ${AppConfig.flavor} · ${AppConfig.apiUrl}',
-                    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    style: TextStyle(fontSize: 11, color: context.colors.textMuted),
                   ),
                 ),
               ],

@@ -12,7 +12,7 @@ Future<Task?> showTaskEditSheet(BuildContext context, Task task) {
   return showModalBottomSheet<Task>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: AppColors.surface,
+    backgroundColor: context.colors.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -118,7 +118,7 @@ class _TaskEditSheetState extends ConsumerState<_TaskEditSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: context.colors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -140,7 +140,7 @@ class _TaskEditSheetState extends ConsumerState<_TaskEditSheet> {
             DropdownButtonFormField<TaskStatus>(
               initialValue: _status,
               decoration: const InputDecoration(labelText: 'Estado'),
-              dropdownColor: AppColors.surfaceAlt,
+              dropdownColor: context.colors.surfaceAlt,
               items: [
                 for (final s in TaskStatus.values)
                   DropdownMenuItem(value: s, child: Text(s.label)),
@@ -151,7 +151,7 @@ class _TaskEditSheetState extends ConsumerState<_TaskEditSheet> {
             DropdownButtonFormField<Priority>(
               initialValue: _priority,
               decoration: const InputDecoration(labelText: 'Prioridad'),
-              dropdownColor: AppColors.surfaceAlt,
+              dropdownColor: context.colors.surfaceAlt,
               items: [
                 for (final p in Priority.values)
                   DropdownMenuItem(value: p, child: Text(p.label)),
@@ -168,7 +168,7 @@ class _TaskEditSheetState extends ConsumerState<_TaskEditSheet> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(_due != null ? _fmt(_due!) : 'Sin fecha'),
-                    const Icon(Icons.event, size: 18, color: AppColors.textMuted),
+                    Icon(Icons.event, size: 18, color: context.colors.textMuted),
                   ],
                 ),
               ),

@@ -40,7 +40,7 @@ class DashboardScreen extends ConsumerWidget {
             if (auth.session?.activeCompany != null)
               Text(
                 auth.session!.activeCompany!.name,
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
               ),
           ],
         ),
@@ -121,9 +121,9 @@ class _StatCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: context.colors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: context.colors.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,7 +132,7 @@ class _StatCard extends StatelessWidget {
             const SizedBox(height: 10),
             Text('$value', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
             const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            Text(label, style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
           ],
         ),
       ),
@@ -149,7 +149,7 @@ class _EmptyHint extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 28),
       alignment: Alignment.center,
-      child: Text(text, style: const TextStyle(color: AppColors.textSecondary)),
+      child: Text(text, style: TextStyle(color: context.colors.textSecondary)),
     );
   }
 }

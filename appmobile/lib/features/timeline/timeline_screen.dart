@@ -37,7 +37,7 @@ class TimelineScreen extends ConsumerWidget {
               const SizedBox(height: 80),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Text('$e', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
+                child: Text('$e', textAlign: TextAlign.center, style: TextStyle(color: context.colors.textSecondary)),
               ),
             ],
           ),
@@ -80,7 +80,7 @@ class _DaySection extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
-                  color: isToday ? AppColors.lime : AppColors.textPrimary,
+                  color: isToday ? AppColors.lime : context.colors.textPrimary,
                 ),
               ),
               if (isToday) ...[
@@ -98,9 +98,9 @@ class _DaySection extends StatelessWidget {
           ),
         ),
         if (tasks.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 8, left: 2),
-            child: Text('—', style: TextStyle(color: AppColors.textMuted)),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8, left: 2),
+            child: Text('—', style: TextStyle(color: context.colors.textMuted)),
           )
         else
           for (final t in tasks)

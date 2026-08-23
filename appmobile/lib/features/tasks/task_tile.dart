@@ -16,7 +16,7 @@ class TaskTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: AppColors.surface,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
@@ -25,7 +25,7 @@ class TaskTile extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: context.colors.border),
             ),
             child: Row(
               children: [
@@ -49,13 +49,13 @@ class TaskTile extends StatelessWidget {
                       Text(
                         '${task.status.label} · ${task.priority.label}'
                         '${task.checklistTotal > 0 ? ' · ${task.checklistDone}/${task.checklistTotal}' : ''}',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
                       ),
                     ],
                   ),
                 ),
                 if (onTap != null)
-                  const Icon(Icons.chevron_right, color: AppColors.textMuted, size: 20),
+                  Icon(Icons.chevron_right, color: context.colors.textMuted, size: 20),
               ],
             ),
           ),

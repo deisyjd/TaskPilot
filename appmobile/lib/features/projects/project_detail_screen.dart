@@ -75,7 +75,7 @@ class ProjectDetailScreen extends ConsumerWidget {
               const SizedBox(height: 16),
             ],
             if (project.description?.isNotEmpty == true) ...[
-              Text(project.description!, style: const TextStyle(color: AppColors.textSecondary)),
+              Text(project.description!, style: TextStyle(color: context.colors.textSecondary)),
               const SizedBox(height: 16),
             ],
             const Text('Tareas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
@@ -85,12 +85,12 @@ class ProjectDetailScreen extends ConsumerWidget {
                 padding: EdgeInsets.all(24),
                 child: Center(child: CircularProgressIndicator(color: AppColors.lime)),
               ),
-              error: (e, _) => Text('$e', style: const TextStyle(color: AppColors.textSecondary)),
+              error: (e, _) => Text('$e', style: TextStyle(color: context.colors.textSecondary)),
               data: (tasks) {
                 if (tasks.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Text('Sin tareas aún.', style: TextStyle(color: AppColors.textSecondary)),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text('Sin tareas aún.', style: TextStyle(color: context.colors.textSecondary)),
                   );
                 }
                 return Column(
@@ -135,9 +135,9 @@ class _NoteCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,7 +146,7 @@ class _NoteCard extends StatelessWidget {
             Text(note.title, style: const TextStyle(fontWeight: FontWeight.w700)),
           if (note.content.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(note.content, style: const TextStyle(color: AppColors.textSecondary)),
+            Text(note.content, style: TextStyle(color: context.colors.textSecondary)),
           ],
         ],
       ),

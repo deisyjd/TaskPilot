@@ -35,7 +35,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.colors.surface,
         indicatorColor: AppColors.lime.withValues(alpha: 0.18),
         destinations: const [
           NavigationDestination(

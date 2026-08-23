@@ -84,9 +84,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Entra con tu cuenta de Wipli',
-                      style: TextStyle(color: AppColors.textSecondary),
+                      style: TextStyle(color: context.colors.textSecondary),
                     ),
                     const SizedBox(height: 28),
                     TextFormField(
@@ -139,14 +139,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           : const Text('Entrar'),
                     ),
                     const SizedBox(height: 14),
-                    const Row(
+                    Row(
                       children: [
-                        Expanded(child: Divider()),
+                        const Expanded(child: Divider()),
                         Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: Text('o', style: TextStyle(color: AppColors.textMuted)),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text('o', style: TextStyle(color: context.colors.textMuted)),
                         ),
-                        Expanded(child: Divider()),
+                        const Expanded(child: Divider()),
                       ],
                     ),
                     const SizedBox(height: 14),

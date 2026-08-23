@@ -98,7 +98,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             children: [
               _Chip(label: task.status.label, color: task.status.dotColor),
               _Chip(label: task.priority.label, color: task.priority.color),
-              _Chip(label: task.type.label, color: AppColors.textMuted),
+              _Chip(label: task.type.label, color: context.colors.textMuted),
             ],
           ),
           const SizedBox(height: 16),
@@ -109,7 +109,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             const SizedBox(height: 16),
             const _SectionTitle('Descripción'),
             const SizedBox(height: 6),
-            Text(task.description, style: const TextStyle(color: AppColors.textSecondary)),
+            Text(task.description, style: TextStyle(color: context.colors.textSecondary)),
           ],
           if (task.assigneeIds.isNotEmpty) ...[
             const SizedBox(height: 20),
@@ -145,7 +145,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                             ? Icons.check_circle
                             : Icons.radio_button_unchecked,
                         size: 20,
-                        color: task.checklist[i].done ? AppColors.success : AppColors.textMuted,
+                        color: task.checklist[i].done ? AppColors.success : context.colors.textMuted,
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -153,8 +153,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                           task.checklist[i].text,
                           style: TextStyle(
                             color: task.checklist[i].done
-                                ? AppColors.textMuted
-                                : AppColors.textPrimary,
+                                ? context.colors.textMuted
+                                : context.colors.textPrimary,
                             decoration: task.checklist[i].done
                                 ? TextDecoration.lineThrough
                                 : null,
@@ -175,16 +175,16 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: context.colors.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: context.colors.border),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(c.author, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                     const SizedBox(height: 4),
-                    Text(c.text, style: const TextStyle(color: AppColors.textSecondary)),
+                    Text(c.text, style: TextStyle(color: context.colors.textSecondary)),
                   ],
                 ),
               ),
@@ -231,9 +231,9 @@ class _AssigneeChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.only(left: 4, right: 12, top: 4, bottom: 4),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colors.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -259,9 +259,9 @@ class _MetaRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: AppColors.textMuted),
+          Icon(icon, size: 16, color: context.colors.textMuted),
           const SizedBox(width: 8),
-          Text('$label: ', style: const TextStyle(color: AppColors.textSecondary)),
+          Text('$label: ', style: TextStyle(color: context.colors.textSecondary)),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),

@@ -1,39 +1,46 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
-/// Tema Wipli. Por ahora se entrega el tema oscuro (marca). El claro llega
-/// en F5 (Pulido y UX).
+/// Tema Wipli. Soporta claro + oscuro conservando la marca (lima + ink).
+/// Las superficies/textos dependen del tema vía [WipliColors]; los acentos y
+/// estados usan [AppColors] tal cual.
 class AppTheme {
   const AppTheme._();
 
-  static ThemeData get dark {
-    const scheme = ColorScheme.dark(
+  static ThemeData get dark => _build(Brightness.dark, WipliColors.dark);
+
+  static ThemeData get light => _build(Brightness.light, WipliColors.light);
+
+  static ThemeData _build(Brightness brightness, WipliColors colors) {
+    final scheme = ColorScheme(
+      brightness: brightness,
       primary: AppColors.lime,
       onPrimary: AppColors.ink,
       secondary: AppColors.lime,
       onSecondary: AppColors.ink,
-      surface: AppColors.surface,
-      onSurface: AppColors.textPrimary,
+      surface: colors.surface,
+      onSurface: colors.textPrimary,
       error: AppColors.danger,
+      onError: Colors.white,
     );
 
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: AppColors.background,
-      canvasColor: AppColors.background,
+      scaffoldBackgroundColor: colors.background,
+      canvasColor: colors.background,
       fontFamily: 'Roboto',
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.background,
-        foregroundColor: AppColors.textPrimary,
+      appBarTheme: AppBarTheme(
+        backgroundColor: colors.background,
+        foregroundColor: colors.textPrimary,
         elevation: 0,
         centerTitle: false,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surfaceAlt,
-        hintStyle: const TextStyle(color: AppColors.textMuted),
+        fillColor: colors.surfaceAlt,
+        hintStyle: TextStyle(color: colors.textMuted),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -41,7 +48,7 @@ class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide(color: colors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -56,8 +63,8 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.lime,
           foregroundColor: AppColors.ink,
-          disabledBackgroundColor: AppColors.surfaceAlt,
-          disabledForegroundColor: AppColors.textMuted,
+          disabledBackgroundColor: colors.surfaceAlt,
+          disabledForegroundColor: colors.textMuted,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
@@ -66,18 +73,19 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.textPrimary,
-          side: const BorderSide(color: AppColors.border),
+          foregroundColor: colors.textPrimary,
+          side: BorderSide(color: colors.border),
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
-      dividerTheme: const DividerThemeData(color: AppColors.border, space: 1),
-      snackBarTheme: const SnackBarThemeData(
-        backgroundColor: AppColors.surfaceAlt,
-        contentTextStyle: TextStyle(color: AppColors.textPrimary),
+      dividerTheme: DividerThemeData(color: colors.border, space: 1),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: colors.surfaceAlt,
+        contentTextStyle: TextStyle(color: colors.textPrimary),
         behavior: SnackBarBehavior.floating,
       ),
+      extensions: <ThemeExtension<dynamic>>[colors],
     );
   }
 }

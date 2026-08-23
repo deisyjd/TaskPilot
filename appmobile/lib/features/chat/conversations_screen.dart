@@ -56,9 +56,9 @@ class _ConversationTile extends StatelessWidget {
     return ListTile(
       onTap: () => context.push('/chat/${c.id}', extra: c),
       leading: c.isGroup
-          ? const CircleAvatar(
-              backgroundColor: AppColors.surfaceAlt,
-              child: Icon(Icons.group, color: AppColors.textSecondary),
+          ? CircleAvatar(
+              backgroundColor: context.colors.surfaceAlt,
+              child: Icon(Icons.group, color: context.colors.textSecondary),
             )
           : UserAvatar(initials: _initials(c.name), seed: c.name, size: 44),
       title: Text(
@@ -72,7 +72,7 @@ class _ConversationTile extends StatelessWidget {
               c.lastMessagePreview!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.textSecondary),
+              style: TextStyle(color: context.colors.textSecondary),
             )
           : null,
       trailing: c.unreadCount > 0

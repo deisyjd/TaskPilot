@@ -64,7 +64,7 @@ class _KanbanScreenState extends ConsumerState<KanbanScreen> {
             : Center(
                 child: Padding(
                   padding: const EdgeInsets.all(32),
-                  child: Text('$e', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
+                  child: Text('$e', textAlign: TextAlign.center, style: TextStyle(color: context.colors.textSecondary)),
                 ),
               ),
         data: (server) {
@@ -117,10 +117,10 @@ class _Column extends StatelessWidget {
           margin: const EdgeInsets.only(right: 12),
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: highlighted ? AppColors.surfaceAlt : AppColors.surface,
+            color: highlighted ? context.colors.surfaceAlt : context.colors.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: highlighted ? AppColors.lime : AppColors.border,
+              color: highlighted ? AppColors.lime : context.colors.border,
             ),
           ),
           child: Column(
@@ -144,14 +144,14 @@ class _Column extends StatelessWidget {
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
-                    Text('${tasks.length}', style: const TextStyle(color: AppColors.textMuted)),
+                    Text('${tasks.length}', style: TextStyle(color: context.colors.textMuted)),
                   ],
                 ),
               ),
               Expanded(
                 child: tasks.isEmpty
-                    ? const Center(
-                        child: Text('—', style: TextStyle(color: AppColors.textMuted)),
+                    ? Center(
+                        child: Text('—', style: TextStyle(color: context.colors.textMuted)),
                       )
                     : ListView(
                         children: [
@@ -201,9 +201,9 @@ class _CardBody extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: elevated ? AppColors.surfaceAlt : AppColors.background,
+        color: elevated ? context.colors.surfaceAlt : context.colors.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,12 +223,12 @@ class _CardBody extends StatelessWidget {
                 decoration: BoxDecoration(color: task.priority.color, shape: BoxShape.circle),
               ),
               const SizedBox(width: 6),
-              Text(task.priority.label, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+              Text(task.priority.label, style: TextStyle(fontSize: 11, color: context.colors.textMuted)),
               const Spacer(),
               if (task.checklistTotal > 0)
                 Text(
                   '${task.checklistDone}/${task.checklistTotal}',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                  style: TextStyle(fontSize: 11, color: context.colors.textMuted),
                 ),
             ],
           ),
