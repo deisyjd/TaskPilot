@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { taskVisibilityFilter } from '@/app/api/tasks/route'
+import { getOrSet } from '@/lib/cache'
 
 function pad(n: number): string {
   return String(n).padStart(2, '0')
@@ -23,13 +24,15 @@ export async function GET(req: NextRequest) {
   const start = `${year}-${pad(month)}-01`
   const end = `${year}-${pad(month)}-${pad(lastDayOfMonth(year, month))}`
 
+  // Caché 60s por usuario+mes (agregación pesada; tolera segundos de desfase).
+  const companies = await getOrSet(`report:monthly:${session.userId}:${year}-${pad(month)}`, 60, async () => {
   const memberships = await prisma.companyMembership.findMany({
     where: { userId: session.userId },
     include: { company: true },
     orderBy: { createdAt: 'asc' },
   })
 
-  const companies = await Promise.all(
+  return Promise.all(
     memberships.map(async (m) => {
       const [tasks, memberRows] = await Promise.all([
         prisma.task.findMany({
@@ -73,6 +76,7 @@ export async function GET(req: NextRequest) {
       }
     })
   )
+  })
 
   return NextResponse.json({ year, month, companies })
 }

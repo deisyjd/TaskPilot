@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useTaskStore } from '@/store/useTaskStore'
 import { FileBarChart, Mail, FileText, FileSpreadsheet, Check } from 'lucide-react'
@@ -88,10 +89,17 @@ export function ReportModal({ open, onClose, scope, companyName, projectId, proj
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) { setError(data.error ?? 'No se pudo enviar el reporte.'); return }
-      setResult(`Reporte enviado a ${data.sentTo?.join(', ') ?? 'los correos'} (${data.tasks} tarea${data.tasks !== 1 ? 's' : ''}).`)
+      if (!res.ok) {
+        setError(data.error ?? 'No se pudo enviar el reporte.')
+        toast.error(data.error ?? 'No se pudo enviar el reporte.')
+        return
+      }
+      const msg = `Reporte enviado a ${data.sentTo?.join(', ') ?? 'los correos'} (${data.tasks} tarea${data.tasks !== 1 ? 's' : ''}).`
+      setResult(msg)
+      toast.success('Reporte enviado', { description: msg })
     } catch {
       setError('Error de conexión. Intenta de nuevo.')
+      toast.error('Error de conexión. Intenta de nuevo.')
     } finally {
       setSending(false)
     }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { Toaster, toast } from 'sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Sidebar, ADMIN_ONLY_PATHS } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
@@ -50,6 +51,7 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
       if (hasAlertedReminder(r.id, dueTs)) return
       markReminderAlerted(r.id, dueTs)
       notifyReminderDue(r)
+      toast.warning('Recordatorio', { description: `${r.title}${r.projectName ? ` · ${r.projectName}` : ''}` })
     })
   }
 
@@ -134,6 +136,7 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
 
   return (
     <TooltipProvider>
+      <Toaster position="top-right" richColors closeButton />
       <div className="flex h-full min-h-screen">
         <Sidebar />
         <div className="flex flex-col flex-1 min-w-0">
