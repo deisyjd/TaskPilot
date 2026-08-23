@@ -1,15 +1,16 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
-import { Bell, Plus, AlertTriangle, Clock, ChevronRight, Menu, BellRing, Check, CheckCheck } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { Bell, Plus, AlertTriangle, Clock, ChevronRight, ChevronDown, Menu, BellRing, Check, CheckCheck, LogOut, ShieldCheck } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useCurrentUser } from '@/store/useUserStore'
 import { useMobileNavStore } from '@/store/useMobileNavStore'
+import { useAuthStore } from '@/store/useAuthStore'
+import { can, canEditTask } from '@/lib/permissions'
 import { isOverdue } from '@/lib/dates'
 import { isReminderDue, formatReminderDateTime, reminderDueTimestamp } from '@/lib/reminders'
 import { loadReadNotifications, markNotificationsRead, pruneReadNotifications } from '@/lib/notificationReads'
-import { canEditTask } from '@/lib/permissions'
 import { ProjectModal } from '@/components/projects/ProjectModal'
 import { SearchBar } from '@/components/layout/SearchBar'
 import { Task, Reminder } from '@/types'
@@ -142,16 +143,28 @@ function ReminderNotifItem({ reminder, onMarkRead }: { reminder: Reminder; onMar
 
 export function Header() {
   const pathname = usePathname()
+  const router = useRouter()
   const page = pageTitles[pathname] ?? { title: 'Wipli', sub: '' }
   const tasks = useTaskStore((s) => s.tasks)
   const reminders = useTaskStore((s) => s.reminders)
   const projects = useTaskStore((s) => s.projects)
   const currentUser = useCurrentUser()
+  const isAdmin = can(currentUser, 'create_user')
+  const logout = useAuthStore((s) => s.logout)
   const { toggle: toggleMobileNav } = useMobileNavStore()
   const [projectModalOpen, setProjectModalOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const profileRef = useRef<HTMLDivElement>(null)
   const [readIds, setReadIds] = useState<Set<string>>(new Set())
+
+  const handleLogout = async () => {
+    setProfileOpen(false)
+    await fetch('/api/auth/logout', { method: 'POST' })
+    logout()
+    router.replace('/login')
+  }
 
   // El registro de leídas vive en localStorage — se hidrata después del
   // primer render (no antes) para que el HTML de servidor y cliente
@@ -217,6 +230,18 @@ export function Header() {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [notifOpen])
+
+  // Close profile menu on outside click
+  useEffect(() => {
+    if (!profileOpen) return
+    function handleClick(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [profileOpen])
 
   return (
     <header
@@ -377,6 +402,91 @@ export function Header() {
                   </a>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+
+        {/* Profile menu */}
+        <div className="relative" ref={profileRef}>
+          <button
+            onClick={() => setProfileOpen((o) => !o)}
+            className="flex items-center gap-2 pl-1.5 pr-2 h-9 rounded-xl transition-all hover:opacity-80"
+            style={{
+              backgroundColor: profileOpen ? 'var(--tp-dark)' : 'var(--tp-surface)',
+              border: '1px solid var(--tp-border)',
+            }}
+          >
+            {currentUser?.avatarUrl ? (
+              <img
+                src={currentUser.avatarUrl}
+                alt={currentUser.name}
+                className="w-6 h-6 rounded-full object-cover shrink-0"
+              />
+            ) : (
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0"
+                style={{ backgroundColor: 'var(--tp-lime)', color: 'var(--tp-dark)' }}
+              >
+                {currentUser?.initials ?? '?'}
+              </div>
+            )}
+            <span
+              className="hidden sm:inline text-sm font-medium truncate max-w-[120px]"
+              style={{ color: profileOpen ? '#fff' : 'var(--tp-text)' }}
+            >
+              {currentUser?.name ?? 'Usuario'}
+            </span>
+            <ChevronDown
+              className="w-3.5 h-3.5 shrink-0 hidden sm:block"
+              style={{ color: profileOpen ? '#fff' : 'var(--tp-text-2)' }}
+            />
+          </button>
+
+          {/* Dropdown panel */}
+          {profileOpen && (
+            <div
+              className="absolute right-0 top-11 z-50 overflow-hidden"
+              style={{
+                width: '220px',
+                borderRadius: '16px',
+                border: '1px solid var(--tp-border)',
+                backgroundColor: 'var(--tp-surface)',
+                boxShadow: '0 12px 40px rgba(17,19,24,0.16)',
+              }}
+            >
+              <div className="flex items-center gap-3 px-4 py-3.5" style={{ borderBottom: '1px solid var(--tp-border)' }}>
+                {currentUser?.avatarUrl ? (
+                  <img
+                    src={currentUser.avatarUrl}
+                    alt={currentUser.name}
+                    className="w-9 h-9 rounded-full object-cover shrink-0"
+                  />
+                ) : (
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
+                    style={{ backgroundColor: 'var(--tp-lime)', color: 'var(--tp-dark)' }}
+                  >
+                    {currentUser?.initials ?? '?'}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--tp-text)' }}>
+                    {currentUser?.name ?? 'Usuario'}
+                  </p>
+                  <p className="text-xs truncate" style={{ color: 'var(--tp-text-2)' }}>
+                    {currentUser?.role ?? ''}
+                  </p>
+                </div>
+                {isAdmin && <ShieldCheck className="w-4 h-4 shrink-0" style={{ color: 'var(--tp-lime)' }} />}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all hover:opacity-70"
+                style={{ color: '#DC2626' }}
+              >
+                <LogOut className="w-4 h-4 shrink-0" />
+                Cerrar sesión
+              </button>
             </div>
           )}
         </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
   Columns3,
@@ -14,7 +14,6 @@ import {
   MessageSquare,
   ShieldCheck,
   FolderOpen,
-  LogOut,
   FileBarChart,
   Menu,
 } from 'lucide-react'
@@ -22,7 +21,6 @@ import { useTaskStore } from '@/store/useTaskStore'
 import { useChatStore } from '@/store/useChatStore'
 import { useCurrentUser } from '@/store/useUserStore'
 import { useMobileNavStore } from '@/store/useMobileNavStore'
-import { useAuthStore } from '@/store/useAuthStore'
 import { can } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { CompanySwitcher } from '@/components/layout/CompanySwitcher'
@@ -50,20 +48,11 @@ interface ContentProps {
 
 function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: ContentProps) {
   const pathname = usePathname()
-  const router = useRouter()
   const projects = useTaskStore((s) => s.projects)
   const conversations = useChatStore((s) => s.conversations)
   const unreadMessages = conversations.reduce((sum, c) => sum + (c.unreadCount ?? 0), 0)
   const currentUser = useCurrentUser()
   const isAdmin = can(currentUser, 'create_user')
-  const logout = useAuthStore((s) => s.logout)
-
-  const handleLogout = async () => {
-    onNavigate?.()
-    await fetch('/api/auth/logout', { method: 'POST' })
-    logout()
-    router.replace('/login')
-  }
 
   const isActive = (href: string) => {
     if (href === '/projects') return pathname === '/projects' || pathname.startsWith('/projects/')
@@ -200,52 +189,10 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: Con
 
       {/* Company switcher (solo expandido) */}
       {!collapsed && (
-        <div className="pb-2">
+        <div className="pb-5">
           <CompanySwitcher />
         </div>
       )}
-
-      {/* User card + logout */}
-      <div className={cn('pb-5 space-y-1', collapsed ? 'px-2 flex flex-col items-center mt-auto' : 'px-3')}>
-        <Link
-          href="/admin/users"
-          onClick={onNavigate}
-          title={collapsed ? currentUser?.name : undefined}
-          className={cn(
-            'flex items-center rounded-xl transition-all hover:bg-white/8',
-            collapsed ? 'justify-center w-11 h-11 p-0' : 'gap-3 px-3 py-3'
-          )}
-          style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
-        >
-          {currentUser?.avatarUrl ? (
-            <img src={currentUser.avatarUrl} alt={currentUser.name} className="w-8 h-8 rounded-full object-cover shrink-0" />
-          ) : (
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0" style={{ backgroundColor: 'var(--tp-lime)', color: 'var(--tp-dark)' }}>
-              {currentUser?.initials ?? 'D'}
-            </div>
-          )}
-          {!collapsed && (
-            <>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-white truncate">{currentUser?.name ?? 'Deisy'}</p>
-                <p className="text-xs text-white/40 truncate">{currentUser?.role ?? 'Directora'}</p>
-              </div>
-              {isAdmin && <ShieldCheck className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--tp-lime)' }} />}
-            </>
-          )}
-        </Link>
-        <button
-          onClick={handleLogout}
-          title={collapsed ? 'Cerrar sesión' : undefined}
-          className={cn(
-            'flex items-center rounded-xl text-sm transition-all text-white/40 hover:text-white/70 hover:bg-white/5',
-            collapsed ? 'justify-center w-11 h-11' : 'w-full gap-3 px-3 py-2.5'
-          )}
-        >
-          <LogOut className="w-4 h-4 shrink-0" />
-          {!collapsed && 'Cerrar sesión'}
-        </button>
-      </div>
     </>
   )
 }
