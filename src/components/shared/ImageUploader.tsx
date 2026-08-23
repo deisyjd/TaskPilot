@@ -9,6 +9,7 @@ import { useRef, useState } from 'react'
 import { Upload, X, RefreshCw, ImageIcon } from 'lucide-react'
 import { uploadFile } from '@/lib/uploadFile'
 import { ImageCropModal } from '@/components/shared/ImageCropModal'
+import { FilePreviewModal } from '@/components/shared/FilePreviewModal'
 
 interface Props {
   value?: string
@@ -33,6 +34,7 @@ export function ImageUploader({
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
   const [cropFile, setCropFile] = useState<File | null>(null)
+  const [showPreview, setShowPreview] = useState(false)
 
   const cropAspect = aspectRatio === 'cover' ? 16 / 9 : 1
 
@@ -105,7 +107,11 @@ export function ImageUploader({
           dragging ? 'border-[var(--tp-lime)] scale-[1.01]' : 'border-[var(--tp-border)]'
         }`}
         style={{ background: 'var(--tp-surface)' }}
-        onClick={() => !value && !loading && inputRef.current?.click()}
+        onClick={() => {
+          if (loading) return
+          if (value) setShowPreview(true)
+          else inputRef.current?.click()
+        }}
         onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
@@ -180,6 +186,11 @@ export function ImageUploader({
         accept="image/png,image/jpeg,image/webp"
         className="hidden"
         onChange={handleInputChange}
+      />
+
+      <FilePreviewModal
+        file={showPreview && value ? { name: label ?? 'Imagen', url: value, type: 'image' } : null}
+        onClose={() => setShowPreview(false)}
       />
     </div>
   )

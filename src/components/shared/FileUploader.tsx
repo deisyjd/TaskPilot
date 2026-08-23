@@ -4,9 +4,10 @@
 // guarda solo la URL, no el base64.
 
 import { useRef, useState } from 'react'
-import { X, ExternalLink, FileUp } from 'lucide-react'
+import { X, Eye, FileUp } from 'lucide-react'
 import { Attachment } from '@/types'
 import { uploadFile } from '@/lib/uploadFile'
+import { FilePreviewModal } from '@/components/shared/FilePreviewModal'
 
 interface Props {
   value: Attachment[]
@@ -61,6 +62,7 @@ export function FileUploader({
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [previewFile, setPreviewFile] = useState<Attachment | null>(null)
 
   // Subida secuencial, acumulando sobre una copia local para no perder
   // adjuntos por closures obsoletos cuando se suben varios a la vez.
@@ -189,7 +191,8 @@ export function FileUploader({
           {value.map((file) => (
             <li
               key={file.id}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-[var(--tp-r-input)] border"
+              onClick={() => setPreviewFile(file)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-[var(--tp-r-input)] border cursor-pointer transition-colors hover:bg-[var(--tp-bg)]"
               style={{
                 background: 'var(--tp-surface)',
                 borderColor: 'var(--tp-border)',
@@ -216,21 +219,18 @@ export function FileUploader({
 
               {/* Actions */}
               <div className="flex items-center gap-1 flex-shrink-0">
-                <a
-                  href={file.url}
-                  download={file.name}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setPreviewFile(file) }}
                   className="w-7 h-7 flex items-center justify-center rounded-full transition-colors hover:bg-[var(--tp-bg-2)]"
-                  title="Abrir / Descargar"
-                  onClick={(e) => e.stopPropagation()}
+                  title="Ver archivo"
                 >
-                  <ExternalLink size={13} style={{ color: 'var(--tp-text-2)' }} />
-                </a>
+                  <Eye size={13} style={{ color: 'var(--tp-text-2)' }} />
+                </button>
                 {!readOnly && (
                   <button
                     type="button"
-                    onClick={() => removeFile(file.id)}
+                    onClick={(e) => { e.stopPropagation(); removeFile(file.id) }}
                     className="w-7 h-7 flex items-center justify-center rounded-full transition-colors hover:bg-red-100"
                     title="Eliminar"
                   >
@@ -248,6 +248,11 @@ export function FileUploader({
           Límite de {maxFiles} archivos alcanzado.
         </p>
       )}
+
+      <FilePreviewModal
+        file={previewFile ? { name: previewFile.name, url: previewFile.url, type: previewFile.type } : null}
+        onClose={() => setPreviewFile(null)}
+      />
     </div>
   )
 }

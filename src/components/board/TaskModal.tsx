@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { Trash2, Plus, X, Send, CheckSquare, MessageSquare, Tag, ChevronDown, Image, Copy, Link2, Check, Pencil } from 'lucide-react'
 import { ImageUploader } from '@/components/shared/ImageUploader'
 import { FileUploader } from '@/components/shared/FileUploader'
+import { FilePreviewModal } from '@/components/shared/FilePreviewModal'
 import { ReferenceLinks } from '@/components/shared/ReferenceLinks'
 import { Attachment, ReferenceLink } from '@/types'
 
@@ -121,6 +122,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
   const [commentInput, setCommentInput] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [showCoverPreview, setShowCoverPreview] = useState(false)
   const [editingChecklistId, setEditingChecklistId] = useState<string | null>(null)
   const [editingChecklistText, setEditingChecklistText] = useState('')
 
@@ -474,8 +476,9 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                   <img
                     src={form.coverImageUrl}
                     alt="Portada de la tarea"
-                    className="w-full rounded-xl object-cover"
+                    className="w-full rounded-xl object-cover cursor-pointer transition-opacity hover:opacity-90"
                     style={{ maxHeight: '220px' }}
+                    onClick={() => setShowCoverPreview(true)}
                   />
                 )
               ) : (
@@ -860,6 +863,11 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
         confirmLabel="Sí, eliminar"
         onConfirm={() => { setConfirmOpen(false); handleDeleteConfirmed() }}
         onCancel={() => setConfirmOpen(false)}
+      />
+
+      <FilePreviewModal
+        file={showCoverPreview && form.coverImageUrl ? { name: 'Imagen de portada', url: form.coverImageUrl, type: 'image' } : null}
+        onClose={() => setShowCoverPreview(false)}
       />
     </Dialog>
   )
