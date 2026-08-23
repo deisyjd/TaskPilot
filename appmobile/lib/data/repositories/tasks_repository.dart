@@ -27,4 +27,20 @@ class TasksRepository {
         .map((e) => Task.fromJson(e as Map<String, dynamic>))
         .toList();
   }
+
+  /// PATCH parcial. Devuelve la tarea ya serializada por el backend.
+  Future<Task> update(String taskId, Map<String, dynamic> fields) async {
+    final res = await _api.patch<Map<String, dynamic>>(
+      '/api/tasks/$taskId',
+      data: fields,
+    );
+    return Task.fromJson(res.data!);
+  }
+
+  Future<Task> updateStatus(String taskId, TaskStatus status) =>
+      update(taskId, {'status': status.api});
+
+  /// El backend reemplaza el checklist completo, así que se envía entero.
+  Future<Task> setChecklist(String taskId, List<ChecklistItem> items) =>
+      update(taskId, {'checklist': items.map((c) => c.toJson()).toList()});
 }

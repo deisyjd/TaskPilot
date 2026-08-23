@@ -10,6 +10,7 @@ import '../../features/auth/splash_screen.dart';
 import '../../features/projects/project_detail_screen.dart';
 import '../../features/shell/home_shell.dart';
 import '../../features/tasks/task_detail_screen.dart';
+import '../../features/timeline/timeline_screen.dart';
 
 /// Rutas de la app + redirección según el estado de autenticación.
 /// go_router se refresca cuando cambia el AuthState (refreshListenable).
@@ -42,6 +43,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/home', builder: (_, __) => const HomeShell()),
+      GoRoute(path: '/timeline', builder: (_, __) => const TimelineScreen()),
       GoRoute(
         path: '/project/:id',
         builder: (context, state) {

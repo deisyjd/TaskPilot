@@ -23,6 +23,22 @@ class ChecklistItem {
         dueDate: json['dueDate'] as String?,
         assigneeId: json['assigneeId'] as String?,
       );
+
+  ChecklistItem copyWith({bool? done}) => ChecklistItem(
+        id: id,
+        text: text,
+        done: done ?? this.done,
+        dueDate: dueDate,
+        assigneeId: assigneeId,
+      );
+
+  /// Forma que espera el PATCH de /api/tasks/[id] (reemplaza el checklist).
+  Map<String, dynamic> toJson() => {
+        'text': text,
+        'done': done,
+        'dueDate': dueDate,
+        'assigneeId': assigneeId,
+      };
 }
 
 /// Comentario de una tarea. Espejo de `Comment`.
@@ -92,6 +108,38 @@ class Task {
 
   int get checklistDone => checklist.where((c) => c.done).length;
   int get checklistTotal => checklist.length;
+
+  Task copyWith({
+    String? title,
+    String? description,
+    TaskStatus? status,
+    String? startDate,
+    String? dueDate,
+    Priority? priority,
+    TaskType? type,
+    List<ChecklistItem>? checklist,
+  }) {
+    return Task(
+      id: id,
+      title: title ?? this.title,
+      projectId: projectId,
+      companyId: companyId,
+      description: description ?? this.description,
+      status: status ?? this.status,
+      assigneeIds: assigneeIds,
+      viewerAssigneeIds: viewerAssigneeIds,
+      startDate: startDate ?? this.startDate,
+      dueDate: dueDate ?? this.dueDate,
+      priority: priority ?? this.priority,
+      type: type ?? this.type,
+      tags: tags,
+      checklist: checklist ?? this.checklist,
+      comments: comments,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      coverImageUrl: coverImageUrl,
+    );
+  }
 
   factory Task.fromJson(Map<String, dynamic> json) => Task(
         id: json['id'] as String,

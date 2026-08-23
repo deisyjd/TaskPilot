@@ -1,25 +1,84 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/network/api_exception.dart';
+import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/ui/user_avatar.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/task.dart';
+import '../projects/project_detail_screen.dart';
 import '../users/users_providers.dart';
+import 'task_edit_sheet.dart';
+import 'tasks_providers.dart';
 
-/// Detalle de una tarea (lectura). La edición y el toggle de checklist contra
-/// el API llegan en la continuación de F3.
-class TaskDetailScreen extends ConsumerWidget {
+/// Detalle de una tarea: lectura + edición y toggle de checklist contra el API.
+class TaskDetailScreen extends ConsumerStatefulWidget {
   const TaskDetailScreen({super.key, required this.task});
 
   final Task task;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TaskDetailScreen> createState() => _TaskDetailScreenState();
+}
+
+class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
+  late Task _task = widget.task;
+  bool _busy = false;
+
+  void _invalidateLists() {
+    ref.invalidate(companyTasksProvider);
+    ref.invalidate(projectTasksProvider(_task.projectId));
+  }
+
+  Future<void> _edit() async {
+    final updated = await showTaskEditSheet(context, _task);
+    if (updated != null && mounted) {
+      setState(() => _task = updated);
+      _invalidateLists();
+    }
+  }
+
+  Future<void> _toggleChecklist(int index) async {
+    if (_busy) return;
+    final current = _task.checklist;
+    final optimistic = [...current];
+    optimistic[index] = current[index].copyWith(done: !current[index].done);
+    final previous = _task;
+    setState(() {
+      _task = _task.copyWith(checklist: optimistic);
+      _busy = true;
+    });
+    try {
+      final updated = await ref.read(tasksRepositoryProvider).setChecklist(_task.id, optimistic);
+      if (!mounted) return;
+      setState(() => _task = updated);
+      _invalidateLists();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _task = previous);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final usersById = ref.watch(usersByIdProvider);
+    final task = _task;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Tarea')),
+      appBar: AppBar(
+        title: const Text('Tarea'),
+        actions: [
+          IconButton(
+            tooltip: 'Editar',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: _busy ? null : _edit,
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -67,28 +126,38 @@ class TaskDetailScreen extends ConsumerWidget {
           if (task.checklist.isNotEmpty) ...[
             const SizedBox(height: 20),
             _SectionTitle('Checklist · ${task.checklistDone}/${task.checklistTotal}'),
-            const SizedBox(height: 8),
-            for (final item in task.checklist)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Icon(
-                      item.done ? Icons.check_circle : Icons.radio_button_unchecked,
-                      size: 20,
-                      color: item.done ? AppColors.success : AppColors.textMuted,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        item.text,
-                        style: TextStyle(
-                          color: item.done ? AppColors.textMuted : AppColors.textPrimary,
-                          decoration: item.done ? TextDecoration.lineThrough : null,
+            const SizedBox(height: 4),
+            for (var i = 0; i < task.checklist.length; i++)
+              InkWell(
+                onTap: () => _toggleChecklist(i),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        task.checklist[i].done
+                            ? Icons.check_circle
+                            : Icons.radio_button_unchecked,
+                        size: 20,
+                        color: task.checklist[i].done ? AppColors.success : AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          task.checklist[i].text,
+                          style: TextStyle(
+                            color: task.checklist[i].done
+                                ? AppColors.textMuted
+                                : AppColors.textPrimary,
+                            decoration: task.checklist[i].done
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
           ],

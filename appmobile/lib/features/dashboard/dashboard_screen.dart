@@ -2,22 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/ui/user_avatar.dart';
 import '../../data/models/enums.dart';
-import '../../data/models/task.dart';
 import '../auth/auth_controller.dart';
 import '../tasks/task_tile.dart';
-
-/// Tareas de la empresa activa. Se recarga al cambiar de empresa porque la
-/// key depende del activeCompanyId.
-final dashboardTasksProvider =
-    FutureProvider.autoDispose<List<Task>>((ref) async {
-  // Se re-evalúa cuando cambia la sesión (empresa activa).
-  ref.watch(authControllerProvider.select((s) => s.session?.activeCompanyId));
-  return ref.read(tasksRepositoryProvider).list();
-});
+import '../tasks/tasks_providers.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -32,7 +22,7 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authControllerProvider);
-    final tasksAsync = ref.watch(dashboardTasksProvider);
+    final tasksAsync = ref.watch(companyTasksProvider);
     final user = auth.session?.user;
 
     return Scaffold(
@@ -53,6 +43,11 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Línea de tiempo',
+            icon: const Icon(Icons.calendar_view_week),
+            onPressed: () => context.push('/timeline'),
+          ),
           if (user != null)
             Padding(
               padding: const EdgeInsets.only(right: 16),
@@ -62,12 +57,12 @@ class DashboardScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         color: AppColors.lime,
-        onRefresh: () => ref.refresh(dashboardTasksProvider.future),
+        onRefresh: () => ref.refresh(companyTasksProvider.future),
         child: tasksAsync.when(
           loading: () => const Center(child: CircularProgressIndicator(color: AppColors.lime)),
           error: (e, _) => _ErrorState(
             message: '$e',
-            onRetry: () => ref.invalidate(dashboardTasksProvider),
+            onRetry: () => ref.invalidate(companyTasksProvider),
           ),
           data: (tasks) {
             final pending = tasks.where((t) => t.status == TaskStatus.pending).length;

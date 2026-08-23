@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../board/kanban_screen.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../profile/profile_screen.dart';
 import '../projects/projects_screen.dart';
@@ -20,6 +21,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 
   static const _tabs = [
     DashboardScreen(),
+    KanbanScreen(),
     ProjectsScreen(),
     ProfileScreen(),
   ];
@@ -38,6 +40,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             icon: Icon(Icons.dashboard_outlined),
             selectedIcon: Icon(Icons.dashboard),
             label: 'Inicio',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.view_kanban_outlined),
+            selectedIcon: Icon(Icons.view_kanban),
+            label: 'Tablero',
           ),
           NavigationDestination(
             icon: Icon(Icons.folder_outlined),
