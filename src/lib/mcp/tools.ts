@@ -189,6 +189,53 @@ export const TOOLS: McpTool[] = [
       ctx.api(`/api/tasks/${args.taskId as string}`, { method: 'PATCH', body: JSON.stringify({ status: 'done' }) }),
   },
   {
+    name: 'attach_image',
+    description:
+      'Adjunta una imagen a una tarea a partir de su URL pública: la descarga y la guarda como archivo adjunto, o como imagen de portada si asCover=true.',
+    inputSchema: obj(
+      {
+        taskId: str('ID de la tarea.'),
+        imageUrl: str('URL pública de la imagen a adjuntar.'),
+        asCover: { type: 'boolean', description: 'true para usarla como imagen de portada de la tarea; false (por defecto) para agregarla a los archivos adjuntos.' },
+        name: str('Nombre para el archivo adjunto (opcional, se toma de la URL si no se da).'),
+      },
+      ['taskId', 'imageUrl']
+    ),
+    handler: async (args, ctx) => {
+      const saved = (await ctx.api('/api/uploads/from-url', {
+        method: 'POST',
+        body: JSON.stringify({ url: args.imageUrl, name: args.name }),
+      })) as { url: string; name: string; size: number; type: string }
+      if (!saved.type.startsWith('image/')) {
+        throw new Error(`La URL no apunta a una imagen (tipo detectado: ${saved.type}).`)
+      }
+      if (args.asCover) {
+        return ctx.api(`/api/tasks/${args.taskId as string}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ coverImageUrl: saved.url }),
+        })
+      }
+      const [task, me] = await Promise.all([
+        getTask(args.taskId as string, ctx),
+        ctx.api('/api/auth/me') as Promise<{ name?: string }>,
+      ])
+      const attachments = Array.isArray(task.attachments) ? task.attachments : []
+      const attachment = {
+        id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        name: saved.name,
+        type: saved.type,
+        size: saved.size,
+        url: saved.url,
+        uploadedBy: me.name ?? 'MCP',
+        uploadedAt: new Date().toISOString(),
+      }
+      return ctx.api(`/api/tasks/${args.taskId as string}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ attachments: [...attachments, attachment] }),
+      })
+    },
+  },
+  {
     name: 'add_comment',
     description: 'Agrega un comentario a una tarea.',
     inputSchema: obj({ taskId: str('ID de la tarea.'), text: str('Texto del comentario.') }, ['taskId', 'text']),

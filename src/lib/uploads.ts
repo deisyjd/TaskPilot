@@ -1,6 +1,8 @@
 import { mkdir, writeFile } from 'fs/promises'
 import path from 'path'
 import { randomBytes } from 'crypto'
+import { lookup } from 'dns/promises'
+import { isIP } from 'net'
 
 // Almacenamiento de archivos en disco (volumen persistente montado en
 // /app/uploads en producción). Guardamos el binario en disco y en la base de
@@ -63,4 +65,77 @@ export async function saveUploadedFile(file: File): Promise<SavedUpload> {
   await writeFile(path.join(dir, key), buffer)
 
   return { url: `/api/uploads/${key}`, name: file.name, size: file.size, type: file.type }
+}
+
+const MAX_REMOTE_BYTES = 10 * 1024 * 1024 // 10 MB, igual que /api/uploads
+
+function isPrivateIp(ip: string): boolean {
+  if (ip === '::1' || ip === '0.0.0.0') return true
+  if (ip.startsWith('fc') || ip.startsWith('fd') || ip.startsWith('fe80:')) return true // ULA/link-local IPv6
+  const parts = ip.split('.').map(Number)
+  if (parts.length !== 4 || parts.some(Number.isNaN)) return false
+  const [a, b] = parts
+  return (
+    a === 127 || // loopback
+    a === 10 || // 10.0.0.0/8
+    (a === 172 && b >= 16 && b <= 31) || // 172.16.0.0/12
+    (a === 192 && b === 168) || // 192.168.0.0/16
+    (a === 169 && b === 254) // link-local
+  )
+}
+
+// Descarga una imagen/archivo desde una URL pública y lo guarda igual que un
+// upload normal — usado por la herramienta MCP `attach_image`, que recibe una
+// URL en vez de un archivo binario. Bloquea localhost/IPs privadas (SSRF).
+export async function saveFileFromUrl(sourceUrl: string, nameOverride?: string): Promise<SavedUpload> {
+  let parsed: URL
+  try {
+    parsed = new URL(sourceUrl)
+  } catch {
+    throw new Error('URL inválida.')
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('Solo se permiten URLs http/https.')
+  }
+  const hostname = parsed.hostname.replace(/^\[|\]$/g, '')
+  if (hostname === 'localhost' || (isIP(hostname) && isPrivateIp(hostname))) {
+    throw new Error('No se permite descargar desde direcciones internas.')
+  }
+  if (!isIP(hostname)) {
+    const resolved = await lookup(hostname).catch(() => null)
+    if (resolved && isPrivateIp(resolved.address)) {
+      throw new Error('No se permite descargar desde direcciones internas.')
+    }
+  }
+
+  // redirect: 'manual' evita que un 3xx salte a un host interno sin pasar por
+  // la validación de arriba (bypass clásico de SSRF vía redirección).
+  const res = await fetch(parsed, { redirect: 'manual' })
+  if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {
+    throw new Error('La URL redirige a otra dirección; usa la URL final directa.')
+  }
+  if (!res.ok) throw new Error(`No se pudo descargar el archivo (HTTP ${res.status}).`)
+
+  const contentType = res.headers.get('content-type')?.split(';')[0].trim() || 'application/octet-stream'
+  if (!isAllowedUpload(contentType)) {
+    throw new Error(`Tipo de archivo no permitido: ${contentType}`)
+  }
+  const contentLength = Number(res.headers.get('content-length') ?? 0)
+  if (contentLength > MAX_REMOTE_BYTES) {
+    throw new Error('El archivo supera el límite de 10 MB.')
+  }
+
+  const buffer = Buffer.from(await res.arrayBuffer())
+  if (buffer.byteLength > MAX_REMOTE_BYTES) {
+    throw new Error('El archivo supera el límite de 10 MB.')
+  }
+
+  const dir = uploadsDir()
+  await mkdir(dir, { recursive: true })
+  const ext = EXT_BY_MIME[contentType] || path.extname(parsed.pathname).replace(/[^a-z0-9]/gi, '').toLowerCase() || 'bin'
+  const key = `${randomBytes(16).toString('hex')}.${ext}`
+  await writeFile(path.join(dir, key), buffer)
+
+  const name = nameOverride?.trim() || decodeURIComponent(path.basename(parsed.pathname)) || 'archivo'
+  return { url: `/api/uploads/${key}`, name, size: buffer.byteLength, type: contentType }
 }
