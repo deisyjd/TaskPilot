@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bell, Plus, AlertTriangle, Clock, ChevronRight, ChevronDown, Menu, BellRing, Check, CheckCheck, LogOut, ShieldCheck } from 'lucide-react'
+import { Bell, AlertTriangle, Clock, ChevronRight, ChevronDown, Menu, BellRing, Check, CheckCheck, LogOut, ShieldCheck } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useCurrentUser } from '@/store/useUserStore'
 import { useMobileNavStore } from '@/store/useMobileNavStore'
@@ -11,7 +11,6 @@ import { can, canEditTask } from '@/lib/permissions'
 import { isOverdue } from '@/lib/dates'
 import { isReminderDue, formatReminderDateTime, reminderDueTimestamp } from '@/lib/reminders'
 import { loadReadNotifications, markNotificationsRead, pruneReadNotifications } from '@/lib/notificationReads'
-import { ProjectModal } from '@/components/projects/ProjectModal'
 import { SearchBar } from '@/components/layout/SearchBar'
 import { Task, Reminder } from '@/types'
 
@@ -152,7 +151,6 @@ export function Header() {
   const isAdmin = can(currentUser, 'create_user')
   const logout = useAuthStore((s) => s.logout)
   const { toggle: toggleMobileNav } = useMobileNavStore()
-  const [projectModalOpen, setProjectModalOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -490,23 +488,7 @@ export function Header() {
             </div>
           )}
         </div>
-
-        {/* New project button */}
-        <button
-          onClick={() => setProjectModalOpen(true)}
-          className="flex items-center gap-2 px-3 py-2 sm:px-4 text-sm font-medium transition-all hover:opacity-88"
-          style={{
-            backgroundColor: 'var(--tp-dark)',
-            color: '#FFFFFF',
-            borderRadius: 'var(--tp-r-btn)',
-          }}
-        >
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Nuevo proyecto</span>
-        </button>
       </div>
-
-      <ProjectModal open={projectModalOpen} onClose={() => setProjectModalOpen(false)} />
     </header>
   )
 }
