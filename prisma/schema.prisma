@@ -73,6 +73,7 @@ model User {
   noteShares               NoteShare[]
   favoriteProjects         ProjectFavorite[]
   apiTokens                ApiToken[]
+  oauthTokens              OAuthToken[]
 
   @@map("users")
 }
@@ -95,6 +96,51 @@ model ApiToken {
 
   @@index([userId])
   @@map("api_tokens")
+}
+
+// ─── OAuth 2.1 para conectores MCP (Claude Desktop/Web) ─────────────
+// Servidor OAuth mínimo (authorization code + PKCE + registro dinámico) que
+// convive con los PAT (tp_live_): es un camino de auth alterno para /api/mcp.
+// El acceso actúa sobre la empresa ACTIVA del usuario (no se fija aquí).
+
+model OAuthClient {
+  id           String   @id @default(cuid()) // client_id
+  clientSecret String? // clientes públicos (Claude) usan PKCE, sin secret
+  name         String
+  redirectUris String   @db.Text // JSON array de URIs permitidas
+  createdAt    DateTime @default(now())
+
+  @@map("oauth_clients")
+}
+
+model OAuthAuthCode {
+  code                String   @id // código de autorización (aleatorio)
+  clientId            String
+  userId              String
+  redirectUri         String   @db.Text
+  codeChallenge       String
+  codeChallengeMethod String   @default("S256")
+  scope               String?
+  expiresAt           DateTime
+  createdAt           DateTime @default(now())
+
+  @@map("oauth_auth_codes")
+}
+
+model OAuthToken {
+  id               String    @id @default(cuid())
+  accessTokenHash  String    @unique
+  refreshTokenHash String?   @unique
+  clientId         String
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope            String?
+  expiresAt        DateTime // expiración del access token
+  lastUsedAt       DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([userId])
+  @@map("oauth_tokens")
 }
 
 model Project {

@@ -5,6 +5,7 @@ import { completeLogin } from '@/lib/loginSuccess'
 import { isGoogleLoginEnabled, getAppBaseUrl, getRedirectUri, fetchGoogleIdentity } from '@/lib/googleOAuth'
 
 const STATE_COOKIE = 'wipli-oauth-state'
+const NEXT_COOKIE = 'wipli-oauth-next'
 
 export async function GET(req: NextRequest) {
   const base = getAppBaseUrl(req)
@@ -16,7 +17,9 @@ export async function GET(req: NextRequest) {
 
   const cookieStore = await cookies()
   const expectedState = cookieStore.get(STATE_COOKIE)?.value
+  const nextPath = cookieStore.get(NEXT_COOKIE)?.value
   cookieStore.delete(STATE_COOKIE)
+  cookieStore.delete(NEXT_COOKIE)
 
   const { searchParams } = req.nextUrl
   const code = searchParams.get('code')
@@ -48,5 +51,6 @@ export async function GET(req: NextRequest) {
     return fail('no_company')
   }
 
-  return NextResponse.redirect(`${base}/dashboard`)
+  const dest = nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//') ? nextPath : '/dashboard'
+  return NextResponse.redirect(`${base}${dest}`)
 }

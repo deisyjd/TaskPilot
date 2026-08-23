@@ -48,14 +48,24 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Destino tras login: ?next=/ruta-relativa (p. ej. el flujo OAuth del MCP).
+  // Solo se permiten rutas relativas para evitar open-redirect.
+  const safeNext = (): string | null => {
+    const n = new URLSearchParams(window.location.search).get('next')
+    return n && n.startsWith('/') && !n.startsWith('//') ? n : null
+  }
+
   // Si venimos de un fallo del callback de Google, el motivo llega en ?error=.
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get('error')
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('error')
     if (code) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(GOOGLE_ERRORS[code] ?? 'No se pudo iniciar sesión con Google.')
-      // Limpia el parámetro para que el mensaje no reaparezca al recargar.
-      window.history.replaceState(null, '', window.location.pathname)
+      // Limpia solo el error, conservando `next`.
+      params.delete('error')
+      const qs = params.toString()
+      window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
     }
   }, [])
 
@@ -86,7 +96,7 @@ export default function LoginPage() {
       login(data)
       fetchAll()
       fetchUsers()
-      router.replace('/dashboard')
+      router.replace(safeNext() ?? '/dashboard')
     } catch {
       setError('Error de conexión. Intenta de nuevo.')
     } finally {
@@ -361,7 +371,10 @@ export default function LoginPage() {
 
               <button
                 type="button"
-                onClick={() => { window.location.href = '/api/auth/google' }}
+                onClick={() => {
+                  const n = safeNext()
+                  window.location.href = '/api/auth/google' + (n ? `?next=${encodeURIComponent(n)}` : '')
+                }}
                 className="w-full flex items-center justify-center gap-2.5 text-sm font-semibold transition-all hover:opacity-80"
                 style={{
                   height: '46px',

@@ -1,15 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
+import { getAppBaseUrl } from '@/lib/googleOAuth'
 import { TOOLS, type McpContext } from '@/lib/mcp/tools'
 
 // Servidor MCP (Model Context Protocol) sobre Streamable HTTP en modo stateless:
 // recibe mensajes JSON-RPC 2.0 por POST y responde con application/json. Cada
 // herramienta llama internamente a la API REST de TaskPilot reenviando el token
 // del cliente, así se reutilizan permisos y validaciones existentes.
-// Auth: Authorization: Bearer tp_live_... (token creado en Settings → API/MCP).
+// Auth: Authorization: Bearer <token> — un PAT (tp_live_) o un access token
+// OAuth (tp_oauth_). Sin token válido devuelve 401 con WWW-Authenticate para el
+// descubrimiento OAuth (Claude Desktop/Web).
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+const CORS: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type, Mcp-Session-Id, Mcp-Protocol-Version',
+  'Access-Control-Expose-Headers': 'WWW-Authenticate, Mcp-Session-Id',
+}
 
 const PROTOCOL_VERSION = '2025-06-18'
 const SERVER_INFO = { name: 'TaskPilot', version: '1.0.0' }
@@ -93,8 +103,13 @@ async function handleMessage(msg: JsonRpcRequest, ctx: McpContext): Promise<obje
 export async function POST(req: NextRequest) {
   const session = await getSession()
   if (!session) {
-    return NextResponse.json(rpcError(null, -32001, 'No autenticado. Envía Authorization: Bearer tp_live_...'), {
+    const base = getAppBaseUrl(req)
+    return NextResponse.json(rpcError(null, -32001, 'No autenticado.'), {
       status: 401,
+      headers: {
+        ...CORS,
+        'WWW-Authenticate': `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource"`,
+      },
     })
   }
 
@@ -102,23 +117,27 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json(rpcError(null, -32700, 'JSON inválido'), { status: 400 })
+    return NextResponse.json(rpcError(null, -32700, 'JSON inválido'), { status: 400, headers: CORS })
   }
 
   const ctx = makeContext(req)
 
   if (Array.isArray(body)) {
     const responses = (await Promise.all(body.map((m) => handleMessage(m as JsonRpcRequest, ctx)))).filter(Boolean)
-    if (responses.length === 0) return new NextResponse(null, { status: 202 })
-    return NextResponse.json(responses)
+    if (responses.length === 0) return new NextResponse(null, { status: 202, headers: CORS })
+    return NextResponse.json(responses, { headers: CORS })
   }
 
   const response = await handleMessage(body as JsonRpcRequest, ctx)
-  if (!response) return new NextResponse(null, { status: 202 })
-  return NextResponse.json(response)
+  if (!response) return new NextResponse(null, { status: 202, headers: CORS })
+  return NextResponse.json(response, { headers: CORS })
 }
 
 // En modo stateless no abrimos un stream de servidor (SSE).
 export function GET() {
-  return new NextResponse('Method Not Allowed', { status: 405, headers: { Allow: 'POST' } })
+  return new NextResponse('Method Not Allowed', { status: 405, headers: { ...CORS, Allow: 'POST' } })
+}
+
+export function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS })
 }

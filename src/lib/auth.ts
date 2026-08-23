@@ -1,5 +1,5 @@
 import { SignJWT, jwtVerify } from 'jose'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET ?? 'wipli-jwt-secret-2025-super-secure-key'
@@ -51,8 +51,15 @@ export async function getSession(): Promise<SessionPayload | null> {
     const session = await verifyToken(token)
     if (session) return session
   }
-  // Sin cookie válida: intenta un token de máquina (PAT) del header Authorization.
-  // Import diferido para evitar cargar Prisma en cada verificación de cookie.
+  // Sin cookie válida: intenta un token del header Authorization.
+  // Puede ser un access token OAuth (tp_oauth_) o un PAT (tp_live_).
+  // Import diferido para no cargar Prisma en cada verificación de cookie.
+  const header = (await headers()).get('authorization')
+  const bearer = header?.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : ''
+  if (bearer.startsWith('tp_oauth_')) {
+    const { sessionFromOAuthToken } = await import('@/lib/oauth')
+    return sessionFromOAuthToken(bearer)
+  }
   const { sessionFromBearer } = await import('@/lib/apiTokens')
   return sessionFromBearer()
 }

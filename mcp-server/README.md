@@ -60,10 +60,17 @@ Verifica con `claude mcp list`. Para quitarlo: `claude mcp remove wiplitask`.
 }
 ```
 
-### Claude.ai (web) — Conector personalizado
+### Claude.ai (web) y Claude Desktop — Conector con OAuth (sin token)
 
-Settings → **Connectors** → *Add custom connector* → URL
-`https://wiplitask.com/api/mcp` y agrega el header `Authorization: Bearer <token>`.
+La forma más simple: agrega un **conector personalizado** solo con la URL
+`https://wiplitask.com/api/mcp`. Claude detecta que requiere OAuth, abre el
+login de Wipli para que inicies sesión y autorices, y se conecta **sin pegar
+ningún token**. El acceso actúa sobre tu empresa activa y puedes revocarlo desde
+Settings (los conectores/tokens creados aparecen como accesos activos).
+
+> Internamente usa OAuth 2.1 (registro dinámico + PKCE); los endpoints de
+> descubrimiento viven en `/.well-known/oauth-protected-resource` y
+> `/.well-known/oauth-authorization-server`.
 
 ---
 

@@ -6,6 +6,7 @@ import { isGoogleLoginEnabled, getAppBaseUrl, getRedirectUri, buildGoogleAuthUrl
 // Cookie de vida corta para el parámetro `state` (protección CSRF del flujo
 // OAuth). SameSite=lax para que sobreviva a la navegación de vuelta desde Google.
 const STATE_COOKIE = 'wipli-oauth-state'
+const NEXT_COOKIE = 'wipli-oauth-next'
 
 export async function GET(req: NextRequest) {
   if (!isGoogleLoginEnabled()) {
@@ -22,6 +23,19 @@ export async function GET(req: NextRequest) {
     maxAge: 60 * 10, // 10 minutos
     path: '/',
   })
+
+  // Propaga ?next= (destino tras login, p. ej. el flujo OAuth del MCP). Solo
+  // rutas relativas, para evitar open-redirect.
+  const next = req.nextUrl.searchParams.get('next')
+  if (next && next.startsWith('/') && !next.startsWith('//')) {
+    cookieStore.set(NEXT_COOKIE, next, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 10,
+      path: '/',
+    })
+  }
 
   return NextResponse.redirect(buildGoogleAuthUrl(getRedirectUri(req), state))
 }

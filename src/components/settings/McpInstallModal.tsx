@@ -85,6 +85,20 @@ env = { TASKPILOT_URL = "${origin}", TASKPILOT_TOKEN = "TU_TOKEN" }`
             <code className="text-[11px] truncate" style={{ fontFamily: 'monospace', color: 'var(--tp-text)' }}>{endpoint}</code>
           </div>
 
+          {/* Opción OAuth (sin token manual) */}
+          <div className="p-3 rounded-xl" style={{ border: '1px solid var(--tp-lime)', backgroundColor: 'rgba(223,255,95,0.12)' }}>
+            <p className="text-xs font-semibold" style={{ color: 'var(--tp-text)' }}>Claude Desktop / Claude.ai (con OAuth — sin token)</p>
+            <p className="text-[11px] mt-1" style={{ color: 'var(--tp-text-2)' }}>
+              Agrega un <strong>conector personalizado</strong> con la URL de abajo. Claude te pedirá iniciar sesión en
+              Wipli y autorizar; no necesitas pegar ningún token. Actúa sobre tu empresa activa.
+            </p>
+            <code className="block text-[11px] mt-2 px-3 py-2 rounded-lg break-all" style={{ backgroundColor: 'var(--tp-bg)', color: 'var(--tp-text)', fontFamily: 'monospace' }}>
+              {endpoint}
+            </code>
+          </div>
+
+          <p className="text-[11px] font-semibold" style={{ color: 'var(--tp-text-2)' }}>O con token (PAT):</p>
+
           {block('claude', 'Claude Code (HTTP)', 'Ejecuta este comando en tu terminal.', claudeCmd)}
           {block('codex', 'Codex CLI (stdio)', 'Agrega esto a ~/.codex/config.toml (usa el puente del repo).', codexCfg)}
           {block('cursor', 'Cursor / VS Code (HTTP)', 'Agrega esto a tu mcp.json.', cursorCfg)}
