@@ -7,7 +7,7 @@ import {
 } from '@/types'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
-import { formatDateTime, formatDateOnly } from '@/lib/dates'
+import { formatDateTime, formatDateOnly, formatDate, isOverdue } from '@/lib/dates'
 import { canEditTask } from '@/lib/permissions'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -151,7 +151,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
 
   const addChecklist = () => {
     if (!checkInput.trim()) return
-    setField('checklist', [...form.checklist, { id: uid(), text: checkInput.trim(), done: false, assigneeId: null }])
+    setField('checklist', [...form.checklist, { id: uid(), text: checkInput.trim(), done: false, dueDate: null, assigneeId: null }])
     setCheckInput('')
   }
   const toggleChecklist = (id: string) =>
@@ -160,6 +160,8 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
     setField('checklist', form.checklist.filter((c) => c.id !== id))
   const tagChecklist = (id: string, assigneeId: string | null) =>
     setField('checklist', form.checklist.map((c) => (c.id === id ? { ...c, assigneeId } : c)))
+  const setChecklistDate = (id: string, dueDate: string) =>
+    setField('checklist', form.checklist.map((c) => (c.id === id ? { ...c, dueDate: dueDate || null } : c)))
   const editChecklistText = (id: string, text: string) =>
     setField('checklist', form.checklist.map((c) => (c.id === id ? { ...c, text } : c)))
   const startEditChecklist = (id: string, text: string) => {
@@ -386,6 +388,30 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
+                        )}
+                        {readOnly ? (
+                          item.dueDate && (
+                            <span
+                              className="text-xs shrink-0"
+                              style={{ color: !item.done && isOverdue(item.dueDate, item.done ? 'done' : 'pending') ? '#DC2626' : 'var(--tp-text-2)' }}
+                            >
+                              {formatDate(item.dueDate)}
+                            </span>
+                          )
+                        ) : (
+                          <input
+                            type="date"
+                            value={item.dueDate ?? ''}
+                            onChange={(e) => setChecklistDate(item.id, e.target.value)}
+                            title="Fecha límite del ítem"
+                            className="text-xs rounded-full px-2 py-1 border outline-none shrink-0"
+                            style={{
+                              borderColor: 'var(--tp-border)',
+                              backgroundColor: 'var(--tp-bg)',
+                              color: item.dueDate && !item.done && isOverdue(item.dueDate, 'pending') ? '#DC2626' : 'var(--tp-text-2)',
+                              width: '120px',
+                            }}
+                          />
                         )}
                         <select
                           value={item.assigneeId ?? ''}

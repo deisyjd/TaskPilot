@@ -39,6 +39,7 @@ export interface ChecklistItem {
   id: string
   text: string
   done: boolean
+  dueDate?: string | null
   assigneeId?: string | null
 }
 

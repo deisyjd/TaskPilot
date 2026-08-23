@@ -26,7 +26,7 @@ const strArr = (description: string) => ({ type: 'array', items: { type: 'string
 // Campos de una tarea de la API tal como los devuelve el servidor.
 interface TaskShape {
   id: string
-  checklist?: { text: string; done: boolean; assigneeId?: string | null }[]
+  checklist?: { text: string; done: boolean; dueDate?: string | null; assigneeId?: string | null }[]
   [k: string]: unknown
 }
 
@@ -201,11 +201,14 @@ export const TOOLS: McpTool[] = [
   {
     name: 'add_checklist_item',
     description: 'Agrega un ítem al checklist de una tarea (conserva los existentes).',
-    inputSchema: obj({ taskId: str('ID de la tarea.'), text: str('Texto del ítem.') }, ['taskId', 'text']),
+    inputSchema: obj(
+      { taskId: str('ID de la tarea.'), text: str('Texto del ítem.'), dueDate: str('Fecha límite del ítem (YYYY-MM-DD), opcional.') },
+      ['taskId', 'text']
+    ),
     handler: async (args, ctx) => {
       const task = await getTask(args.taskId as string, ctx)
-      const existing = (task.checklist ?? []).map((c) => ({ text: c.text, done: c.done, assigneeId: c.assigneeId ?? null }))
-      const checklist = [...existing, { text: args.text as string, done: false, assigneeId: null }]
+      const existing = (task.checklist ?? []).map((c) => ({ text: c.text, done: c.done, dueDate: c.dueDate ?? null, assigneeId: c.assigneeId ?? null }))
+      const checklist = [...existing, { text: args.text as string, done: false, dueDate: (args.dueDate as string) || null, assigneeId: null }]
       return ctx.api(`/api/tasks/${args.taskId as string}`, { method: 'PATCH', body: JSON.stringify({ checklist }) })
     },
   },
@@ -221,12 +224,13 @@ export const TOOLS: McpTool[] = [
   },
   {
     name: 'set_checklist_item',
-    description: 'Marca o desmarca un ítem del checklist de una tarea, identificándolo por su texto.',
+    description: 'Marca o desmarca un ítem del checklist de una tarea y/o le cambia la fecha límite, identificándolo por su texto.',
     inputSchema: obj(
       {
         taskId: str('ID de la tarea.'),
-        text: str('Texto del ítem del checklist a marcar/desmarcar.'),
+        text: str('Texto del ítem del checklist a modificar.'),
         done: { type: 'boolean', description: 'true para marcar como hecho (por defecto), false para desmarcar.' },
+        dueDate: str('Nueva fecha límite del ítem (YYYY-MM-DD). Usa cadena vacía para quitarla. Opcional.'),
       },
       ['taskId', 'text']
     ),
@@ -240,6 +244,7 @@ export const TOOLS: McpTool[] = [
       const checklist = items.map((c, i) => ({
         text: c.text,
         done: i === idx ? done : c.done,
+        dueDate: i === idx && args.dueDate !== undefined ? (args.dueDate as string) || null : c.dueDate ?? null,
         assigneeId: c.assigneeId ?? null,
       }))
       return ctx.api(`/api/tasks/${args.taskId as string}`, { method: 'PATCH', body: JSON.stringify({ checklist }) })

@@ -122,9 +122,10 @@ export async function POST(req: NextRequest) {
       recurrenceUntil: hasRecurrence ? (recurrenceUntil || null) : null,
       checklist: checklist?.length
         ? {
-            create: checklist.map((c: { text: string; done?: boolean; assigneeId?: string | null }) => ({
+            create: checklist.map((c: { text: string; done?: boolean; dueDate?: string | null; assigneeId?: string | null }) => ({
               text: c.text,
               done: Boolean(c.done),
+              dueDate: c.dueDate || null,
               assigneeId: c.assigneeId && validIds.includes(c.assigneeId) ? c.assigneeId : null,
             })),
           }

@@ -99,10 +99,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...(body.checklist.length > 0
         ? [
             prisma.checklistItem.createMany({
-              data: body.checklist.map((c: { text: string; done?: boolean; assigneeId?: string | null }) => ({
+              data: body.checklist.map((c: { text: string; done?: boolean; dueDate?: string | null; assigneeId?: string | null }) => ({
                 taskId: id,
                 text: c.text,
                 done: Boolean(c.done),
+                dueDate: c.dueDate || null,
                 assigneeId: c.assigneeId && newIds.includes(c.assigneeId) ? c.assigneeId : null,
               })),
             }),

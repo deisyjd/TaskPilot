@@ -200,6 +200,7 @@ model ChecklistItem {
   task       Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
   text       String
   done       Boolean @default(false)
+  dueDate    String?
   assigneeId String?
   assignee   User?   @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
 

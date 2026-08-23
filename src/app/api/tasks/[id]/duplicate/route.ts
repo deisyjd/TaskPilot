@@ -38,7 +38,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
       // La duplicada no hereda comentarios ni recurrencia — empieza como
       // una tarea normal e independiente.
       checklist: original.checklist.length
-        ? { create: original.checklist.map((c) => ({ text: c.text, done: false })) }
+        ? { create: original.checklist.map((c) => ({ text: c.text, done: false, dueDate: c.dueDate })) }
         : undefined,
       assignees: original.assignees.length
         ? { createMany: { data: original.assignees.map((a) => ({ userId: a.userId, role: a.role })) } }
