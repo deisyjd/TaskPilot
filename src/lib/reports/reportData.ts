@@ -9,7 +9,7 @@ import { STATUS_LABELS, PRIORITY_LABELS, TaskStatus, Priority } from '@/types'
 
 // Colores (hex) por estado — equivalentes a las clases Tailwind del tablero,
 // para pintar las gráficas del correo y del PDF de forma consistente.
-const STATUS_HEX: Record<TaskStatus, string> = {
+export const STATUS_HEX: Record<TaskStatus, string> = {
   pending: '#9CA3AF',
   'in-progress': '#3B82F6',
   review: '#F59E0B',
@@ -18,13 +18,21 @@ const STATUS_HEX: Record<TaskStatus, string> = {
   blocked: '#EF4444',
 }
 
+export interface ReportChecklistRow {
+  text: string
+  done: boolean
+  assignee: string | null
+}
+
 export interface ReportTaskRow {
   title: string
   statusLabel: string
+  statusColor: string
   priorityLabel: string
   dueDate: string
   projectName: string
   assignees: string
+  checklist: ReportChecklistRow[]
 }
 
 export interface ReportData {
@@ -65,7 +73,11 @@ export async function buildReportData(opts: BuildOpts): Promise<ReportData> {
   const [tasks, memberships] = await Promise.all([
     prisma.task.findMany({
       where,
-      include: { project: { select: { name: true, color: true } }, assignees: { select: { userId: true } } },
+      include: {
+        project: { select: { name: true, color: true } },
+        assignees: { select: { userId: true } },
+        checklist: { select: { text: true, done: true, assigneeId: true } },
+      },
       orderBy: [{ dueDate: 'asc' }],
     }),
     prisma.companyMembership.findMany({ where: { companyId: opts.companyId }, include: { user: { select: { id: true, name: true } } } }),
@@ -111,10 +123,16 @@ export async function buildReportData(opts: BuildOpts): Promise<ReportData> {
     tasks: tasks.map((t) => ({
       title: t.title,
       statusLabel: STATUS_LABELS[t.status as TaskStatus] ?? t.status,
+      statusColor: STATUS_HEX[t.status as TaskStatus] ?? '#6B7280',
       priorityLabel: PRIORITY_LABELS[t.priority as Priority] ?? t.priority,
       dueDate: t.dueDate,
       projectName: t.project.name,
       assignees: t.assignees.map((a) => nameById.get(a.userId) ?? '—').join(', ') || '—',
+      checklist: t.checklist.map((c) => ({
+        text: c.text,
+        done: c.done,
+        assignee: c.assigneeId ? nameById.get(c.assigneeId) ?? null : null,
+      })),
     })),
   }
 }
