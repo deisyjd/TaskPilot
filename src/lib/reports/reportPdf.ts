@@ -1,5 +1,8 @@
-import { PDFDocument, PDFFont, PDFPage, RGB, StandardFonts, rgb } from 'pdf-lib'
+import { PDFDocument, PDFFont, PDFImage, PDFPage, RGB, StandardFonts, rgb } from 'pdf-lib'
+import { readFile } from 'fs/promises'
+import path from 'path'
 import { ReportData, STATUS_HEX } from './reportData'
+import { uploadsDir } from '@/lib/uploads'
 
 const PAGE = { w: 595.28, h: 841.89 } // A4 en puntos
 const MARGIN = 40
@@ -41,6 +44,24 @@ function hexToRgb(hex: string): RGB {
 
 function longDate(date: Date): string {
   return `${date.getDate()} de ${MONTH_FULL[date.getMonth()]} de ${date.getFullYear()}`
+}
+
+// El logo de un proyecto se guarda en disco vía /api/uploads/<archivo> — se
+// lee directo del volumen de uploads (mismo proceso) en vez de pedirlo por
+// HTTP. Solo soporta PNG/JPG (lo único que pdf-lib puede embeber); otros
+// formatos (webp, gif) simplemente no se dibujan.
+async function loadProjectLogo(doc: PDFDocument, logoUrl: string | null): Promise<PDFImage | null> {
+  if (!logoUrl || !logoUrl.startsWith('/api/uploads/')) return null
+  try {
+    const key = logoUrl.slice('/api/uploads/'.length)
+    const bytes = await readFile(path.join(uploadsDir(), key))
+    const ext = path.extname(key).toLowerCase()
+    if (ext === '.png') return await doc.embedPng(bytes)
+    if (ext === '.jpg' || ext === '.jpeg') return await doc.embedJpg(bytes)
+    return null
+  } catch {
+    return null
+  }
 }
 
 export async function buildReportPdf(data: ReportData): Promise<Buffer> {
@@ -125,12 +146,27 @@ export async function buildReportPdf(data: ReportData): Promise<Buffer> {
   y = badgeCy - 11
   drawCentered('AVANCE', badgeCx, 7, bold, DARK)
 
+  // Logos de proyecto: se embeben una sola vez por proyecto y se reutilizan
+  // tanto en el título (si el reporte es de un solo proyecto) como en las
+  // filas de "Avance por proyecto".
+  const projectLogos = new Map<string, PDFImage>()
+  for (const p of data.byProject) {
+    const img = await loadProjectLogo(doc, p.logoUrl)
+    if (img) projectLogos.set(p.name, img)
+  }
+
   // ── Título ──
   const title = data.scopeLabel.replace(/^(Empresa|Proyecto):\s*/, '')
+  const isSingleProjectScope = /^Proyecto:\s*/.test(data.scopeLabel)
+  const titleLogo = isSingleProjectScope ? projectLogos.get(title) : undefined
+  const titleLogoW = titleLogo ? 26 : 0
   y = PAGE.h - HEADER_H - 30
   draw('REPORTE DE AVANCE', MARGIN, 9, bold, LIME_TEXT)
   y -= 24
-  draw(truncate(title, bold, 22, PAGE.w - 2 * MARGIN), MARGIN, 22, bold, DARK)
+  if (titleLogo) {
+    page.drawImage(titleLogo, { x: MARGIN, y: y - 6, width: 26, height: 26 })
+  }
+  draw(truncate(title, bold, 22, PAGE.w - 2 * MARGIN - titleLogoW - 10), MARGIN + titleLogoW + (titleLogo ? 10 : 0), 22, bold, DARK)
   y -= 20
   draw(`${data.start} — ${data.end}`, MARGIN, 11, font, TEXT2)
   y -= 26
@@ -155,7 +191,7 @@ export async function buildReportPdf(data: ReportData): Promise<Buffer> {
   y = metricsTopY - metricH - 20
 
   // ── Tarjeta con gráfica de barras horizontales ──
-  const barCard = (cardTitle: string, items: { label: string; value: string; pct: number; color: RGB }[]) => {
+  const barCard = (cardTitle: string, items: { label: string; value: string; pct: number; color: RGB; logo?: PDFImage }[]) => {
     if (items.length === 0) return
     const rowH = 20
     const headerH = 22
@@ -171,7 +207,9 @@ export async function buildReportPdf(data: ReportData): Promise<Buffer> {
     const barMaxW = PAGE.w - 2 * MARGIN - 2 * PAD - labelW - 8 - 70
     const valueX = barX + barMaxW + 8
     for (const it of items) {
-      draw(truncate(it.label, font, 9, labelW), MARGIN + PAD, 9, font, TEXT)
+      const logoW = it.logo ? 14 : 0
+      if (it.logo) page.drawImage(it.logo, { x: MARGIN + PAD, y: y - 3, width: 12, height: 12 })
+      draw(truncate(it.label, font, 9, labelW - logoW), MARGIN + PAD + logoW, 9, font, TEXT)
       page.drawRectangle({ x: barX, y: y - 1, width: barMaxW, height: 8, color: TRACK })
       const w = Math.max(1, Math.round(barMaxW * Math.min(1, Math.max(0, it.pct / 100))))
       page.drawRectangle({ x: barX, y: y - 1, width: w, height: 8, color: it.color })
@@ -193,6 +231,7 @@ export async function buildReportPdf(data: ReportData): Promise<Buffer> {
       value: `${p.done}/${p.total} · ${Math.round((p.done / (p.total || 1)) * 100)}%`,
       pct: (p.done / (p.total || 1)) * 100,
       color: hexToRgb(p.color),
+      logo: projectLogos.get(p.name),
     }))
   )
 

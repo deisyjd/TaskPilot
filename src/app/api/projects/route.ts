@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Whitelist: el cliente envía campos que no son columnas (createdBy, …)
-  const { name, description, color, status, featured, coverImageUrl, memberIds, viewerMemberIds } = await req.json()
+  const { name, description, color, status, featured, coverImageUrl, logoUrl, memberIds, viewerMemberIds } = await req.json()
   if (!name) return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 })
 
   try {
@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
         color,
         status,
         coverImageUrl,
+        logoUrl,
         companyId: session.activeCompanyId,
         createdById: session.userId,
         members:

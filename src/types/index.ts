@@ -179,6 +179,7 @@ export interface Project {
   // Extended fields
   description?: string
   coverImageUrl?: string
+  logoUrl?: string | null
   status?: ProjectStatus
   featured?: boolean
   createdBy?: string

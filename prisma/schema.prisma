@@ -106,6 +106,7 @@ model Project {
   color         String   @default("#8B5CF6")
   status        String   @default("active")
   coverImageUrl String?  @db.Text
+  logoUrl       String?  @db.Text
   attachments   Json?
   links         Json?
   createdById   String?

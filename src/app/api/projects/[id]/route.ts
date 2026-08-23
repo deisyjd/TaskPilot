@@ -45,11 +45,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   // Whitelist: el cliente envía campos que no son columnas (createdBy, …).
-  // description y coverImageUrl son nullables: '' → null para poder limpiarlos.
+  // description, coverImageUrl y logoUrl son nullables: '' → null para poder limpiarlos.
   const data = pickFields(
     body,
-    ['name', 'description', 'color', 'status', 'coverImageUrl', 'attachments', 'links'],
-    ['description', 'coverImageUrl']
+    ['name', 'description', 'color', 'status', 'coverImageUrl', 'logoUrl', 'attachments', 'links'],
+    ['description', 'coverImageUrl', 'logoUrl']
   )
 
   if (Object.keys(data).length > 0) {

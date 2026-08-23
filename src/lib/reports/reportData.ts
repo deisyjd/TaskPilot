@@ -43,7 +43,7 @@ export interface ReportData {
   generatedBy: string
   totals: { total: number; done: number; pending: number; completionRate: number }
   byStatus: { label: string; count: number; color: string }[]
-  byProject: { name: string; total: number; done: number; color: string }[]
+  byProject: { name: string; total: number; done: number; color: string; logoUrl: string | null }[]
   byAssignee: { name: string; total: number; done: number }[]
   tasks: ReportTaskRow[]
 }
@@ -74,7 +74,7 @@ export async function buildReportData(opts: BuildOpts): Promise<ReportData> {
     prisma.task.findMany({
       where,
       include: {
-        project: { select: { name: true, color: true } },
+        project: { select: { name: true, color: true, logoUrl: true } },
         assignees: { select: { userId: true } },
         checklist: { select: { text: true, done: true, assigneeId: true } },
       },
@@ -93,10 +93,10 @@ export async function buildReportData(opts: BuildOpts): Promise<ReportData> {
     .map((s) => ({ label: STATUS_LABELS[s], count: tasks.filter((t) => t.status === s).length, color: STATUS_HEX[s] }))
     .filter((r) => r.count > 0)
 
-  const projMap = new Map<string, { name: string; total: number; done: number; color: string }>()
+  const projMap = new Map<string, { name: string; total: number; done: number; color: string; logoUrl: string | null }>()
   const asgMap = new Map<string, { name: string; total: number; done: number }>()
   for (const t of tasks) {
-    const pe = projMap.get(t.project.name) ?? { name: t.project.name, total: 0, done: 0, color: t.project.color }
+    const pe = projMap.get(t.project.name) ?? { name: t.project.name, total: 0, done: 0, color: t.project.color, logoUrl: t.project.logoUrl }
     pe.total++
     if (t.status === 'done') pe.done++
     projMap.set(t.project.name, pe)

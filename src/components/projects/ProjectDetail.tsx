@@ -264,7 +264,16 @@ export function ProjectDetail({ project, onEdit }: Props) {
         {/* Content */}
         <div className="absolute bottom-0 left-0 right-0 p-6 flex items-end justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: project.color }} />
+            {project.logoUrl ? (
+              <img
+                src={project.logoUrl}
+                alt=""
+                className="w-8 h-8 rounded-full object-cover shrink-0"
+                style={{ border: '2px solid rgba(255,255,255,0.7)' }}
+              />
+            ) : (
+              <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: project.color }} />
+            )}
             <h1
               className="text-2xl font-bold"
               style={{ color: '#FFFFFF', textShadow: '0 1px 4px rgba(0,0,0,0.4)' }}

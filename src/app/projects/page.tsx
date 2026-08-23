@@ -105,10 +105,18 @@ function ProjectCard({ project, taskCount, onToggleFeatured, onArchive, onRestor
       {/* Card body */}
       <Link href={`/projects/${project.id}`} className="flex flex-col gap-3 p-4 flex-1">
         <div className="flex items-start gap-2.5">
-          <div
-            className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5"
-            style={{ backgroundColor: project.color }}
-          />
+          {project.logoUrl ? (
+            <img
+              src={project.logoUrl}
+              alt=""
+              className="w-5 h-5 rounded-full object-cover shrink-0 mt-0.5"
+            />
+          ) : (
+            <div
+              className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5"
+              style={{ backgroundColor: project.color }}
+            />
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <h3

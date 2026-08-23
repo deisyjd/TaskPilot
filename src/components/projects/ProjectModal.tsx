@@ -37,6 +37,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
   const [viewerMembers, setViewerMembers] = useState<string[]>([])
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
 
   const isEditMode = Boolean(existingProject)
@@ -53,6 +54,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
       setSelectedMembers(existingProject.members ?? [])
       setViewerMembers(existingProject.viewerUserIds ?? [])
       setCoverPreview(existingProject.coverImageUrl ?? null)
+      setLogoPreview(existingProject.logoUrl ?? null)
     } else {
       setName('')
       setColor(PRESET_COLORS[0])
@@ -61,6 +63,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
       setSelectedMembers([])
       setViewerMembers([])
       setCoverPreview(null)
+      setLogoPreview(null)
     }
   }, [existingProject, open])
 
@@ -93,6 +96,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
       color,
       description: description.trim() || undefined,
       coverImageUrl: coverPreview ?? undefined,
+      logoUrl: logoPreview ?? undefined,
       status,
       members: selectedMembers.length > 0 ? selectedMembers : undefined,
       viewerUserIds: viewerMembers.length > 0 ? viewerMembers : undefined,
@@ -112,6 +116,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
         // '' (no undefined) para que el servidor pueda limpiar el campo.
         description: description.trim(),
         coverImageUrl: coverPreview ?? '',
+        logoUrl: logoPreview ?? '',
         status: newProject.status,
         members: newProject.members,
         memberIds: selectedMembers,
@@ -133,6 +138,7 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
     setSelectedMembers([])
     setViewerMembers([])
     setCoverPreview(null)
+    setLogoPreview(null)
     onClose()
   }
 
@@ -236,6 +242,14 @@ export function ProjectModal({ open, project: existingProject, onClose, onSave }
             value={coverPreview ?? undefined}
             onChange={(url) => setCoverPreview(url)}
             aspectRatio="cover"
+          />
+
+          {/* Logo */}
+          <ImageUploader
+            label="Logo del proyecto"
+            value={logoPreview ?? undefined}
+            onChange={(url) => setLogoPreview(url)}
+            aspectRatio="square"
           />
 
           {/* Color picker */}

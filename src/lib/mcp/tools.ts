@@ -22,6 +22,53 @@ const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
 })
 const str = (description: string) => ({ type: 'string', description })
 const strArr = (description: string) => ({ type: 'array', items: { type: 'string' }, description })
+const linkArr = (description: string) => ({
+  type: 'array',
+  description,
+  items: {
+    type: 'object',
+    properties: {
+      url: { type: 'string', description: 'URL del enlace.' },
+      title: { type: 'string', description: 'Título visible (opcional, por defecto el dominio).' },
+      description: { type: 'string', description: 'Descripción breve (opcional).' },
+    },
+    required: ['url'],
+    additionalProperties: false,
+  },
+})
+
+interface RawLink {
+  url: string
+  title?: string
+  description?: string
+}
+
+// Arma objetos ReferenceLink completos a partir de lo que manda el cliente MCP
+// (solo url/title/description) — mismo criterio que ReferenceLinks.tsx: si la
+// URL no trae esquema le antepone https://, y sin título usa el dominio.
+function toReferenceLinks(rawLinks: unknown, createdBy: string): Record<string, unknown>[] {
+  if (!Array.isArray(rawLinks)) return []
+  return rawLinks
+    .filter((l): l is RawLink => Boolean(l) && typeof l === 'object' && typeof (l as RawLink).url === 'string' && (l as RawLink).url.trim() !== '')
+    .map((l, i) => {
+      const trimmed = l.url.trim()
+      const url = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+      let domain = url
+      try {
+        domain = new URL(url).hostname.replace(/^www\./, '')
+      } catch {
+        // URL sigue siendo inválida tras anteponer el esquema — se manda tal cual y la API la rechazará.
+      }
+      return {
+        id: `link-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+        url,
+        title: l.title?.trim() || domain,
+        description: l.description?.trim() || undefined,
+        createdBy,
+        createdAt: new Date().toISOString(),
+      }
+    })
+}
 
 // Campos de una tarea de la API tal como los devuelve el servidor.
 interface TaskShape {
@@ -139,11 +186,17 @@ export const TOOLS: McpTool[] = [
         priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: 'Prioridad (por defecto medium).' },
         dueDate: str('Fecha límite ISO (YYYY-MM-DD), opcional.'),
         assigneeIds: strArr('IDs de responsables (usa list_users), opcional.'),
+        links: linkArr('Enlaces de referencia a agregar a la tarea, opcional.'),
       },
       ['projectId', 'title']
     ),
-    handler: (args, ctx) =>
-      ctx.api('/api/tasks', {
+    handler: async (args, ctx) => {
+      let links: Record<string, unknown>[] | undefined
+      if (Array.isArray(args.links) && args.links.length > 0) {
+        const me = (await ctx.api('/api/auth/me')) as { name?: string }
+        links = toReferenceLinks(args.links, me.name ?? 'MCP')
+      }
+      return ctx.api('/api/tasks', {
         method: 'POST',
         body: JSON.stringify({
           projectId: args.projectId,
@@ -156,12 +209,14 @@ export const TOOLS: McpTool[] = [
           dueDate: (args.dueDate as string) || new Date().toISOString().slice(0, 10),
           tags: [],
           assigneeIds: Array.isArray(args.assigneeIds) ? args.assigneeIds : [],
+          links,
         }),
-      }),
+      })
+    },
   },
   {
     name: 'update_task',
-    description: 'Actualiza campos de una tarea (título, descripción, estado, prioridad, fecha límite).',
+    description: 'Actualiza campos de una tarea (título, descripción, estado, prioridad, fecha límite) y/o le agrega enlaces de referencia (conserva los existentes).',
     inputSchema: obj(
       {
         taskId: str('ID de la tarea.'),
@@ -170,13 +225,22 @@ export const TOOLS: McpTool[] = [
         status: { type: 'string', enum: ['pending', 'in-progress', 'review', 'scheduled', 'done', 'blocked'], description: 'Nuevo estado (opcional).' },
         priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: 'Nueva prioridad (opcional).' },
         dueDate: str('Nueva fecha límite ISO (opcional).'),
+        links: linkArr('Enlaces de referencia a agregar a la tarea (se suman a los que ya tiene), opcional.'),
       },
       ['taskId']
     ),
-    handler: (args, ctx) => {
+    handler: async (args, ctx) => {
       const patch: Record<string, unknown> = {}
       for (const k of ['title', 'description', 'status', 'priority', 'dueDate']) {
         if (args[k] !== undefined) patch[k] = args[k]
+      }
+      if (Array.isArray(args.links) && args.links.length > 0) {
+        const [task, me] = await Promise.all([
+          getTask(args.taskId as string, ctx),
+          ctx.api('/api/auth/me') as Promise<{ name?: string }>,
+        ])
+        const existing = Array.isArray(task.links) ? task.links : []
+        patch.links = [...existing, ...toReferenceLinks(args.links, me.name ?? 'MCP')]
       }
       return ctx.api(`/api/tasks/${args.taskId as string}`, { method: 'PATCH', body: JSON.stringify(patch) })
     },
