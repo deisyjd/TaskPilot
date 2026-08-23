@@ -37,6 +37,13 @@ class TaskCache {
     });
   }
 
+  /// Elimina una tarea de la caché por id (p. ej. una tarea temporal creada
+  /// offline, tras subirla y obtener la real del servidor).
+  Future<void> delete(String id) async {
+    final db = await _db.database;
+    await db.delete('tasks_cache', where: 'id = ?', whereArgs: [id]);
+  }
+
   /// Inserta o actualiza una sola tarea (para cambios optimistas offline).
   Future<void> upsert(String companyId, Task task) async {
     final db = await _db.database;

@@ -8,6 +8,8 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/note.dart';
 import '../../data/models/project.dart';
 import '../../data/models/task.dart';
+import '../system/sync_controller.dart';
+import '../tasks/task_create_sheet.dart';
 import '../tasks/task_tile.dart';
 import '../tasks/tasks_providers.dart';
 
@@ -37,6 +39,19 @@ class ProjectDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(project.name)),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final created = await showTaskCreateSheet(context, project.id);
+          if (created != null) {
+            ref.invalidate(companyTasksProvider);
+            ref.read(syncControllerProvider.notifier).refreshPending();
+          }
+        },
+        backgroundColor: AppColors.lime,
+        foregroundColor: AppColors.ink,
+        icon: const Icon(Icons.add),
+        label: const Text('Tarea'),
+      ),
       body: RefreshIndicator(
         color: AppColors.lime,
         onRefresh: () async {

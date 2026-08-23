@@ -17,6 +17,35 @@ class TaskMutations {
   final OutboxStore _outbox;
   final ConnectivityService _connectivity;
 
+  /// Crea una tarea. Online: POST directo. Offline: crea una tarea temporal
+  /// (id `local_…`) en la caché y encola un POST para cuando vuelva la conexión.
+  Future<Task> createTask(
+    String companyId,
+    Map<String, dynamic> fields,
+    Task optimistic,
+  ) async {
+    if (await _connectivity.isOnline()) {
+      try {
+        final created = await _api.create(fields);
+        await _cache.upsert(companyId, created);
+        return created;
+      } catch (_) {
+        // cae al camino offline
+      }
+    }
+    await _cache.upsert(companyId, optimistic);
+    await _outbox.add(
+      OutboxOp(
+        id: _newId(),
+        taskId: optimistic.id, // id temporal, para limpiar la caché tras subir
+        type: OutboxOpType.createTask,
+        payload: fields,
+        createdAt: DateTime.now().toIso8601String(),
+      ),
+    );
+    return optimistic;
+  }
+
   Future<Task> updateStatus(String companyId, Task task, TaskStatus status) {
     return _apply(
       companyId: companyId,

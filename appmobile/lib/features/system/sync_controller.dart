@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
+import '../../data/offline/outbox.dart';
 import '../tasks/tasks_providers.dart';
 import 'connectivity.dart';
 
@@ -61,9 +62,15 @@ class SyncController extends StateNotifier<SyncState> {
     }
     if (mounted) state = state.copyWith(syncing: true);
     final repo = _ref.read(tasksRepositoryProvider);
+    final cache = _ref.read(taskCacheProvider);
     for (final op in ops) {
       try {
-        await repo.update(op.taskId, op.payload);
+        if (op.type == OutboxOpType.createTask) {
+          await repo.create(op.payload);
+          await cache.delete(op.taskId); // limpia la tarea temporal local
+        } else {
+          await repo.update(op.taskId, op.payload);
+        }
         await outbox.remove(op.id);
       } catch (_) {
         break;

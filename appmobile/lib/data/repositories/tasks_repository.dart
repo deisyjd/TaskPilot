@@ -28,6 +28,12 @@ class TasksRepository {
         .toList();
   }
 
+  /// Crea una tarea. Requiere projectId + title en [fields].
+  Future<Task> create(Map<String, dynamic> fields) async {
+    final res = await _api.post<Map<String, dynamic>>('/api/tasks', data: fields);
+    return Task.fromJson(res.data!);
+  }
+
   /// PATCH parcial. Devuelve la tarea ya serializada por el backend.
   Future<Task> update(String taskId, Map<String, dynamic> fields) async {
     final res = await _api.patch<Map<String, dynamic>>(

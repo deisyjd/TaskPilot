@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../../core/storage/local_db.dart';
 
 /// Tipo de cambio pendiente de subir.
-enum OutboxOpType { updateStatus, setChecklist, updateFields }
+enum OutboxOpType { createTask, updateStatus, setChecklist, updateFields }
 
 /// Un cambio hecho sin conexión, pendiente de enviar al backend.
 /// [payload] es exactamente el cuerpo del PATCH /api/tasks/:id.
