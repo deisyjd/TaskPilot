@@ -12,6 +12,7 @@ import { useCurrentUser } from '@/store/useUserStore'
 import { useChatStore } from '@/store/useChatStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { can } from '@/lib/permissions'
+import { useRealtime } from '@/lib/useRealtime'
 import { isReminderDue, reminderDueTimestamp } from '@/lib/reminders'
 import {
   isReminderAlertsEnabled,
@@ -35,6 +36,10 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
 
   const fetchConversations = useChatStore((s) => s.fetchConversations)
   const fetchReminders = useTaskStore((s) => s.fetchReminders)
+
+  // Realtime: mensajes de chat instantáneos + toast (SSE). El sondeo de abajo
+  // (30s) queda como red de seguridad para no-leídos y recordatorios.
+  useRealtime()
 
   // Avisa (sonido + notificación) por cada recordatorio vencido que aún no se
   // le haya avisado — el registro vive en localStorage (ver reminderAlerts.ts),

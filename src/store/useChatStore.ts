@@ -14,14 +14,26 @@ async function api<T>(url: string, opts?: RequestInit): Promise<T> {
   return res.json()
 }
 
+function messagePreview(m: Message): string {
+  if (m.text) return m.text
+  if (m.attachments?.length) return `📎 ${m.attachments[0].name}`
+  if (m.links?.length) return `🔗 ${m.links[0].title || m.links[0].url}`
+  return ''
+}
+
 interface ChatStore {
   conversations: Conversation[]
   messages: Message[]
   conversationsLoading: boolean
   messagesLoading: boolean
   error: string | null
+  // Conversación abierta ahora mismo (para no marcar como no leído ni notificar
+  // los mensajes que ya se están viendo). La setea ChatWindow.
+  activeConversationId: string | null
 
   fetchConversations: () => Promise<void>
+  setActiveConversation: (id: string | null) => void
+  receiveMessage: (message: Message, opts: { incrementUnread: boolean }) => void
   fetchMessages: (conversationId: string) => Promise<void>
   createConversation: (payload: {
     type: 'direct' | 'group'
@@ -46,6 +58,30 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
   conversationsLoading: false,
   messagesLoading: false,
   error: null,
+  activeConversationId: null,
+
+  setActiveConversation: (id) => set({ activeConversationId: id }),
+
+  // Mensaje entrante por SSE. Idempotente (dedupe por id): actualiza la lista de
+  // mensajes y refresca lastMessage/preview/no-leídos de la conversación.
+  receiveMessage: (message, { incrementUnread }) =>
+    set((s) => {
+      if (s.messages.some((m) => m.id === message.id)) return s
+      return {
+        messages: [...s.messages, message],
+        conversations: s.conversations.map((c) =>
+          c.id === message.conversationId
+            ? {
+                ...c,
+                lastMessageAt: message.createdAt,
+                updatedAt: message.createdAt,
+                lastMessagePreview: messagePreview(message),
+                unreadCount: incrementUnread ? (c.unreadCount ?? 0) + 1 : (c.unreadCount ?? 0),
+              }
+            : c
+        ),
+      }
+    }),
 
   fetchConversations: async () => {
     set({ conversationsLoading: true, error: null })

@@ -102,6 +102,7 @@ export function ChatWindow({ conversation, currentUser, onBack }: Props) {
   const updateConversation = useChatStore((s) => s.updateConversation)
   const fetchMessages = useChatStore((s) => s.fetchMessages)
   const markRead = useChatStore((s) => s.markRead)
+  const setActiveConversation = useChatStore((s) => s.setActiveConversation)
   const users = useUserStore((s) => s.users)
 
   const messages = conversation
@@ -119,13 +120,20 @@ export function ChatWindow({ conversation, currentUser, onBack }: Props) {
     }
   }, [conversation?.id])
 
-  // Sin websockets: se refresca la conversación abierta por sondeo.
+  // Los mensajes nuevos llegan al instante por SSE (ver useRealtime). Aquí solo
+  // cargamos el historial al abrir y dejamos un sondeo lento (20s) como red de
+  // seguridad por si la conexión SSE se cae. Marcamos la conversación como
+  // "activa" para que el realtime no la cuente como no leída ni notifique.
   useEffect(() => {
     if (!conversation) return
+    setActiveConversation(conversation.id)
     fetchMessages(conversation.id)
     markRead(conversation.id)
-    const interval = setInterval(() => fetchMessages(conversation.id), 5000)
-    return () => clearInterval(interval)
+    const interval = setInterval(() => fetchMessages(conversation.id), 20000)
+    return () => {
+      clearInterval(interval)
+      setActiveConversation(null)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation?.id])
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { findParticipantConversation, serializeMessage } from '@/lib/chat'
+import { publishEvent } from '@/lib/events'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -54,5 +55,18 @@ export async function POST(req: NextRequest, { params }: Params) {
     data: { lastReadAt: new Date() },
   })
 
-  return NextResponse.json(serializeMessage(message), { status: 201 })
+  const serialized = serializeMessage(message)
+
+  // Push en tiempo real a los participantes (SSE). Fire-and-forget: si falla,
+  // el chat sigue actualizándose por sondeo. `conversation.participants` ya
+  // trae los userId (los incluye findParticipantConversation).
+  publishEvent({
+    kind: 'message',
+    userIds: conversation.participants.map((p) => p.userId),
+    conversationId: id,
+    senderId: session.userId,
+    message: serialized,
+  })
+
+  return NextResponse.json(serialized, { status: 201 })
 }
