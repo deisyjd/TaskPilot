@@ -11,6 +11,7 @@ ya existe en TaskPilot/Wipli (`/api/*`) y, más adelante, el tiempo real (SSE).
 - **Auth/almacenamiento**: `flutter_secure_storage` (token de sesión/OAuth).
 - **Google Sign-In**: `google_sign_in` (login con Google como en la web).
 - **Push**: `firebase_messaging` (FCM para Android/iOS) + APNs.
+- **Offline / persistencia local**: `drift` (SQLite) o `isar` para guardar tareas en el almacenamiento interno + `connectivity_plus` para detectar conexión.
 - **Tiempo real**: SSE (`http`/`dio` stream) o WebSocket, según lo que exponga el backend.
 - **CI/CD**: Codemagic o Fastlane (TestFlight / Play Internal).
 
@@ -43,6 +44,14 @@ ya existe en TaskPilot/Wipli (`/api/*`) y, más adelante, el tiempo real (SSE).
 - Repositorios por recurso (proyectos, tareas, notas, recordatorios)
 - Manejo de errores y estados de carga (Riverpod)
 - Caché local básica para uso offline de lectura
+
+### F2b · Offline y sincronización (tareas)
+- Guardar las tareas en almacenamiento interno del dispositivo (SQLite con drift/isar)
+- Leer SIEMPRE desde el almacenamiento local (funciona sin conexión, respuesta instantánea)
+- Cola de cambios offline (crear/editar/completar) pendientes de subir
+- Detectar conexión con `connectivity_plus` y sincronizar automáticamente al recuperar internet
+- Resolución de conflictos (por timestamp / última escritura gana)
+- Indicador de estado: sincronizado / pendiente / sin conexión
 
 ### F3 · Pantallas principales
 - Dashboard (resumen del día)
