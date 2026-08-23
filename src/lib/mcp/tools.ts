@@ -73,6 +73,7 @@ function toReferenceLinks(rawLinks: unknown, createdBy: string): Record<string, 
 // Campos de una tarea de la API tal como los devuelve el servidor.
 interface TaskShape {
   id: string
+  assigneeIds?: string[]
   checklist?: { text: string; done: boolean; dueDate?: string | null; assigneeId?: string | null }[]
   [k: string]: unknown
 }
@@ -103,6 +104,29 @@ async function resolveAssignee(query: string, ctx: McpContext): Promise<string> 
     throw new Error(`Varios usuarios coinciden con "${query}": ${partial.map((u) => u.name).join(', ')}. Especifica mejor o usa assigneeId.`)
   }
   throw new Error(`No encontré un usuario con nombre o correo "${query}". Usa list_users para ver los disponibles.`)
+}
+
+// Resuelve a quién etiquetar en un ítem de checklist a partir de args.assigneeId
+// o args.assignee (nombre/correo). Solo se puede etiquetar a alguien que ya sea
+// responsable de la tarea (misma regla que la interfaz) — si no lo es, lanza un
+// error sugiriendo usar assign_task primero. Devuelve:
+//  - undefined si no se pidió cambiar el responsable (deja el actual tal cual).
+//  - null si se pidió quitarlo (assignee/assigneeId vacío).
+//  - el ID resuelto si se pidió asignarlo.
+async function resolveChecklistAssignee(args: Record<string, unknown>, task: TaskShape, ctx: McpContext): Promise<string | null | undefined> {
+  const rawId = args.assigneeId
+  const rawName = args.assignee
+  if (rawId === undefined && rawName === undefined) return undefined
+  if (rawId === '' || rawName === '') return null
+
+  const assigneeId = typeof rawId === 'string' && rawId ? rawId : await resolveAssignee(String(rawName), ctx)
+  const taskAssigneeIds = task.assigneeIds ?? []
+  if (!taskAssigneeIds.includes(assigneeId)) {
+    throw new Error(
+      'Solo puedes etiquetar en el checklist a alguien que ya sea responsable de la tarea. Usa assign_task para agregarlo primero.'
+    )
+  }
+  return assigneeId
 }
 
 export const TOOLS: McpTool[] = [
@@ -311,15 +335,23 @@ export const TOOLS: McpTool[] = [
   },
   {
     name: 'add_checklist_item',
-    description: 'Agrega un ítem al checklist de una tarea (conserva los existentes).',
+    description:
+      'Agrega un ítem al checklist de una tarea (conserva los existentes). Se le puede asignar un responsable, que debe ser alguien ya responsable de la tarea (usa assign_task si aún no lo es).',
     inputSchema: obj(
-      { taskId: str('ID de la tarea.'), text: str('Texto del ítem.'), dueDate: str('Fecha límite del ítem (YYYY-MM-DD), opcional.') },
+      {
+        taskId: str('ID de la tarea.'),
+        text: str('Texto del ítem.'),
+        dueDate: str('Fecha límite del ítem (YYYY-MM-DD), opcional.'),
+        assignee: str('Responsable del ítem por nombre o correo (debe ser responsable de la tarea), opcional.'),
+        assigneeId: str('Responsable del ítem por ID (usa list_users), opcional — alternativa a assignee.'),
+      },
       ['taskId', 'text']
     ),
     handler: async (args, ctx) => {
       const task = await getTask(args.taskId as string, ctx)
+      const assigneeId = (await resolveChecklistAssignee(args, task, ctx)) ?? null
       const existing = (task.checklist ?? []).map((c) => ({ text: c.text, done: c.done, dueDate: c.dueDate ?? null, assigneeId: c.assigneeId ?? null }))
-      const checklist = [...existing, { text: args.text as string, done: false, dueDate: (args.dueDate as string) || null, assigneeId: null }]
+      const checklist = [...existing, { text: args.text as string, done: false, dueDate: (args.dueDate as string) || null, assigneeId }]
       return ctx.api(`/api/tasks/${args.taskId as string}`, { method: 'PATCH', body: JSON.stringify({ checklist }) })
     },
   },
@@ -335,13 +367,16 @@ export const TOOLS: McpTool[] = [
   },
   {
     name: 'set_checklist_item',
-    description: 'Marca o desmarca un ítem del checklist de una tarea y/o le cambia la fecha límite, identificándolo por su texto.',
+    description:
+      'Marca o desmarca un ítem del checklist de una tarea y/o le cambia la fecha límite o el responsable, identificándolo por su texto. El responsable debe ser alguien ya responsable de la tarea (usa assign_task si aún no lo es).',
     inputSchema: obj(
       {
         taskId: str('ID de la tarea.'),
         text: str('Texto del ítem del checklist a modificar.'),
         done: { type: 'boolean', description: 'true para marcar como hecho (por defecto), false para desmarcar.' },
         dueDate: str('Nueva fecha límite del ítem (YYYY-MM-DD). Usa cadena vacía para quitarla. Opcional.'),
+        assignee: str('Nuevo responsable del ítem por nombre o correo. Usa cadena vacía para quitarlo. Opcional.'),
+        assigneeId: str('Nuevo responsable del ítem por ID (usa list_users), opcional — alternativa a assignee.'),
       },
       ['taskId', 'text']
     ),
@@ -352,11 +387,12 @@ export const TOOLS: McpTool[] = [
       const idx = items.findIndex((c) => c.text.trim().toLowerCase() === target)
       if (idx < 0) throw new Error(`No se encontró un ítem de checklist con el texto "${args.text}".`)
       const done = args.done === undefined ? true : Boolean(args.done)
+      const newAssigneeId = await resolveChecklistAssignee(args, task, ctx)
       const checklist = items.map((c, i) => ({
         text: c.text,
         done: i === idx ? done : c.done,
         dueDate: i === idx && args.dueDate !== undefined ? (args.dueDate as string) || null : c.dueDate ?? null,
-        assigneeId: c.assigneeId ?? null,
+        assigneeId: i === idx && newAssigneeId !== undefined ? newAssigneeId : c.assigneeId ?? null,
       }))
       return ctx.api(`/api/tasks/${args.taskId as string}`, { method: 'PATCH', body: JSON.stringify({ checklist }) })
     },
