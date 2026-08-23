@@ -113,7 +113,7 @@ class AuthController extends StateNotifier<AuthState> {
   void clearError() => state = state.copyWith(error: null);
 }
 
-final authControllerProvider =
+final StateNotifierProvider<AuthController, AuthState> authControllerProvider =
     StateNotifierProvider<AuthController, AuthState>((ref) {
   return AuthController(
     ref.read(authRepositoryProvider),

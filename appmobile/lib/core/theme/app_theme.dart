@@ -7,7 +7,7 @@ class AppTheme {
   const AppTheme._();
 
   static ThemeData get dark {
-    final scheme = const ColorScheme.dark(
+    const scheme = ColorScheme.dark(
       primary: AppColors.lime,
       onPrimary: AppColors.ink,
       secondary: AppColors.lime,

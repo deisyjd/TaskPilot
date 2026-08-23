@@ -51,7 +51,7 @@ class ApiClient {
   Dio get raw => _dio;
 
   /// Extrae `wipli-session=<valor>` del header set-cookie y lo persiste.
-  void _captureSessionCookie(Response response) {
+  void _captureSessionCookie(Response<dynamic> response) {
     final setCookies = response.headers.map['set-cookie'];
     if (setCookies == null) return;
     for (final raw in setCookies) {

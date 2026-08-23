@@ -44,23 +44,25 @@ class ProfileScreen extends ConsumerWidget {
                 const SizedBox(height: 28),
                 const Text('Empresa activa', style: TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 10),
-                ...?session?.companies.map(
-                  (c) => RadioListTile<String>(
-                    value: c.id,
+                if (session != null)
+                  RadioGroup<String>(
                     groupValue: session.activeCompanyId,
-                    onChanged: auth.submitting
-                        ? null
-                        : (v) {
-                            if (v != null) {
-                              ref.read(authControllerProvider.notifier).switchCompany(v);
-                            }
-                          },
-                    activeColor: AppColors.lime,
-                    title: Text(c.name),
-                    subtitle: c.role != null ? Text(c.role!) : null,
-                    contentPadding: EdgeInsets.zero,
+                    onChanged: (v) {
+                      if (auth.submitting || v == null) return;
+                      ref.read(authControllerProvider.notifier).switchCompany(v);
+                    },
+                    child: Column(
+                      children: [
+                        for (final c in session.companies)
+                          RadioListTile<String>(
+                            value: c.id,
+                            title: Text(c.name),
+                            subtitle: c.role != null ? Text(c.role!) : null,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                      ],
+                    ),
                   ),
-                ),
                 const SizedBox(height: 20),
                 OutlinedButton.icon(
                   onPressed: () async {
@@ -90,10 +92,10 @@ class ProfileScreen extends ConsumerWidget {
                   label: const Text('Cerrar sesión', style: TextStyle(color: AppColors.danger)),
                 ),
                 const SizedBox(height: 24),
-                Center(
+                const Center(
                   child: Text(
                     'Wipli · ${AppConfig.flavor} · ${AppConfig.apiUrl}',
-                    style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                   ),
                 ),
               ],

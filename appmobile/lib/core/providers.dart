@@ -10,15 +10,19 @@ import 'storage/secure_store.dart';
 
 /// Providers base (infraestructura). Los providers de estado de features viven
 /// junto a cada feature (p. ej. authControllerProvider).
+///
+/// Nota: apiClientProvider ↔ authControllerProvider ↔ authRepositoryProvider se
+/// referencian en cadena (el 401 vuelve a auth). Por eso las variables llevan
+/// tipo explícito: rompe el ciclo de inferencia de tipos de nivel superior.
 
-final secureStoreProvider = Provider<SecureStore>((ref) => SecureStore());
+final Provider<SecureStore> secureStoreProvider =
+    Provider<SecureStore>((ref) => SecureStore());
 
-final sessionManagerProvider = Provider<SessionManager>(
-  (ref) => SessionManager(ref.read(secureStoreProvider)),
-);
+final Provider<SessionManager> sessionManagerProvider =
+    Provider<SessionManager>((ref) => SessionManager(ref.read(secureStoreProvider)));
 
 /// Cliente HTTP. Ante un 401 delega en el AuthController para volver a login.
-final apiClientProvider = Provider<ApiClient>((ref) {
+final Provider<ApiClient> apiClientProvider = Provider<ApiClient>((ref) {
   final session = ref.read(sessionManagerProvider);
   return ApiClient(
     session,
@@ -28,14 +32,12 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   );
 });
 
-final authRepositoryProvider = Provider<AuthRepository>(
+final Provider<AuthRepository> authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepository(ref.read(apiClientProvider), ref.read(sessionManagerProvider)),
 );
 
-final projectsRepositoryProvider = Provider<ProjectsRepository>(
-  (ref) => ProjectsRepository(ref.read(apiClientProvider)),
-);
+final Provider<ProjectsRepository> projectsRepositoryProvider =
+    Provider<ProjectsRepository>((ref) => ProjectsRepository(ref.read(apiClientProvider)));
 
-final tasksRepositoryProvider = Provider<TasksRepository>(
-  (ref) => TasksRepository(ref.read(apiClientProvider)),
-);
+final Provider<TasksRepository> tasksRepositoryProvider =
+    Provider<TasksRepository>((ref) => TasksRepository(ref.read(apiClientProvider)));

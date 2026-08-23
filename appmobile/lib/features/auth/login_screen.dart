@@ -139,8 +139,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           : const Text('Entrar'),
                     ),
                     const SizedBox(height: 14),
-                    Row(
-                      children: const [
+                    const Row(
+                      children: [
                         Expanded(child: Divider()),
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 12),
