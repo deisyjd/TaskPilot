@@ -208,6 +208,7 @@ export const TOOLS: McpTool[] = [
         description: str('Descripción opcional.'),
         status: { type: 'string', enum: ['pending', 'in-progress', 'review', 'scheduled', 'done', 'blocked'], description: 'Estado (por defecto pending).' },
         priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: 'Prioridad (por defecto medium).' },
+        startDate: str('Fecha de inicio ISO (YYYY-MM-DD), opcional.'),
         dueDate: str('Fecha límite ISO (YYYY-MM-DD), opcional.'),
         assigneeIds: strArr('IDs de responsables (usa list_users), opcional.'),
         links: linkArr('Enlaces de referencia a agregar a la tarea, opcional.'),
@@ -229,6 +230,8 @@ export const TOOLS: McpTool[] = [
           status: args.status ?? 'pending',
           priority: args.priority ?? 'medium',
           type: 'other',
+          // startDate es nullable en el modelo.
+          startDate: (args.startDate as string) || null,
           // dueDate es String no nulo en el modelo: si no se da, usa hoy.
           dueDate: (args.dueDate as string) || new Date().toISOString().slice(0, 10),
           tags: [],
@@ -240,7 +243,7 @@ export const TOOLS: McpTool[] = [
   },
   {
     name: 'update_task',
-    description: 'Actualiza campos de una tarea (título, descripción, estado, prioridad, fecha límite) y/o le agrega enlaces de referencia (conserva los existentes).',
+    description: 'Actualiza campos de una tarea (título, descripción, estado, prioridad, fecha de inicio, fecha límite) y/o le agrega enlaces de referencia (conserva los existentes).',
     inputSchema: obj(
       {
         taskId: str('ID de la tarea.'),
@@ -248,6 +251,7 @@ export const TOOLS: McpTool[] = [
         description: str('Nueva descripción (opcional).'),
         status: { type: 'string', enum: ['pending', 'in-progress', 'review', 'scheduled', 'done', 'blocked'], description: 'Nuevo estado (opcional).' },
         priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: 'Nueva prioridad (opcional).' },
+        startDate: str('Nueva fecha de inicio ISO (opcional). Usa cadena vacía para quitarla.'),
         dueDate: str('Nueva fecha límite ISO (opcional).'),
         links: linkArr('Enlaces de referencia a agregar a la tarea (se suman a los que ya tiene), opcional.'),
       },
@@ -255,7 +259,7 @@ export const TOOLS: McpTool[] = [
     ),
     handler: async (args, ctx) => {
       const patch: Record<string, unknown> = {}
-      for (const k of ['title', 'description', 'status', 'priority', 'dueDate']) {
+      for (const k of ['title', 'description', 'status', 'priority', 'startDate', 'dueDate']) {
         if (args[k] !== undefined) patch[k] = args[k]
       }
       if (Array.isArray(args.links) && args.links.length > 0) {
