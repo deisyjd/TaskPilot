@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useChatStore } from '@/store/useChatStore'
 import { useCurrentUser } from '@/store/useUserStore'
 import { ChatList } from '@/components/chat/ChatList'
@@ -13,6 +13,13 @@ export default function ChatsPage() {
 
   const [activeId, setActiveId] = useState<string | null>(conversations[0]?.id ?? null)
   const [createOpen, setCreateOpen] = useState(false)
+
+  // Enlace directo desde una notificación: /chats?c=<id> abre esa conversación.
+  useEffect(() => {
+    const c = new URLSearchParams(window.location.search).get('c')
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (c) setActiveId(c)
+  }, [])
 
   // Keep activeId in sync if the active conversation is deleted
   const activeConversation = conversations.find((c) => c.id === activeId) ?? null
@@ -28,7 +35,7 @@ export default function ChatsPage() {
   if (!currentUser) return null
 
   return (
-    <div className="flex h-[calc(100vh-80px)] overflow-hidden rounded-[var(--tp-r-card)] border border-[var(--tp-border)] shadow-sm bg-[var(--tp-surface)]">
+    <div className="flex h-full overflow-hidden rounded-[var(--tp-r-card)] border border-[var(--tp-border)] shadow-sm bg-[var(--tp-surface)]">
       {/* Left sidebar — conversation list. En mobile se muestra solo cuando no
           hay una conversación abierta. */}
       <div

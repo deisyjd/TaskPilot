@@ -1,6 +1,6 @@
 'use client'
 
-import { Message } from '@/types'
+import { Message, Attachment } from '@/types'
 import { cn } from '@/lib/utils'
 import { formatDateTime } from '@/lib/dates'
 
@@ -48,12 +48,50 @@ function Avatar({
   )
 }
 
-function AttachmentPill({ name }: { name: string }) {
+function formatSize(bytes: number): string {
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function AttachmentView({ attachment, isOwn }: { attachment: Attachment; isOwn: boolean }) {
+  const isImage = attachment.type?.startsWith('image/')
+
+  if (isImage) {
+    return (
+      <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="block">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={attachment.url}
+          alt={attachment.name}
+          className="rounded-xl max-w-full max-h-56 object-cover border border-black/10"
+        />
+      </a>
+    )
+  }
+
   return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/10 text-xs font-medium truncate max-w-[200px]">
-      <span>📎</span>
-      <span className="truncate">{name}</span>
-    </span>
+    <a
+      href={attachment.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      download={attachment.name}
+      className={cn(
+        'inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors max-w-[240px]',
+        isOwn ? 'bg-white/15 hover:bg-white/25 text-white' : 'bg-black/[0.06] hover:bg-black/[0.1] text-[var(--tp-text)]'
+      )}
+    >
+      <span className="text-base leading-none">📎</span>
+      <span className="flex flex-col min-w-0">
+        <span className="truncate">{attachment.name}</span>
+        {attachment.size > 0 && (
+          <span className={cn('text-[10px]', isOwn ? 'text-white/60' : 'text-[var(--tp-text-2)]')}>
+            {formatSize(attachment.size)}
+          </span>
+        )}
+      </span>
+    </a>
   )
 }
 
@@ -130,9 +168,9 @@ export function MessageBubble({
 
           {/* Attachments */}
           {hasAttachments && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
+            <div className="flex flex-col gap-1.5 mt-2">
               {message.attachments!.map((att) => (
-                <AttachmentPill key={att.id} name={att.name} />
+                <AttachmentView key={att.id} attachment={att} isOwn={isOwn} />
               ))}
             </div>
           )}
