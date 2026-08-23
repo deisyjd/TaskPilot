@@ -91,19 +91,18 @@ export default function ProjectPage({
 
       {/* Tabs */}
       <div
-        className="flex items-center gap-1 p-1"
+        className="flex items-center gap-1 p-1 w-fit max-w-full overflow-x-auto"
         style={{
           backgroundColor: 'var(--tp-surface)',
           borderRadius: 'var(--tp-r-card)',
           border: '1px solid var(--tp-border)',
-          width: 'fit-content',
         }}
       >
         {TABS.map(({ key, label, icon }) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all rounded-xl"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all rounded-xl shrink-0 whitespace-nowrap"
             style={{
               backgroundColor: activeTab === key ? project.color : 'transparent',
               color: activeTab === key ? '#FFFFFF' : 'var(--tp-text-2)',

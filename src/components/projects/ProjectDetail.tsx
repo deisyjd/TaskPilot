@@ -28,6 +28,7 @@ import {
   GanttChartSquare,
   FileSpreadsheet,
   FileBarChart,
+  MoreVertical,
 } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
@@ -38,6 +39,16 @@ import { ProjectGantt } from '@/components/projects/ProjectGantt'
 import { KanbanColumn } from '@/components/board/KanbanColumn'
 import { TaskImportExportModal } from '@/components/projects/TaskImportExportModal'
 import { ReportModal } from '@/components/reports/ReportModal'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
 import {
   Project,
   Attachment,
@@ -145,6 +156,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
   const [taskModalOpen, setTaskModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [confirmArchive, setConfirmArchive] = useState(false)
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
   const [tasksView, setTasksView] = useState<'list' | 'kanban' | 'gantt'>('list')
   const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus>('pending')
   const [showImportExport, setShowImportExport] = useState(false)
@@ -243,8 +255,8 @@ export function ProjectDetail({ project, onEdit }: Props) {
     <div className="flex flex-col gap-6">
       {/* ── 1. Hero / Cover ───────────────────────────────────── */}
       <div
-        className="relative overflow-hidden"
-        style={{ borderRadius: 'var(--tp-r-card)', aspectRatio: '16/5', minHeight: '200px' }}
+        className="relative overflow-hidden aspect-[16/10] sm:aspect-[16/7] md:aspect-[16/5] min-h-[220px]"
+        style={{ borderRadius: 'var(--tp-r-card)' }}
       >
         {project.coverImageUrl ? (
           <img
@@ -274,9 +286,51 @@ export function ProjectDetail({ project, onEdit }: Props) {
           }}
         />
 
+        {/* Mobile actions (hamburger) */}
+        {((can(currentUser, 'create_task') && !isViewer) || canManageProject(currentUser, project)) && (
+          <div className="md:hidden absolute top-3 right-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className="flex items-center justify-center w-9 h-9 rounded-full text-white transition-all hover:opacity-90"
+                style={{ backgroundColor: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}
+                aria-label="Acciones del proyecto"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 rounded-2xl">
+                {can(currentUser, 'create_task') && !isViewer && (
+                  <DropdownMenuItem className="gap-2 text-sm rounded-xl" onClick={() => openNewTask()}>
+                    <Plus className="w-4 h-4" />
+                    Nueva tarea
+                  </DropdownMenuItem>
+                )}
+                {canManageProject(currentUser, project) && (
+                  <DropdownMenuItem className="gap-2 text-sm rounded-xl" onClick={onEdit}>
+                    <Pencil className="w-4 h-4" />
+                    Editar
+                  </DropdownMenuItem>
+                )}
+                {canManageProject(currentUser, project) && (
+                  project.status === 'inactive' ? (
+                    <DropdownMenuItem className="gap-2 text-sm rounded-xl" onClick={() => restoreProject(project.id)}>
+                      <ArchiveRestore className="w-4 h-4" />
+                      Restaurar
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem variant="destructive" className="gap-2 text-sm rounded-xl" onClick={() => setShowArchiveConfirm(true)}>
+                      <Archive className="w-4 h-4" />
+                      Archivar
+                    </DropdownMenuItem>
+                  )
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+
         {/* Content */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 flex items-end justify-between">
-          <div className="flex items-center gap-3">
+        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 flex flex-col md:flex-row items-start md:items-end md:justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0 max-w-full">
             {project.logoUrl ? (
               <img
                 src={project.logoUrl}
@@ -288,14 +342,14 @@ export function ProjectDetail({ project, onEdit }: Props) {
               <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: project.color }} />
             )}
             <h1
-              className="text-2xl font-bold"
+              className="text-xl md:text-2xl font-bold truncate"
               style={{ color: '#FFFFFF', textShadow: '0 1px 4px rgba(0,0,0,0.4)' }}
             >
               {project.name}
             </h1>
             {/* Status badge */}
             <span
-              className="px-2.5 py-1 text-xs font-semibold rounded-full"
+              className="px-2.5 py-1 text-xs font-semibold rounded-full shrink-0"
               style={{
                 backgroundColor: project.status === 'inactive' ? 'rgba(0,0,0,0.4)' : 'rgba(223,255,95,0.9)',
                 color: project.status === 'inactive' ? '#fff' : '#111318',
@@ -305,7 +359,7 @@ export function ProjectDetail({ project, onEdit }: Props) {
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2">
             {can(currentUser, 'create_task') && !isViewer && (
               <button
                 onClick={() => openNewTask()}
@@ -404,11 +458,12 @@ export function ProjectDetail({ project, onEdit }: Props) {
             border: '1px solid var(--tp-border)',
           }}
         >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold" style={{ color: 'var(--tp-text-2)' }}>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <h2 className="text-sm font-semibold truncate min-w-0" style={{ color: 'var(--tp-text-2)' }}>
               Tareas del proyecto ({projectTasks.length})
             </h2>
-            <div className="flex items-center gap-2">
+            {/* Desktop controls */}
+            <div className="hidden md:flex items-center gap-2">
               <div
                 className="flex items-center gap-1 p-0.5 rounded-lg"
                 style={{ backgroundColor: 'var(--tp-bg)', border: '1px solid var(--tp-border)' }}
@@ -497,6 +552,71 @@ export function ProjectDetail({ project, onEdit }: Props) {
                 Ver en tablero
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
+            </div>
+
+            {/* Mobile controls (hamburger) */}
+            <div className="flex md:hidden items-center gap-1.5 shrink-0">
+              {can(currentUser, 'create_task') && !isViewer && (
+                <button
+                  onClick={() => openNewTask()}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-all hover:opacity-75"
+                  style={{
+                    backgroundColor: 'var(--tp-dark)',
+                    color: '#FFFFFF',
+                    borderRadius: 'var(--tp-r-btn)',
+                  }}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Nueva
+                </button>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className="flex items-center justify-center w-9 h-9 rounded-lg transition-all hover:opacity-75"
+                  style={{
+                    backgroundColor: 'var(--tp-bg)',
+                    color: 'var(--tp-text)',
+                    border: '1px solid var(--tp-border)',
+                  }}
+                  aria-label="Vistas y acciones"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 rounded-2xl">
+                  <DropdownMenuRadioGroup
+                    value={tasksView}
+                    onValueChange={(v) => setTasksView(v as 'list' | 'kanban' | 'gantt')}
+                  >
+                    <DropdownMenuRadioItem value="list" className="text-sm rounded-xl">
+                      <List className="w-4 h-4" />
+                      Lista
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="kanban" className="text-sm rounded-xl">
+                      <Columns3 className="w-4 h-4" />
+                      Tablero
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="gantt" className="text-sm rounded-xl">
+                      <GanttChartSquare className="w-4 h-4" />
+                      Gantt
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                  {!isViewer && (
+                    <DropdownMenuItem className="gap-2 text-sm rounded-xl" onClick={() => setShowImportExport(true)}>
+                      <FileSpreadsheet className="w-4 h-4" />
+                      Importar / Exportar
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem className="gap-2 text-sm rounded-xl" onClick={() => setShowReport(true)}>
+                    <FileBarChart className="w-4 h-4" />
+                    Reporte
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="gap-2 text-sm rounded-xl" render={<Link href="/board" />}>
+                    <ArrowRight className="w-4 h-4" />
+                    Ver en tablero
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -1062,6 +1182,14 @@ export function ProjectDetail({ project, onEdit }: Props) {
         companyName=""
         projectId={project.id}
         projectName={project.name}
+      />
+      <ConfirmDialog
+        open={showArchiveConfirm}
+        title="Archivar proyecto"
+        description={`¿Seguro que quieres archivar "${project.name}"? Podrás restaurarlo más tarde.`}
+        confirmLabel="Archivar"
+        onConfirm={() => { archiveProject(project.id); setShowArchiveConfirm(false) }}
+        onCancel={() => setShowArchiveConfirm(false)}
       />
     </div>
   )
