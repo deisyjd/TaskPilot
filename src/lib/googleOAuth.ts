@@ -6,6 +6,7 @@ import { decodeJwt } from 'jose'
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+const GOOGLE_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo'
 const CALLBACK_PATH = '/api/auth/google/callback'
 
 export function isGoogleConfigured(): boolean {
@@ -72,6 +73,39 @@ export async function fetchGoogleIdentity(code: string, redirectUri: string): Pr
   if (!data.id_token) return null
 
   const claims = decodeJwt(data.id_token) as { email?: string; email_verified?: boolean | string }
+  if (!claims.email) return null
+
+  return {
+    email: claims.email.toLowerCase(),
+    emailVerified: claims.email_verified === true || claims.email_verified === 'true',
+  }
+}
+
+// Audiencias (client IDs) aceptadas para el login móvil. El SDK del móvil pide
+// el id_token con `serverClientId` = client web (GOOGLE_CLIENT_ID), así que el
+// `aud` del token coincide con él. Se pueden añadir client IDs nativos
+// (Android/iOS) en GOOGLE_MOBILE_CLIENT_IDS (separados por coma) por si acaso.
+export function allowedGoogleAudiences(): string[] {
+  const extra = (process.env.GOOGLE_MOBILE_CLIENT_IDS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const web = process.env.GOOGLE_CLIENT_ID
+  return web ? [web, ...extra] : extra
+}
+
+// Verifica un id_token que llega DIRECTAMENTE del dispositivo (Google Sign-In
+// nativo del móvil). A diferencia del flujo web (canal servidor-a-servidor con
+// nuestro client_secret), aquí NO confiamos en el emisor: validamos el token
+// contra Google (tokeninfo comprueba firma y expiración) y exigimos que el
+// `aud` sea uno de nuestros client IDs.
+export async function verifyGoogleIdToken(idToken: string): Promise<GoogleIdentity | null> {
+  const res = await fetch(`${GOOGLE_TOKENINFO_URL}?id_token=${encodeURIComponent(idToken)}`)
+  if (!res.ok) return null
+
+  const claims = (await res.json()) as { aud?: string; email?: string; email_verified?: boolean | string }
+  const allowed = allowedGoogleAudiences()
+  if (allowed.length > 0 && (!claims.aud || !allowed.includes(claims.aud))) return null
   if (!claims.email) return null
 
   return {

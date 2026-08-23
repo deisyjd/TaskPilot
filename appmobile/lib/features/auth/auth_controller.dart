@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/network/api_exception.dart';
 import '../../core/network/session_manager.dart';
 import '../../core/providers.dart';
@@ -75,13 +77,46 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  /// Login con Google. Requiere un endpoint móvil en el backend que reciba el
-  /// idToken/serverAuthCode del SDK nativo (aún no existe). Se deja cableado
-  /// para F1: hoy informa que está pendiente en vez de fallar en silencio.
+  /// Login con Google (SDK nativo → idToken → POST /api/auth/google/mobile).
   Future<void> signInWithGoogle() async {
-    state = state.copyWith(
-      error: 'Login con Google: pendiente de habilitar el endpoint móvil en el backend.',
-    );
+    if (AppConfig.googleServerClientId.isEmpty) {
+      state = state.copyWith(
+        error: 'Google no está configurado en la app (falta GOOGLE_SERVER_CLIENT_ID).',
+      );
+      return;
+    }
+    state = state.copyWith(submitting: true, error: null);
+    try {
+      final signIn = GoogleSignIn(
+        serverClientId: AppConfig.googleServerClientId,
+        scopes: const ['email'],
+      );
+      // Cierra cualquier sesión previa para forzar el selector de cuenta.
+      await signIn.signOut();
+      final account = await signIn.signIn();
+      if (account == null) {
+        // El usuario canceló el selector.
+        state = state.copyWith(submitting: false);
+        return;
+      }
+      final tokens = await account.authentication;
+      final idToken = tokens.idToken;
+      if (idToken == null || idToken.isEmpty) {
+        state = state.copyWith(submitting: false, error: 'No se pudo obtener el token de Google.');
+        return;
+      }
+      final session = await _repo.loginWithGoogle(idToken);
+      state = state.copyWith(
+        status: AuthStatus.authenticated,
+        session: session,
+        submitting: false,
+        error: null,
+      );
+    } on ApiException catch (e) {
+      state = state.copyWith(submitting: false, error: e.message);
+    } catch (_) {
+      state = state.copyWith(submitting: false, error: 'No se pudo iniciar con Google.');
+    }
   }
 
   Future<void> switchCompany(String companyId) async {

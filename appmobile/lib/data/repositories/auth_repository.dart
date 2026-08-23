@@ -19,6 +19,16 @@ class AuthRepository {
     return Session.fromLoginJson(res.data!);
   }
 
+  /// Login con Google móvil: envía el idToken del SDK nativo al backend, que lo
+  /// verifica y devuelve la misma sesión que el login con contraseña.
+  Future<Session> loginWithGoogle(String idToken) async {
+    final res = await _api.post<Map<String, dynamic>>(
+      '/api/auth/google/mobile',
+      data: {'idToken': idToken},
+    );
+    return Session.fromLoginJson(res.data!);
+  }
+
   /// Rehidrata la sesión desde el servidor usando la cookie/token guardados.
   /// Devuelve null si ya no es válida (auto-login fallido).
   Future<Session?> me() async {
