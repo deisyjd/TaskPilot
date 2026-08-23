@@ -1,6 +1,10 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:pdfx/pdfx.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/providers.dart';
@@ -30,6 +34,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _loading = true;
   bool _sending = false;
   String? _error;
+  double? _uploadProgress; // null = sin subida en curso; 0..1 mientras sube
 
   @override
   void initState() {
@@ -107,9 +112,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       imageQuality: 85,
     );
     if (file == null) return;
-    setState(() => _sending = true);
+    setState(() {
+      _sending = true;
+      _uploadProgress = 0;
+    });
     try {
-      final saved = await ref.read(chatRepositoryProvider).uploadFile(file.path, file.name);
+      final saved = await ref.read(chatRepositoryProvider).uploadFile(
+        file.path,
+        file.name,
+        onProgress: (sent, total) {
+          if (!mounted || total <= 0) return;
+          setState(() => _uploadProgress = (sent / total).clamp(0.0, 1.0));
+        },
+      );
       final msg = await ref.read(chatRepositoryProvider).sendMessage(
             widget.conversation.id,
             content: _input.text.trim(),
@@ -123,7 +138,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
       }
     } finally {
-      if (mounted) setState(() => _sending = false);
+      if (mounted) {
+        setState(() {
+          _sending = false;
+          _uploadProgress = null;
+        });
+      }
     }
   }
 
@@ -177,12 +197,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
-          child: Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
+          child: Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: context.colors.textSecondary)),
         ),
       );
     }
     if (_messages.isEmpty) {
-      return const Center(child: Text('Aún no hay mensajes', style: TextStyle(color: AppColors.textSecondary)));
+      return Center(child: Text('Aún no hay mensajes', style: TextStyle(color: context.colors.textSecondary)));
     }
     return ListView.builder(
       controller: _scroll,
@@ -204,47 +224,88 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       top: false,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          border: Border(top: BorderSide(color: AppColors.border)),
+        decoration: BoxDecoration(
+          color: context.colors.surface,
+          border: Border(top: BorderSide(color: context.colors.border)),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              tooltip: 'Adjuntar imagen',
-              onPressed: _sending ? null : _attach,
-              icon: const Icon(Icons.attach_file, color: AppColors.textSecondary),
-            ),
-            Expanded(
-              child: TextField(
-                controller: _input,
-                minLines: 1,
-                maxLines: 4,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _send(),
-                decoration: const InputDecoration(
-                  hintText: 'Escribe un mensaje…',
-                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            if (_uploadProgress != null) _uploadBar(),
+            Row(
+              children: [
+                IconButton(
+                  tooltip: 'Adjuntar imagen',
+                  onPressed: _sending ? null : _attach,
+                  icon: Icon(Icons.attach_file, color: context.colors.textSecondary),
                 ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: _sending ? null : _send,
-              style: IconButton.styleFrom(
-                backgroundColor: AppColors.lime,
-                foregroundColor: AppColors.ink,
-              ),
-              icon: _sending
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
-                    )
-                  : const Icon(Icons.send),
+                Expanded(
+                  child: TextField(
+                    controller: _input,
+                    minLines: 1,
+                    maxLines: 4,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _send(),
+                    decoration: const InputDecoration(
+                      hintText: 'Escribe un mensaje…',
+                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filled(
+                  onPressed: _sending ? null : _send,
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.lime,
+                    foregroundColor: AppColors.ink,
+                  ),
+                  icon: _sending
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ink),
+                        )
+                      : const Icon(Icons.send),
+                ),
+              ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Barra de progreso de subida del adjunto seleccionado en el chat.
+  Widget _uploadBar() {
+    final pct = ((_uploadProgress ?? 0) * 100).round();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, top: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.upload_file, size: 14, color: context.colors.textSecondary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Subiendo adjunto… $pct%',
+                  style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: _uploadProgress,
+              minHeight: 5,
+              backgroundColor: context.colors.surfaceAlt,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.lime),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -266,9 +327,9 @@ class _Bubble extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         decoration: BoxDecoration(
-          color: mine ? AppColors.lime : AppColors.surface,
+          color: mine ? AppColors.lime : context.colors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: mine ? null : Border.all(color: AppColors.border),
+          border: mine ? null : Border.all(color: context.colors.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,15 +339,15 @@ class _Bubble extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Text(
                   senderName!,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textMuted),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: context.colors.textMuted),
                 ),
               ),
-            for (final a in message.attachments) _attachment(a, mine),
+            for (final a in message.attachments) _attachment(context, a, mine),
             for (final l in message.links) _link(l, mine),
             if (message.text.isNotEmpty)
               Text(
                 message.text,
-                style: TextStyle(color: mine ? AppColors.ink : AppColors.textPrimary),
+                style: TextStyle(color: mine ? AppColors.ink : context.colors.textPrimary),
               ),
           ],
         ),
@@ -294,40 +355,47 @@ class _Bubble extends StatelessWidget {
     );
   }
 
-  Widget _attachment(Attachment a, bool mine) {
+  Widget _attachment(BuildContext context, Attachment a, bool mine) {
     final url = AppConfig.media(a.url);
+    void open() => _AttachmentViewer.open(context, a);
     if (a.isImage) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 6),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Image.network(
-            url,
-            width: 200,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _fileChip(a.name, mine),
+        child: GestureDetector(
+          onTap: open,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.network(
+              url,
+              width: 200,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _fileChip(context, a.name, mine),
+            ),
           ),
         ),
       );
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
-      child: _fileChip(a.name, mine),
+      child: GestureDetector(
+        onTap: open,
+        child: _fileChip(context, a.name, mine),
+      ),
     );
   }
 
-  Widget _fileChip(String name, bool mine) {
+  Widget _fileChip(BuildContext context, String name, bool mine) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.attach_file, size: 16, color: mine ? AppColors.ink : AppColors.textSecondary),
+        Icon(Icons.attach_file, size: 16, color: mine ? AppColors.ink : context.colors.textSecondary),
         const SizedBox(width: 4),
         Flexible(
           child: Text(
             name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 12, color: mine ? AppColors.ink : AppColors.textSecondary),
+            style: TextStyle(fontSize: 12, color: mine ? AppColors.ink : context.colors.textSecondary),
           ),
         ),
       ],
@@ -353,6 +421,180 @@ class _Bubble extends StatelessWidget {
                 decoration: TextDecoration.underline,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Visor a pantalla completa (100% del ancho) de un adjunto del chat. Espejo del
+/// `AttachmentViewer` del web: imágenes y PDF se previsualizan (con zoom); el
+/// resto muestra el nombre del archivo. Se cierra tocando fuera o con la ✕.
+class _AttachmentViewer extends StatefulWidget {
+  const _AttachmentViewer({required this.attachment});
+
+  final Attachment attachment;
+
+  static void open(BuildContext context, Attachment attachment) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black.withValues(alpha: 0.92),
+        barrierDismissible: true,
+        pageBuilder: (_, __, ___) => _AttachmentViewer(attachment: attachment),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+      ),
+    );
+  }
+
+  @override
+  State<_AttachmentViewer> createState() => _AttachmentViewerState();
+}
+
+class _AttachmentViewerState extends State<_AttachmentViewer> {
+  PdfControllerPinch? _pdf;
+
+  @override
+  void initState() {
+    super.initState();
+    final a = widget.attachment;
+    if (a.isPdf) {
+      _pdf = PdfControllerPinch(
+        document: PdfDocument.openData(_fetchBytes(AppConfig.media(a.url))),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _pdf?.dispose();
+    super.dispose();
+  }
+
+  /// Descarga los bytes del adjunto (los uploads son públicos, igual que
+  /// `Image.network`) para alimentar el documento de pdfx.
+  Future<Uint8List> _fetchBytes(String url) async {
+    final res = await Dio().get<List<int>>(
+      url,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(res.data ?? const []);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final a = widget.attachment;
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Barra superior: nombre + cerrar.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      a.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Cerrar',
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+            // Contenido: ocupa el 100% del ancho disponible.
+            Expanded(child: _content(a)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _content(Attachment a) {
+    final url = AppConfig.media(a.url);
+    if (a.isImage) {
+      return GestureDetector(
+        onTap: () => Navigator.of(context).pop(),
+        child: SizedBox(
+          width: double.infinity,
+          child: InteractiveViewer(
+            minScale: 1,
+            maxScale: 5,
+            child: Image.network(
+              url,
+              width: double.infinity,
+              fit: BoxFit.contain,
+              loadingBuilder: (_, child, progress) {
+                if (progress == null) return child;
+                final total = progress.expectedTotalBytes;
+                return Center(
+                  child: CircularProgressIndicator(
+                    color: AppColors.lime,
+                    value: total != null
+                        ? progress.cumulativeBytesLoaded / total
+                        : null,
+                  ),
+                );
+              },
+              errorBuilder: (_, __, ___) => _fileFallback(),
+            ),
+          ),
+        ),
+      );
+    }
+    if (a.isPdf && _pdf != null) {
+      // El PDF se desliza/zooma; no envolvemos en tap-para-cerrar (usar la ✕).
+      return PdfViewPinch(
+        controller: _pdf!,
+        builders: PdfViewPinchBuilders<DefaultBuilderOptions>(
+          options: const DefaultBuilderOptions(),
+          documentLoaderBuilder: (_) =>
+              const Center(child: CircularProgressIndicator(color: AppColors.lime)),
+          pageLoaderBuilder: (_) =>
+              const Center(child: CircularProgressIndicator(color: AppColors.lime)),
+          errorBuilder: (_, __) => _fileFallback(),
+        ),
+      );
+    }
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: SizedBox(width: double.infinity, child: _fileFallback()),
+    );
+  }
+
+  Widget _fileFallback() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.insert_drive_file_outlined, size: 72, color: Colors.white70),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              widget.attachment.name,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'No hay vista previa para este archivo.',
+            style: TextStyle(color: Colors.white54, fontSize: 12),
           ),
         ],
       ),

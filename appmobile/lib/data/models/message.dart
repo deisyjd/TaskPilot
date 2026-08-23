@@ -8,6 +8,9 @@ class Attachment {
 
   bool get isImage => (type ?? '').startsWith('image/');
 
+  bool get isPdf =>
+      (type ?? '') == 'application/pdf' || name.toLowerCase().endsWith('.pdf');
+
   factory Attachment.fromJson(Map<String, dynamic> json) => Attachment(
         name: json['name'] as String? ?? 'archivo',
         url: json['url'] as String? ?? '',

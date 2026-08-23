@@ -41,11 +41,20 @@ class ChatRepository {
 
   /// Sube un archivo a /api/uploads y devuelve el objeto guardado
   /// ({url, name, size, type}) listo para adjuntar a un mensaje.
-  Future<Map<String, dynamic>> uploadFile(String filePath, String filename) async {
+  /// [onProgress] recibe (bytesEnviados, bytesTotales) para pintar la barra.
+  Future<Map<String, dynamic>> uploadFile(
+    String filePath,
+    String filename, {
+    void Function(int sent, int total)? onProgress,
+  }) async {
     final form = FormData.fromMap({
       'file': await MultipartFile.fromFile(filePath, filename: filename),
     });
-    final res = await _api.upload<Map<String, dynamic>>('/api/uploads', form);
+    final res = await _api.upload<Map<String, dynamic>>(
+      '/api/uploads',
+      form,
+      onSendProgress: onProgress,
+    );
     return res.data!;
   }
 
