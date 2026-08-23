@@ -26,4 +26,9 @@ class AppConfig {
   );
 
   static bool get isDev => flavor == 'dev';
+
+  /// Convierte una ruta de media del backend (ej. `/api/uploads/x.jpg`) en URL
+  /// absoluta. Los uploads se sirven públicos, así que no necesitan la sesión.
+  static String media(String path) =>
+      path.startsWith('http') ? path : '$apiUrl$path';
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/note.dart';
@@ -44,6 +45,19 @@ class ProjectDetailScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (project.coverImageUrl != null && project.coverImageUrl!.isNotEmpty) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  AppConfig.media(project.coverImageUrl!),
+                  height: 150,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             if (project.description?.isNotEmpty == true) ...[
               Text(project.description!, style: const TextStyle(color: AppColors.textSecondary)),
               const SizedBox(height: 16),

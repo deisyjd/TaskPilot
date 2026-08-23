@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/models/project.dart';
@@ -66,6 +67,39 @@ class _ProjectCard extends StatelessWidget {
     return value == null ? AppColors.lime : Color(value);
   }
 
+  String? get _media {
+    final logo = project.logoUrl;
+    if (logo != null && logo.isNotEmpty) return logo;
+    final cover = project.coverImageUrl;
+    if (cover != null && cover.isNotEmpty) return cover;
+    return null;
+  }
+
+  Widget _fallbackIcon() => Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: _dot.withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(Icons.folder, color: _dot),
+      );
+
+  Widget _thumb() {
+    final media = _media;
+    if (media == null) return _fallbackIcon();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        AppConfig.media(media),
+        width: 40,
+        height: 40,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _fallbackIcon(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -82,15 +116,7 @@ class _ProjectCard extends StatelessWidget {
           ),
           child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: _dot.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.folder, color: _dot),
-          ),
+          _thumb(),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
