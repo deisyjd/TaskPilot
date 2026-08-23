@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/repositories/auth_repository.dart';
+import '../data/repositories/notes_repository.dart';
 import '../data/repositories/projects_repository.dart';
+import '../data/repositories/reminders_repository.dart';
 import '../data/repositories/tasks_repository.dart';
+import '../data/repositories/users_repository.dart';
 import '../features/auth/auth_controller.dart';
 import 'network/api_client.dart';
 import 'network/session_manager.dart';
@@ -41,3 +44,12 @@ final Provider<ProjectsRepository> projectsRepositoryProvider =
 
 final Provider<TasksRepository> tasksRepositoryProvider =
     Provider<TasksRepository>((ref) => TasksRepository(ref.read(apiClientProvider)));
+
+final Provider<UsersRepository> usersRepositoryProvider =
+    Provider<UsersRepository>((ref) => UsersRepository(ref.read(apiClientProvider)));
+
+final Provider<NotesRepository> notesRepositoryProvider =
+    Provider<NotesRepository>((ref) => NotesRepository(ref.read(apiClientProvider)));
+
+final Provider<RemindersRepository> remindersRepositoryProvider =
+    Provider<RemindersRepository>((ref) => RemindersRepository(ref.read(apiClientProvider)));

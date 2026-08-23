@@ -1,11 +1,15 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/models/project.dart';
+import '../../data/models/task.dart';
 import '../../features/auth/auth_controller.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/splash_screen.dart';
+import '../../features/projects/project_detail_screen.dart';
 import '../../features/shell/home_shell.dart';
+import '../../features/tasks/task_detail_screen.dart';
 
 /// Rutas de la app + redirección según el estado de autenticación.
 /// go_router se refresca cuando cambia el AuthState (refreshListenable).
@@ -38,6 +42,37 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/home', builder: (_, __) => const HomeShell()),
+      GoRoute(
+        path: '/project/:id',
+        builder: (context, state) {
+          final project = state.extra as Project?;
+          if (project == null) return const _MissingArg(label: 'proyecto');
+          return ProjectDetailScreen(project: project);
+        },
+      ),
+      GoRoute(
+        path: '/task/:id',
+        builder: (context, state) {
+          final task = state.extra as Task?;
+          if (task == null) return const _MissingArg(label: 'tarea');
+          return TaskDetailScreen(task: task);
+        },
+      ),
     ],
   );
 });
+
+/// Fallback cuando se navega a un detalle sin el objeto en `extra`
+/// (p. ej. un deep link directo, que se resolverá por id en F5).
+class _MissingArg extends StatelessWidget {
+  const _MissingArg({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(),
+      body: Center(child: Text('No se pudo abrir el $label.')),
+    );
+  }
+}

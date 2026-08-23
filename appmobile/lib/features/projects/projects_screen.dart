@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
@@ -42,7 +43,10 @@ class ProjectsScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               itemCount: projects.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (_, i) => _ProjectCard(project: projects[i]),
+              itemBuilder: (ctx, i) => _ProjectCard(
+                project: projects[i],
+                onTap: () => ctx.push('/project/${projects[i].id}', extra: projects[i]),
+              ),
             );
           },
         ),
@@ -52,8 +56,9 @@ class ProjectsScreen extends ConsumerWidget {
 }
 
 class _ProjectCard extends StatelessWidget {
-  const _ProjectCard({required this.project});
+  const _ProjectCard({required this.project, this.onTap});
   final Project project;
+  final VoidCallback? onTap;
 
   Color get _dot {
     final hex = project.color.replaceFirst('#', '');
@@ -63,14 +68,19 @@ class _ProjectCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
         children: [
           Container(
             width: 40,
@@ -114,8 +124,10 @@ class _ProjectCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.textMuted),
-        ],
+              const Icon(Icons.chevron_right, color: AppColors.textMuted),
+            ],
+          ),
+        ),
       ),
     );
   }

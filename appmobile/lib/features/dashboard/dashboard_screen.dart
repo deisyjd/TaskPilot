@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
@@ -7,6 +8,7 @@ import '../../core/ui/user_avatar.dart';
 import '../../data/models/enums.dart';
 import '../../data/models/task.dart';
 import '../auth/auth_controller.dart';
+import '../tasks/task_tile.dart';
 
 /// Tareas de la empresa activa. Se recarga al cambiar de empresa porque la
 /// key depende del activeCompanyId.
@@ -90,7 +92,12 @@ class DashboardScreen extends ConsumerWidget {
                 if (dueToday.isEmpty)
                   const _EmptyHint(text: 'Nada vence hoy. 🎉')
                 else
-                  ...dueToday.map((t) => _TaskTile(task: t)),
+                  ...dueToday.map(
+                    (t) => TaskTile(
+                      task: t,
+                      onTap: () => context.push('/task/${t.id}', extra: t),
+                    ),
+                  ),
               ],
             );
           },
@@ -127,54 +134,6 @@ class _StatCard extends StatelessWidget {
             Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _TaskTile extends StatelessWidget {
-  const _TaskTile({required this.task});
-
-  final Task task;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(color: task.status.dotColor, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  task.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${task.status.label} · ${task.priority.label}'
-                  '${task.checklistTotal > 0 ? ' · ${task.checklistDone}/${task.checklistTotal}' : ''}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
