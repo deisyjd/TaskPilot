@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/ui/state_views.dart';
 import '../../core/ui/user_avatar.dart';
 import '../../data/models/conversation.dart';
 import '../../data/models/message.dart';
@@ -27,28 +28,11 @@ class ConversationsScreen extends ConsumerWidget {
         color: AppColors.lime,
         onRefresh: () => ref.refresh(conversationsProvider.future),
         child: async.when(
-          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.lime)),
-          error: (e, _) => ListView(
-            children: [
-              const SizedBox(height: 90),
-              const Icon(Icons.cloud_off, size: 48, color: AppColors.textMuted),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Text('$e', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
-              ),
-            ],
-          ),
+          loading: () => const LoadingView(),
+          error: (e, _) => ErrorView(message: '$e', onRetry: () => ref.invalidate(conversationsProvider)),
           data: (conversations) {
             if (conversations.isEmpty) {
-              return ListView(
-                children: const [
-                  SizedBox(height: 120),
-                  Icon(Icons.forum_outlined, size: 48, color: AppColors.textMuted),
-                  SizedBox(height: 12),
-                  Center(child: Text('Sin conversaciones', style: TextStyle(color: AppColors.textSecondary))),
-                ],
-              );
+              return const EmptyView(icon: Icons.forum_outlined, message: 'Sin conversaciones');
             }
             return ListView.separated(
               itemCount: conversations.length,

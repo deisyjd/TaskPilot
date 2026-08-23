@@ -9,6 +9,7 @@ import '../../features/auth/auth_controller.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/splash_screen.dart';
 import '../../features/chat/chat_screen.dart';
+import '../../features/deeplink/deeplink_loaders.dart';
 import '../../features/projects/project_detail_screen.dart';
 import '../../features/shell/home_shell.dart';
 import '../../features/tasks/task_detail_screen.dart';
@@ -50,41 +51,29 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/project/:id',
         builder: (context, state) {
           final project = state.extra as Project?;
-          if (project == null) return const _MissingArg(label: 'proyecto');
-          return ProjectDetailScreen(project: project);
+          return project != null
+              ? ProjectDetailScreen(project: project)
+              : ProjectByIdScreen(id: state.pathParameters['id']!);
         },
       ),
       GoRoute(
         path: '/task/:id',
         builder: (context, state) {
           final task = state.extra as Task?;
-          if (task == null) return const _MissingArg(label: 'tarea');
-          return TaskDetailScreen(task: task);
+          return task != null
+              ? TaskDetailScreen(task: task)
+              : TaskByIdScreen(id: state.pathParameters['id']!);
         },
       ),
       GoRoute(
         path: '/chat/:id',
         builder: (context, state) {
           final conversation = state.extra as Conversation?;
-          if (conversation == null) return const _MissingArg(label: 'chat');
-          return ChatScreen(conversation: conversation);
+          return conversation != null
+              ? ChatScreen(conversation: conversation)
+              : ChatByIdScreen(id: state.pathParameters['id']!);
         },
       ),
     ],
   );
 });
-
-/// Fallback cuando se navega a un detalle sin el objeto en `extra`
-/// (p. ej. un deep link directo, que se resolverá por id en F5).
-class _MissingArg extends StatelessWidget {
-  const _MissingArg({required this.label});
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(),
-      body: Center(child: Text('No se pudo abrir el $label.')),
-    );
-  }
-}

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/config/app_config.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/ui/state_views.dart';
 import '../../data/models/project.dart';
 import '../auth/auth_controller.dart';
 
@@ -27,18 +28,11 @@ class ProjectsScreen extends ConsumerWidget {
         color: AppColors.lime,
         onRefresh: () => ref.refresh(projectsProvider.future),
         child: projectsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.lime)),
-          error: (e, _) => _Error(message: '$e', onRetry: () => ref.invalidate(projectsProvider)),
+          loading: () => const LoadingView(),
+          error: (e, _) => ErrorView(message: '$e', onRetry: () => ref.invalidate(projectsProvider)),
           data: (projects) {
             if (projects.isEmpty) {
-              return ListView(
-                children: const [
-                  SizedBox(height: 120),
-                  Icon(Icons.folder_open, size: 48, color: AppColors.textMuted),
-                  SizedBox(height: 12),
-                  Center(child: Text('Aún no hay proyectos', style: TextStyle(color: AppColors.textSecondary))),
-                ],
-              );
+              return const EmptyView(icon: Icons.folder_open, message: 'Aún no hay proyectos');
             }
             return ListView.separated(
               padding: const EdgeInsets.all(16),
@@ -155,29 +149,6 @@ class _ProjectCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _Error extends StatelessWidget {
-  const _Error({required this.message, required this.onRetry});
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        const SizedBox(height: 100),
-        const Icon(Icons.cloud_off, size: 48, color: AppColors.textMuted),
-        const SizedBox(height: 12),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
-        ),
-        const SizedBox(height: 16),
-        Center(child: OutlinedButton(onPressed: onRetry, child: const Text('Reintentar'))),
-      ],
     );
   }
 }

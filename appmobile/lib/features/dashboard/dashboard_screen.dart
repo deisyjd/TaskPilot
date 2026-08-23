@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/ui/state_views.dart';
 import '../../core/ui/user_avatar.dart';
 import '../../data/models/enums.dart';
 import '../auth/auth_controller.dart';
@@ -64,8 +65,8 @@ class DashboardScreen extends ConsumerWidget {
         color: AppColors.lime,
         onRefresh: () => ref.refresh(companyTasksProvider.future),
         child: tasksAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.lime)),
-          error: (e, _) => _ErrorState(
+          loading: () => const LoadingView(),
+          error: (e, _) => ErrorView(
             message: '$e',
             onRetry: () => ref.invalidate(companyTasksProvider),
           ),
@@ -149,31 +150,6 @@ class _EmptyHint extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 28),
       alignment: Alignment.center,
       child: Text(text, style: const TextStyle(color: AppColors.textSecondary)),
-    );
-  }
-}
-
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        const SizedBox(height: 80),
-        const Icon(Icons.cloud_off, size: 48, color: AppColors.textMuted),
-        const SizedBox(height: 12),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
-        ),
-        const SizedBox(height: 16),
-        Center(
-          child: OutlinedButton(onPressed: onRetry, child: const Text('Reintentar')),
-        ),
-      ],
     );
   }
 }
