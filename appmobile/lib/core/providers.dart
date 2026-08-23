@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/offline/outbox.dart';
 import '../data/offline/task_cache.dart';
 import '../data/offline/task_mutations.dart';
+import '../data/realtime/realtime_service.dart';
 import '../data/repositories/auth_repository.dart';
+import '../data/repositories/chat_repository.dart';
 import '../data/repositories/notes_repository.dart';
 import '../data/repositories/projects_repository.dart';
 import '../data/repositories/reminders_repository.dart';
@@ -58,6 +60,12 @@ final Provider<NotesRepository> notesRepositoryProvider =
 
 final Provider<RemindersRepository> remindersRepositoryProvider =
     Provider<RemindersRepository>((ref) => RemindersRepository(ref.read(apiClientProvider)));
+
+final Provider<ChatRepository> chatRepositoryProvider =
+    Provider<ChatRepository>((ref) => ChatRepository(ref.read(apiClientProvider)));
+
+final Provider<RealtimeService> realtimeServiceProvider =
+    Provider<RealtimeService>((ref) => RealtimeService(ref.read(apiClientProvider)));
 
 // ─── Offline (F2b) ────────────────────────────────────────────────
 final Provider<LocalDb> localDbProvider = Provider<LocalDb>((ref) => LocalDb.instance);

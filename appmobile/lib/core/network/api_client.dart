@@ -69,6 +69,19 @@ class ApiClient {
   Future<Response<T>> get<T>(String path, {Map<String, dynamic>? query}) =>
       _guard(() => _dio.get<T>(path, queryParameters: query));
 
+  /// Abre una conexión de streaming (Server-Sent Events). No pasa por [_guard]
+  /// porque es de larga duración; la sesión se adjunta por el interceptor.
+  Future<Stream<List<int>>> stream(String path) async {
+    final res = await _dio.get<ResponseBody>(
+      path,
+      options: Options(
+        responseType: ResponseType.stream,
+        headers: {'Accept': 'text/event-stream'},
+      ),
+    );
+    return res.data!.stream;
+  }
+
   Future<Response<T>> post<T>(String path, {Object? data}) =>
       _guard(() => _dio.post<T>(path, data: data));
 

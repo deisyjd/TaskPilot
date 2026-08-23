@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../board/kanban_screen.dart';
+import '../chat/conversations_screen.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../profile/profile_screen.dart';
 import '../projects/projects_screen.dart';
@@ -23,6 +24,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     DashboardScreen(),
     KanbanScreen(),
     ProjectsScreen(),
+    ConversationsScreen(),
     ProfileScreen(),
   ];
 
@@ -50,6 +52,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             icon: Icon(Icons.folder_outlined),
             selectedIcon: Icon(Icons.folder),
             label: 'Proyectos',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.forum_outlined),
+            selectedIcon: Icon(Icons.forum),
+            label: 'Chat',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),
