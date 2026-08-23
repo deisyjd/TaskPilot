@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pdfx/pdfx.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/providers.dart';
@@ -473,6 +474,17 @@ class _AttachmentViewerState extends State<_AttachmentViewer> {
     super.dispose();
   }
 
+  /// Abre el adjunto en una app externa / navegador (permite descargarlo).
+  Future<void> _openExternally() async {
+    final uri = Uri.parse(AppConfig.media(widget.attachment.url));
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo abrir el archivo')),
+      );
+    }
+  }
+
   /// Descarga los bytes del adjunto (los uploads son públicos, igual que
   /// `Image.network`) para alimentar el documento de pdfx.
   Future<Uint8List> _fetchBytes(String url) async {
@@ -507,6 +519,11 @@ class _AttachmentViewerState extends State<_AttachmentViewer> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                  ),
+                  IconButton(
+                    tooltip: 'Descargar / abrir',
+                    onPressed: _openExternally,
+                    icon: const Icon(Icons.download_rounded, color: Colors.white),
                   ),
                   IconButton(
                     tooltip: 'Cerrar',
