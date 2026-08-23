@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Toaster, toast } from 'sonner'
+import { Toaster } from 'sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Sidebar, ADMIN_ONLY_PATHS } from '@/components/layout/Sidebar'
 import { Header } from '@/components/layout/Header'
@@ -13,6 +13,7 @@ import { useChatStore } from '@/store/useChatStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import { can } from '@/lib/permissions'
 import { useRealtime } from '@/lib/useRealtime'
+import { notifyReminder } from '@/lib/notify'
 import { isReminderDue, reminderDueTimestamp } from '@/lib/reminders'
 import {
   isReminderAlertsEnabled,
@@ -56,7 +57,12 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
       if (hasAlertedReminder(r.id, dueTs)) return
       markReminderAlerted(r.id, dueTs)
       notifyReminderDue(r)
-      toast.warning('Recordatorio', { description: `${r.title}${r.projectName ? ` · ${r.projectName}` : ''}` })
+      notifyReminder('Recordatorio', {
+        description: `${r.title}${r.projectName ? ` · ${r.projectName}` : ''}`,
+        action: r.projectId
+          ? { label: 'Ver', onClick: () => router.push(`/projects/${r.projectId}?tab=reminders`) }
+          : undefined,
+      })
     })
   }
 

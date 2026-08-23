@@ -1,11 +1,14 @@
 'use client'
 
 import { useEffect } from 'react'
-import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 import type { Message } from '@/types'
+import { notifyChat } from '@/lib/notify'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useChatStore } from '@/store/useChatStore'
 import { useUserStore } from '@/store/useUserStore'
+
+type Router = ReturnType<typeof useRouter>
 
 // Suscripción global a eventos en tiempo real vía SSE (/api/events/stream).
 // Entrega mensajes nuevos al store al instante y muestra un toast cuando llega
@@ -13,6 +16,7 @@ import { useUserStore } from '@/store/useUserStore'
 // El sondeo de ClientShell/ChatWindow queda como red de seguridad si SSE cae.
 export function useRealtime() {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn)
+  const router = useRouter()
 
   useEffect(() => {
     if (!isLoggedIn) return
@@ -27,7 +31,7 @@ export function useRealtime() {
       } catch {
         return
       }
-      if (event?.message) handleIncomingMessage(event.message)
+      if (event?.message) handleIncomingMessage(event.message, router)
     }
 
     es.addEventListener('message', onMessage as EventListener)
@@ -37,10 +41,10 @@ export function useRealtime() {
       es.removeEventListener('message', onMessage as EventListener)
       es.close()
     }
-  }, [isLoggedIn])
+  }, [isLoggedIn, router])
 }
 
-function handleIncomingMessage(message: Message) {
+function handleIncomingMessage(message: Message, router: Router) {
   const chat = useChatStore.getState()
   const currentUserId = useAuthStore.getState().user?.id
   const isOwn = message.senderId === currentUserId
@@ -63,7 +67,11 @@ function handleIncomingMessage(message: Message) {
   }
 
   const sender = useUserStore.getState().users.find((u) => u.id === message.senderId)
-  toast.message(sender?.name ?? 'Nuevo mensaje', {
+  notifyChat(sender?.name ?? 'Nuevo mensaje', {
     description: message.text || '📎 Te enviaron un adjunto',
+    action: {
+      label: 'Abrir',
+      onClick: () => router.push(`/chats?c=${message.conversationId}`),
+    },
   })
 }

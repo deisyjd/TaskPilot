@@ -44,12 +44,15 @@ const PRIORITY_COLORS: Record<string, string> = {
   low:    '#16A34A',
 }
 
-function NotifItem({ task, onMarkRead }: { task: Task & { reason: string }; onMarkRead: () => void }) {
+function NotifItem({ task, onMarkRead, onOpen }: { task: Task & { reason: string }; onMarkRead: () => void; onOpen: () => void }) {
   const color = PRIORITY_COLORS[task.priority] ?? '#6B7280'
   const projectName = useTaskStore((s) => s.projects.find((p) => p.id === task.projectId)?.name) ?? 'Sin proyecto'
   return (
     <div
-      className="group flex items-start gap-3 px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-[var(--tp-bg)]"
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      className="group flex items-start gap-3 px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-[var(--tp-bg)] cursor-pointer"
       style={{ borderColor: 'var(--tp-border)' }}
     >
       <div
@@ -86,7 +89,7 @@ function NotifItem({ task, onMarkRead }: { task: Task & { reason: string }; onMa
         )}
       </div>
       <button
-        onClick={onMarkRead}
+        onClick={(e) => { e.stopPropagation(); onMarkRead() }}
         title="Marcar como leída"
         className="shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-70"
         style={{ color: 'var(--tp-text-2)' }}
@@ -97,12 +100,15 @@ function NotifItem({ task, onMarkRead }: { task: Task & { reason: string }; onMa
   )
 }
 
-function ReminderNotifItem({ reminder, onMarkRead }: { reminder: Reminder; onMarkRead: () => void }) {
+function ReminderNotifItem({ reminder, onMarkRead, onOpen }: { reminder: Reminder; onMarkRead: () => void; onOpen: () => void }) {
   const overdue = isOverdue(reminder.dueDate, 'pending')
   const color = overdue ? '#DC2626' : '#8B5CF6'
   return (
     <div
-      className="group flex items-start gap-3 px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-[var(--tp-bg)]"
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      className="group flex items-start gap-3 px-4 py-3 border-b last:border-b-0 transition-colors hover:bg-[var(--tp-bg)] cursor-pointer"
       style={{ borderColor: 'var(--tp-border)' }}
     >
       <div
@@ -129,7 +135,7 @@ function ReminderNotifItem({ reminder, onMarkRead }: { reminder: Reminder; onMar
         </p>
       </div>
       <button
-        onClick={onMarkRead}
+        onClick={(e) => { e.stopPropagation(); onMarkRead() }}
         title="Marcar como leído"
         className="shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:opacity-70"
         style={{ color: 'var(--tp-text-2)' }}
@@ -377,10 +383,20 @@ export function Header() {
                 ) : (
                   <>
                     {notifTasks.map((t) => (
-                      <NotifItem key={t.id} task={t} onMarkRead={() => markRead(taskNotifId(t))} />
+                      <NotifItem
+                        key={t.id}
+                        task={t}
+                        onMarkRead={() => markRead(taskNotifId(t))}
+                        onOpen={() => { setNotifOpen(false); router.push(`/board?task=${t.id}`) }}
+                      />
                     ))}
                     {notifReminders.map((r) => (
-                      <ReminderNotifItem key={r.id} reminder={r} onMarkRead={() => markRead(reminderNotifId(r))} />
+                      <ReminderNotifItem
+                        key={r.id}
+                        reminder={r}
+                        onMarkRead={() => markRead(reminderNotifId(r))}
+                        onOpen={() => { setNotifOpen(false); router.push(`/projects/${r.projectId}?tab=reminders`) }}
+                      />
                     ))}
                   </>
                 )}

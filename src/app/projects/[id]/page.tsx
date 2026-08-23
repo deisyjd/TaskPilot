@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, FolderOpen, LayoutDashboard, StickyNote, BellRing } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
@@ -25,6 +25,13 @@ export default function ProjectPage({
   const [editOpen, setEditOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const currentUser = useCurrentUser()
+
+  // Enlace directo desde una notificación: /projects/<id>?tab=reminders abre esa pestaña.
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab')
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (tab === 'notes' || tab === 'reminders' || tab === 'overview') setActiveTab(tab)
+  }, [])
 
   // ─── Not found ────────────────────────────────────────────
   if (!project) {
