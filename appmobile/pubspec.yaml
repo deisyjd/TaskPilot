@@ -47,6 +47,30 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  # Generación de íconos y splash (F6)
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.1
 
 flutter:
   uses-material-design: true
+
+# Íconos de launcher (F6). Regenerar con: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/branding/icon.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+  background_color_ios: "#111318"
+  adaptive_icon_background: "#111318"
+  adaptive_icon_foreground: "assets/branding/wipli_mark.png"
+
+# Splash screen (F6). Regenerar con: dart run flutter_native_splash:create
+# Marca Wipli: fondo ink (#111318) + logo centrado, claro y oscuro por igual.
+flutter_native_splash:
+  color: "#111318"
+  image: "assets/branding/splash_logo.png"
+  android_12:
+    color: "#111318"
+    image: "assets/branding/splash_logo.png"
+    icon_background_color: "#111318"
