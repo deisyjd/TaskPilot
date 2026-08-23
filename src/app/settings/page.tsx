@@ -51,7 +51,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-xl space-y-5">
+    <div className="max-w-5xl grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
       <div
         className="p-6"
         style={{
