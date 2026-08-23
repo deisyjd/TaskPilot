@@ -41,6 +41,30 @@ export async function buildReportExcel(data: ReportData): Promise<Buffer> {
   tareas.getRow(1).font = { bold: true }
   data.tasks.forEach((t) => tareas.addRow(t))
 
+  const checklistRows = data.tasks.flatMap((t) =>
+    t.checklist.map((c) => ({
+      projectName: t.projectName,
+      taskTitle: t.title,
+      text: c.text,
+      statusLabel: c.done ? 'Completado' : 'Pendiente',
+      dueDate: c.dueDate ?? '',
+      assignee: c.assignee ?? '',
+    }))
+  )
+  if (checklistRows.length > 0) {
+    const checklist = wb.addWorksheet('Checklist')
+    checklist.columns = [
+      { header: 'Proyecto', key: 'projectName', width: 24 },
+      { header: 'Tarea', key: 'taskTitle', width: 40 },
+      { header: 'Ítem', key: 'text', width: 40 },
+      { header: 'Estado', key: 'statusLabel', width: 14 },
+      { header: 'Vence', key: 'dueDate', width: 14 },
+      { header: 'Responsable', key: 'assignee', width: 22 },
+    ]
+    checklist.getRow(1).font = { bold: true }
+    checklistRows.forEach((r) => checklist.addRow(r))
+  }
+
   const buf = await wb.xlsx.writeBuffer()
   return Buffer.from(buf as ArrayBuffer)
 }

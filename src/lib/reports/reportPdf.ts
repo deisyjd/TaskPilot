@@ -87,6 +87,21 @@ export async function buildReportPdf(data: ReportData): Promise<Buffer> {
   const drawOpenCircle = (cx: number, cy: number, r: number, color: RGB) =>
     page.drawCircle({ x: cx, y: cy, size: r, borderColor: color, borderWidth: 1.1 })
 
+  // Píldora de estado (fondo tintado + texto en negrita del mismo color, con
+  // checkmark si es un estado "completado") — la usan tanto la columna Estado
+  // de la tabla de tareas como los ítems del checklist ya marcados, para que
+  // una subtarea completada se vea igual que una tarea completada (sin tachar
+  // el texto). Devuelve el ancho dibujado.
+  const drawPill = (x: number, label: string, color: RGB, withCheck: boolean, maxW = 200): number => {
+    const iconGap = withCheck ? 12 : 0
+    const pillLabel = truncate(label, bold, 9, maxW - 16 - iconGap)
+    const pillW = Math.min(maxW, bold.widthOfTextAtSize(pillLabel, 9) + 16 + iconGap)
+    page.drawRectangle({ x, y: y - 4, width: pillW, height: 15, color, opacity: 0.14 })
+    if (withCheck) drawCheck(x + 7, y, color)
+    page.drawText(pillLabel, { x: x + 6 + iconGap, y, size: 9, font: bold, color })
+    return pillW
+  }
+
   const truncate = (s: string, f: PDFFont, size: number, maxW: number): string => {
     if (f.widthOfTextAtSize(s, size) <= maxW) return s
     let out = s
@@ -250,19 +265,14 @@ export async function buildReportPdf(data: ReportData): Promise<Buffer> {
 
   for (const t of data.tasks) {
     const checklistLines = t.checklist.length ? 1 + t.checklist.length : 0
-    const blockHeight = 18 + (checklistLines ? 8 + checklistLines * 12 + 6 : 0)
+    const blockHeight = 18 + (checklistLines ? 8 + checklistLines * 14 + 6 : 0)
     if (ensure(blockHeight)) drawTableHeader()
 
     const isDone = t.statusColor === STATUS_HEX.done
     const pillColor = hexToRgb(t.statusColor)
-    const iconGap = isDone ? 12 : 0
-    const pillLabel = truncate(t.statusLabel, bold, 9, COLUMNS[2].w - 16 - iconGap)
-    const pillW = Math.min(COLUMNS[2].w, bold.widthOfTextAtSize(pillLabel, 9) + 16 + iconGap)
-    page.drawRectangle({ x: COLUMNS[2].x, y: y - 4, width: pillW, height: 15, color: pillColor, opacity: 0.14 })
     draw(truncate(t.title, font, 9, COLUMNS[0].w), COLUMNS[0].x, 9, font, TEXT)
     draw(truncate(t.projectName, font, 9, COLUMNS[1].w), COLUMNS[1].x, 9, font, TEXT2)
-    if (isDone) drawCheck(COLUMNS[2].x + 7, y, pillColor)
-    page.drawText(pillLabel, { x: COLUMNS[2].x + 6 + iconGap, y, size: 9, font: bold, color: pillColor })
+    drawPill(COLUMNS[2].x, t.statusLabel, pillColor, isDone, COLUMNS[2].w)
     draw(t.dueDate, COLUMNS[3].x, 9, font, TEXT2)
     y -= 16
     page.drawLine({ start: { x: MARGIN, y: y + 2 }, end: { x: PAGE.w - MARGIN, y: y + 2 }, thickness: 0.5, color: BORDER })
@@ -271,13 +281,20 @@ export async function buildReportPdf(data: ReportData): Promise<Buffer> {
       const done = t.checklist.filter((c) => c.done).length
       y -= 8
       draw(`CHECKLIST · ${done}/${t.checklist.length}`, MARGIN + 10, 8, bold, TEXT2)
-      y -= 12
+      y -= 14
       for (const c of t.checklist) {
-        if (c.done) drawCheck(MARGIN + 10, y, DONE_GREEN)
-        else drawOpenCircle(MARGIN + 13, y + 3, 3, PENDING_GRAY)
+        const dateColX = COLUMNS[3].x
+        let textX = MARGIN + 22
+        if (c.done) {
+          const pillW = drawPill(MARGIN + 10, 'Completado', DONE_GREEN, true, 100)
+          textX = MARGIN + 10 + pillW + 8
+        } else {
+          drawOpenCircle(MARGIN + 13, y + 3, 3, PENDING_GRAY)
+        }
         const suffix = c.assignee ? ` · ${c.assignee}` : ''
-        draw(truncate(c.text, font, 9, 380) + suffix, MARGIN + 22, 9, font, c.done ? TEXT2 : TEXT)
-        y -= 12
+        draw(truncate(c.text, font, 9, dateColX - 20 - textX) + suffix, textX, 9, font, c.done ? TEXT2 : TEXT)
+        if (c.dueDate) draw(c.dueDate, dateColX, 9, font, TEXT2)
+        y -= 14
       }
       y -= 6
     }

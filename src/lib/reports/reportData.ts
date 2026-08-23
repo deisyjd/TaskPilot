@@ -21,6 +21,7 @@ export const STATUS_HEX: Record<TaskStatus, string> = {
 export interface ReportChecklistRow {
   text: string
   done: boolean
+  dueDate: string | null
   assignee: string | null
 }
 
@@ -76,7 +77,7 @@ export async function buildReportData(opts: BuildOpts): Promise<ReportData> {
       include: {
         project: { select: { name: true, color: true, logoUrl: true } },
         assignees: { select: { userId: true } },
-        checklist: { select: { text: true, done: true, assigneeId: true } },
+        checklist: { select: { text: true, done: true, dueDate: true, assigneeId: true } },
       },
       orderBy: [{ dueDate: 'asc' }],
     }),
@@ -131,6 +132,7 @@ export async function buildReportData(opts: BuildOpts): Promise<ReportData> {
       checklist: t.checklist.map((c) => ({
         text: c.text,
         done: c.done,
+        dueDate: c.dueDate,
         assignee: c.assigneeId ? nameById.get(c.assigneeId) ?? null : null,
       })),
     })),
