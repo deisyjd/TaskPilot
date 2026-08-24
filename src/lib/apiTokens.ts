@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'crypto'
 import { headers } from 'next/headers'
 import { prisma } from '@/lib/prisma'
 import type { SessionPayload } from '@/lib/auth'
+import { getCachedSession } from '@/lib/sessionCache'
 
 const TOKEN_PREFIX = 'tp_live_'
 
@@ -26,8 +27,16 @@ export async function sessionFromBearer(): Promise<SessionPayload | null> {
   const raw = header.slice('Bearer '.length).trim()
   if (!raw.startsWith(TOKEN_PREFIX)) return null
 
+  const hash = hashToken(raw)
+  return getCachedSession(hash, () => resolveBearerSession(hash))
+}
+
+// Resolución real contra la BD (solo corre en cache-miss). El rol se toma de la
+// membresía VIGENTE del usuario en la empresa del token: si lo sacaron de la
+// empresa, el token deja de valer (a más tardar al expirar el TTL de la caché).
+async function resolveBearerSession(hash: string): Promise<SessionPayload | null> {
   const token = await prisma.apiToken.findUnique({
-    where: { tokenHash: hashToken(raw) },
+    where: { tokenHash: hash },
     include: { user: true },
   })
   if (!token) return null
@@ -39,7 +48,8 @@ export async function sessionFromBearer(): Promise<SessionPayload | null> {
   })
   if (!membership) return null
 
-  // Marca de último uso (best-effort; no bloquea ni rompe si falla).
+  // Último uso: solo se escribe en cache-miss (~1 vez por TTL), no en cada
+  // request. Best-effort; no bloquea ni rompe si falla.
   prisma.apiToken
     .update({ where: { id: token.id }, data: { lastUsedAt: new Date() } })
     .catch(() => {})

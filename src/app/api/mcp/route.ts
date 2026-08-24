@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { getAppBaseUrl } from '@/lib/googleOAuth'
+import { checkRateLimit } from '@/lib/rateLimit'
 import { TOOLS, type McpContext } from '@/lib/mcp/tools'
 
 // Servidor MCP (Model Context Protocol) sobre Streamable HTTP en modo stateless:
@@ -23,6 +24,27 @@ const CORS: Record<string, string> = {
 
 const PROTOCOL_VERSION = '2025-06-18'
 const SERVER_INFO = { name: 'TaskPilot', version: '1.0.0' }
+
+// Protección contra abuso / saturación del pool bajo alta concurrencia.
+const RATE_LIMIT = 300 // mensajes JSON-RPC por usuario…
+const RATE_WINDOW = 60 // …cada 60 s
+const MAX_BATCH = 50 // tamaño máximo de un lote JSON-RPC
+const BATCH_CONCURRENCY = 5 // cuántos mensajes de un lote se procesan a la vez
+
+// Ejecuta `fn` sobre `items` con un tope de concurrencia (evita que un lote
+// grande abra decenas de self-fetches + transacciones en paralelo).
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length)
+  let next = 0
+  async function worker() {
+    while (next < items.length) {
+      const idx = next++
+      results[idx] = await fn(items[idx])
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+  return results
+}
 
 interface JsonRpcRequest {
   jsonrpc: '2.0'
@@ -120,10 +142,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(rpcError(null, -32700, 'JSON inválido'), { status: 400, headers: CORS })
   }
 
+  // Tope de lote: un array JSON-RPC gigante podría abanicar cientos de
+  // operaciones en paralelo contra la BD.
+  if (Array.isArray(body) && body.length > MAX_BATCH) {
+    return NextResponse.json(rpcError(null, -32600, `Lote demasiado grande (máx. ${MAX_BATCH} mensajes)`), {
+      status: 400,
+      headers: CORS,
+    })
+  }
+
+  // Rate limit por usuario (cuenta cada mensaje del lote). Fail-open sin Redis.
+  const messageCount = Array.isArray(body) ? Math.max(1, body.length) : 1
+  const rl = await checkRateLimit(`mcp:${session.userId}`, RATE_LIMIT, RATE_WINDOW, messageCount)
+  if (!rl.ok) {
+    return NextResponse.json(rpcError(null, -32000, `Demasiadas peticiones. Reintenta en ${rl.resetSeconds}s.`), {
+      status: 429,
+      headers: { ...CORS, 'Retry-After': String(rl.resetSeconds) },
+    })
+  }
+
   const ctx = makeContext(req)
 
   if (Array.isArray(body)) {
-    const responses = (await Promise.all(body.map((m) => handleMessage(m as JsonRpcRequest, ctx)))).filter(Boolean)
+    const responses = (
+      await mapWithConcurrency(body as JsonRpcRequest[], BATCH_CONCURRENCY, (m) => handleMessage(m, ctx))
+    ).filter(Boolean)
     if (responses.length === 0) return new NextResponse(null, { status: 202, headers: CORS })
     return NextResponse.json(responses, { headers: CORS })
   }
