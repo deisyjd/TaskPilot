@@ -7,7 +7,17 @@ import '../../core/ui/state_views.dart';
 import '../../core/ui/user_avatar.dart';
 import '../../data/models/conversation.dart';
 import '../../data/models/message.dart';
+import '../auth/auth_controller.dart';
+import '../users/users_providers.dart';
 import 'chat_providers.dart';
+
+/// Id del otro participante de una conversación directa (para su foto/nombre).
+String? _otherMember(Conversation c, String? myId) {
+  for (final m in c.members) {
+    if (m != myId) return m;
+  }
+  return c.members.isNotEmpty ? c.members.first : null;
+}
 
 /// Lista de conversaciones (diseño Wipli): header negro + buscador + filas con
 /// avatar cuadrado. Se refresca en vivo cuando llega un mensaje (SSE).
@@ -24,6 +34,8 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(conversationsProvider);
+    final usersById = ref.watch(usersByIdProvider);
+    final myId = ref.watch(authControllerProvider).session?.user.id;
 
     ref.listen<AsyncValue<Message>>(realtimeMessagesProvider, (_, __) {
       ref.invalidate(conversationsProvider);
@@ -52,7 +64,11 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
                   else if (conversations.isEmpty)
                     const EmptyView(icon: Icons.search_off, message: 'Sin resultados', scrollable: false)
                   else
-                    for (final c in conversations) _ConversationRow(conversation: c),
+                    for (final c in conversations)
+                      _ConversationRow(
+                        conversation: c,
+                        imageUrl: c.isGroup ? null : usersById[_otherMember(c, myId)]?.avatarUrl,
+                      ),
                 ],
               );
             },
@@ -102,8 +118,9 @@ class _Header extends StatelessWidget {
 }
 
 class _ConversationRow extends StatelessWidget {
-  const _ConversationRow({required this.conversation});
+  const _ConversationRow({required this.conversation, this.imageUrl});
   final Conversation conversation;
+  final String? imageUrl;
 
   static String _initials(String name) {
     final parts = name.trim().split(RegExp(r'\s+'));
@@ -143,7 +160,7 @@ class _ConversationRow extends StatelessWidget {
                     child: Icon(Icons.group, color: context.colors.textSecondary),
                   )
                 else
-                  UserAvatar(initials: _initials(c.name), size: 46),
+                  UserAvatar(initials: _initials(c.name), size: 46, imageUrl: imageUrl),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

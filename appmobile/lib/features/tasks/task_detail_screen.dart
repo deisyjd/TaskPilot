@@ -134,6 +134,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     name: usersById[id]?.name ?? 'Usuario',
                     initials: usersById[id]?.initials ?? '?',
                     seed: usersById[id]?.color ?? id,
+                    imageUrl: usersById[id]?.avatarUrl,
                   ),
               ],
             ),
@@ -233,10 +234,11 @@ class _DarkPill extends StatelessWidget {
 }
 
 class _AssigneeChip extends StatelessWidget {
-  const _AssigneeChip({required this.name, required this.initials, required this.seed});
+  const _AssigneeChip({required this.name, required this.initials, required this.seed, this.imageUrl});
   final String name;
   final String initials;
   final String seed;
+  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -250,7 +252,7 @@ class _AssigneeChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          UserAvatar(initials: initials, seed: seed, size: 26),
+          UserAvatar(initials: initials, seed: seed, size: 26, imageUrl: imageUrl),
           const SizedBox(width: 8),
           Text(name, style: const TextStyle(fontSize: 13)),
         ],

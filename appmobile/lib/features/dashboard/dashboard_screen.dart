@@ -52,6 +52,7 @@ class DashboardScreen extends ConsumerWidget {
                     firstName: user?.name.split(' ').first ?? '',
                     company: auth.session?.activeCompany?.name,
                     initials: user?.initials ?? '',
+                    imageUrl: user?.avatarUrl,
                   ),
                   const SizedBox(height: 14),
                   Row(
@@ -104,11 +105,12 @@ class DashboardScreen extends ConsumerWidget {
 
 /// Header negro redondeado del diseño: marca + estado + avatar + saludo.
 class _Header extends StatelessWidget {
-  const _Header({required this.firstName, required this.company, required this.initials});
+  const _Header({required this.firstName, required this.company, required this.initials, this.imageUrl});
 
   final String firstName;
   final String? company;
   final String initials;
+  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -137,7 +139,7 @@ class _Header extends StatelessWidget {
                 onPressed: () => context.push('/timeline'),
               ),
               const SizedBox(width: 4),
-              UserAvatar(initials: initials, size: 44, primary: true),
+              UserAvatar(initials: initials, size: 44, primary: true, imageUrl: imageUrl),
             ],
           ),
           const SizedBox(height: 12),

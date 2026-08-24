@@ -191,6 +191,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final myId = ref.watch(authControllerProvider).session?.user.id;
     final usersById = ref.watch(usersByIdProvider);
 
+    String? headerImageUrl;
+    if (!widget.conversation.isGroup) {
+      final others = widget.conversation.members.where((m) => m != myId);
+      final otherId = others.isNotEmpty
+          ? others.first
+          : (widget.conversation.members.isNotEmpty ? widget.conversation.members.first : null);
+      headerImageUrl = otherId == null ? null : usersById[otherId]?.avatarUrl;
+    }
+
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
@@ -207,7 +216,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     ),
                     child: Icon(Icons.group, size: 18, color: context.colors.textSecondary),
                   )
-                : UserAvatar(initials: _titleInitials, size: 34),
+                : UserAvatar(initials: _titleInitials, size: 34, imageUrl: headerImageUrl),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
