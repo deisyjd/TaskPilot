@@ -63,7 +63,9 @@ const APPROX: Record<string, string> = {
 
 function toWinAnsi(s: string): string {
   let out = ''
-  for (const ch of s) {
+  // NFC compone acentos descompuestos (e + ́ → é) para conservarlos en vez de
+  // perder la tilde: la é precompuesta (U+00E9) sí es WinAnsi.
+  for (const ch of s.normalize('NFC')) {
     const cp = ch.codePointAt(0)!
     if ((cp >= 0x20 && cp <= 0x7e) || (cp >= 0xa0 && cp <= 0xff) || CP1252_EXTRA.has(cp)) {
       out += ch
