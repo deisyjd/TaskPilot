@@ -100,15 +100,27 @@ export async function POST(req: NextRequest) {
 
   const base = `reporte-${slug(slugBase)}-${start}_a_${end}`
   const attachments: { filename: string; content: Buffer; contentType?: string }[] = []
-  if (formats.includes('pdf')) {
-    attachments.push({ filename: `${base}.pdf`, content: await buildReportPdf(data), contentType: 'application/pdf' })
-  }
-  if (formats.includes('excel')) {
-    attachments.push({
-      filename: `${base}.xlsx`,
-      content: await buildReportExcel(data),
-      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    })
+  try {
+    if (formats.includes('pdf')) {
+      attachments.push({ filename: `${base}.pdf`, content: await buildReportPdf(data), contentType: 'application/pdf' })
+    }
+    if (formats.includes('excel')) {
+      attachments.push({
+        filename: `${base}.xlsx`,
+        content: await buildReportExcel(data),
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      })
+    }
+  } catch (err) {
+    // Antes la generación del adjunto estaba FUERA de try/catch: cualquier fallo
+    // (p. ej. un carácter no soportado por la fuente del PDF) tumbaba la ruta con
+    // un 500 opaco y sin enviar nada. Ahora devuelve un error claro y queda en
+    // logs, en vez de un correo que nunca llega sin explicación.
+    console.error('[reports] error generando adjunto (PDF/Excel):', err)
+    return NextResponse.json(
+      { error: 'No se pudo generar el archivo del reporte. Revisa los logs del servidor.' },
+      { status: 500 },
+    )
   }
 
   const full = formats.includes('mailing')
