@@ -42,6 +42,39 @@ function hexToRgb(hex: string): RGB {
   return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255)
 }
 
+// Las fuentes estándar de pdf-lib (Helvetica…) usan codificación WinAnsi: solo
+// pueden dibujar Latin-1 + los 27 caracteres "especiales" de CP1252 (comillas
+// tipográficas, guiones em/en, «…», viñeta, €, ™…). Cualquier otro carácter que
+// un usuario haya metido en un título/nombre (flechas como ↔, emojis, CJK…)
+// hace que pdf-lib lance al medir o dibujar el texto y tumba TODO el reporte.
+// Se saneja el texto en los puntos de entrada: se conserva el español intacto y
+// se aproxima o descarta lo no representable.
+const CP1252_EXTRA = new Set<number>([
+  0x20ac, 0x201a, 0x0192, 0x201e, 0x2026, 0x2020, 0x2021, 0x02c6, 0x2030,
+  0x0160, 0x2039, 0x0152, 0x017d, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022,
+  0x2013, 0x2014, 0x02dc, 0x2122, 0x0161, 0x203a, 0x0153, 0x017e, 0x0178,
+])
+
+// Aproximaciones ASCII para símbolos frecuentes fuera de WinAnsi.
+const APPROX: Record<string, string> = {
+  '↔': '-', '→': '->', '←': '<-', '↑': '^', '↓': 'v', '⟶': '->', '⇒': '=>',
+  '✓': '', '✔': '', '✗': 'x', '✘': 'x', '★': '*', '☆': '*', '•': '•',
+}
+
+function toWinAnsi(s: string): string {
+  let out = ''
+  for (const ch of s) {
+    const cp = ch.codePointAt(0)!
+    if ((cp >= 0x20 && cp <= 0x7e) || (cp >= 0xa0 && cp <= 0xff) || CP1252_EXTRA.has(cp)) {
+      out += ch
+    } else if (APPROX[ch] !== undefined) {
+      out += APPROX[ch]
+    }
+    // else: carácter no representable (emoji, CJK, símbolo raro) → se descarta.
+  }
+  return out
+}
+
 function longDate(date: Date): string {
   return `${date.getDate()} de ${MONTH_FULL[date.getMonth()]} de ${date.getFullYear()}`
 }
@@ -73,10 +106,12 @@ export async function buildReportPdf(data: ReportData): Promise<Buffer> {
   let y = PAGE.h - MARGIN
 
   const draw = (s: string, x: number, size: number, f: PDFFont = font, color: RGB = TEXT) =>
-    page.drawText(s, { x, y, size, font: f, color })
+    page.drawText(toWinAnsi(s), { x, y, size, font: f, color })
 
-  const drawCentered = (s: string, centerX: number, size: number, f: PDFFont, color: RGB) =>
-    page.drawText(s, { x: centerX - f.widthOfTextAtSize(s, size) / 2, y, size, font: f, color })
+  const drawCentered = (s: string, centerX: number, size: number, f: PDFFont, color: RGB) => {
+    const t = toWinAnsi(s)
+    page.drawText(t, { x: centerX - f.widthOfTextAtSize(t, size) / 2, y, size, font: f, color })
+  }
 
   // Los símbolos ✓/○ no existen en WinAnsi (la codificación de las fuentes
   // estándar de pdf-lib) — se dibujan como formas vectoriales en su lugar.
@@ -102,14 +137,16 @@ export async function buildReportPdf(data: ReportData): Promise<Buffer> {
     return pillW
   }
 
-  const truncate = (s: string, f: PDFFont, size: number, maxW: number): string => {
+  const truncate = (raw: string, f: PDFFont, size: number, maxW: number): string => {
+    const s = toWinAnsi(raw)
     if (f.widthOfTextAtSize(s, size) <= maxW) return s
     let out = s
     while (out.length > 1 && f.widthOfTextAtSize(out + '…', size) > maxW) out = out.slice(0, -1)
     return out + '…'
   }
 
-  const wrap = (s: string, f: PDFFont, size: number, maxW: number): string[] => {
+  const wrap = (raw: string, f: PDFFont, size: number, maxW: number): string[] => {
+    const s = toWinAnsi(raw)
     const words = s.split(/\s+/)
     const lines: string[] = []
     let line = ''
@@ -336,7 +373,7 @@ export async function buildReportPdf(data: ReportData): Promise<Buffer> {
   // ── Pie de página ──
   page.drawLine({ start: { x: MARGIN, y: y + 10 }, end: { x: PAGE.w - MARGIN, y: y + 10 }, thickness: 0.5, color: BORDER })
   draw('Wipli', MARGIN, 10, bold, DARK)
-  const footerRight = `Generado por ${data.generatedBy} el ${longDate(new Date())} · wiplitask.com`
+  const footerRight = toWinAnsi(`Generado por ${data.generatedBy} el ${longDate(new Date())} · wiplitask.com`)
   page.drawText(footerRight, { x: PAGE.w - MARGIN - font.widthOfTextAtSize(footerRight, 9), y, size: 9, font, color: TEXT2 })
 
   const bytes = await doc.save()
