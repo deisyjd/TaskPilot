@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bell, AlertTriangle, Clock, ChevronRight, ChevronDown, Menu, BellRing, Check, CheckCheck, LogOut, ShieldCheck } from 'lucide-react'
+import { Bell, AlertTriangle, Clock, ChevronRight, ChevronDown, Menu, BellRing, Check, CheckCheck, LogOut, ShieldCheck, RefreshCw } from 'lucide-react'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useCurrentUser } from '@/store/useUserStore'
 import { useMobileNavStore } from '@/store/useMobileNavStore'
 import { useAuthStore } from '@/store/useAuthStore'
+import { useSyncStore } from '@/store/useSyncStore'
 import { can, canEditTask } from '@/lib/permissions'
 import { isOverdue } from '@/lib/dates'
 import { isReminderDue, formatReminderDateTime, reminderDueTimestamp } from '@/lib/reminders'
@@ -163,6 +164,22 @@ export function Header() {
   const profileRef = useRef<HTMLDivElement>(null)
   const [readIds, setReadIds] = useState<Set<string>>(new Set())
 
+  const hasChanges = useSyncStore((s) => s.hasChanges)
+  const [reloading, setReloading] = useState(false)
+
+  const handleReloadChanges = async () => {
+    if (reloading) return
+    setReloading(true)
+    try {
+      // Re-trae proyectos, tareas, historial y recordatorios, y re-sincroniza
+      // la versión base (apaga el aviso).
+      await useTaskStore.getState().fetchAll()
+      await useSyncStore.getState().refreshBaseline()
+    } finally {
+      setReloading(false)
+    }
+  }
+
   const handleLogout = async () => {
     setProfileOpen(false)
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -283,6 +300,20 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
+        {/* Aviso de cambios sin sincronizar → clic para recargar */}
+        {hasChanges && (
+          <button
+            onClick={handleReloadChanges}
+            title="Hay cambios en proyectos/tareas hechos por otros. Clic para recargar."
+            className="flex items-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-70"
+            style={{ backgroundColor: 'var(--tp-lime)', color: 'var(--tp-dark)', border: '1px solid var(--tp-border)' }}
+            disabled={reloading}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${reloading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{reloading ? 'Sincronizando…' : 'Cambios sin sincronizar'}</span>
+          </button>
+        )}
+
         {/* Notification bell */}
         <div className="relative" ref={notifRef}>
           <button

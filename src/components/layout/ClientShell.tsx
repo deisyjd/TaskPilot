@@ -11,6 +11,7 @@ import { useUserStore } from '@/store/useUserStore'
 import { useCurrentUser } from '@/store/useUserStore'
 import { useChatStore } from '@/store/useChatStore'
 import { useAuthStore } from '@/store/useAuthStore'
+import { useSyncStore } from '@/store/useSyncStore'
 import { can } from '@/lib/permissions'
 import { useRealtime } from '@/lib/useRealtime'
 import { notifyReminder } from '@/lib/notify'
@@ -78,6 +79,8 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
           await Promise.all([fetchAll(), fetchUsers()])
           fetchConversations()
           checkReminderAlerts()
+          // Fija la versión base ya cargada; a partir de aquí se detectan cambios.
+          useSyncStore.getState().refreshBaseline()
         }
       })
       .catch(() => {})
@@ -94,9 +97,27 @@ export function ClientShell({ children }: { children: React.ReactNode }) {
       fetchConversations()
       await fetchReminders()
       checkReminderAlerts()
+      // Detecta cambios en proyectos/tareas/notas hechos por otros (o en otra
+      // sesión). No re-trae los datos: solo enciende el aviso del header.
+      useSyncStore.getState().checkVersion()
     }, 30000)
     return () => clearInterval(interval)
   }, [isLoggedIn, fetchConversations, fetchReminders])
+
+  // Al volver a enfocar la pestaña (p. ej. "cuando abro la app"), chequea al
+  // instante si hay cambios, sin esperar al sondeo de 30s.
+  useEffect(() => {
+    if (!isLoggedIn) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') useSyncStore.getState().checkVersion()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [isLoggedIn])
 
   useEffect(() => {
     if (!ready) return

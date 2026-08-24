@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { Task, TaskStatus, HistoryEvent, Project, Note, Reminder, ReminderRecurrence } from '@/types'
+import { useSyncStore } from '@/store/useSyncStore'
 
 async function api<T>(url: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -10,6 +11,11 @@ async function api<T>(url: string, opts?: RequestInit): Promise<T> {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.error ?? `Solicitud fallida (${res.status})`)
   }
+  // Tras una mutación propia exitosa, re-sincroniza el baseline de versión: el
+  // cambio ya está reflejado en este store, así que no debe dispararse el aviso
+  // de "cambios sin sincronizar" por lo que uno mismo acaba de hacer.
+  const method = (opts?.method ?? 'GET').toUpperCase()
+  if (method !== 'GET') void useSyncStore.getState().refreshBaseline()
   if (res.status === 204) return undefined as T
   return res.json()
 }
