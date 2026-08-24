@@ -3,22 +3,32 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { sendWelcomeEmail } from '@/lib/welcomeEmail'
+import { getOrSet, invalidate } from '@/lib/cache'
+import { usersCacheKey } from '@/lib/cacheKeys'
+
+// TTL corto de respaldo: aunque invalidamos explícitamente en cada mutación de
+// usuarios/membresías, el TTL acota cualquier ruta de cambio que se nos escape.
+const USERS_TTL_SECONDS = 60
 
 export async function GET() {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  const memberships = await prisma.companyMembership.findMany({
-    where: { companyId: session.activeCompanyId },
-    include: {
-      user: {
-        select: { id: true, name: true, email: true, role: true, initials: true, color: true, avatarUrl: true, status: true, dailyDigestEmail: true, taskAssignedEmail: true, createdAt: true, updatedAt: true },
+  // Este endpoint lo sondean todos los clientes cada ~30s y la lista cambia rara
+  // vez: se cachea por empresa para no pegarle a Postgres en cada sondeo.
+  const users = await getOrSet(usersCacheKey(session.activeCompanyId), USERS_TTL_SECONDS, async () => {
+    const memberships = await prisma.companyMembership.findMany({
+      where: { companyId: session.activeCompanyId },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, role: true, initials: true, color: true, avatarUrl: true, status: true, dailyDigestEmail: true, taskAssignedEmail: true, createdAt: true, updatedAt: true },
+        },
       },
-    },
-    orderBy: { user: { name: 'asc' } },
+      orderBy: { user: { name: 'asc' } },
+    })
+    return memberships.map((m) => ({ ...m.user, userRole: m.role }))
   })
 
-  const users = memberships.map((m) => ({ ...m.user, userRole: m.role }))
   return NextResponse.json(users)
 }
 
@@ -66,6 +76,8 @@ export async function POST(req: NextRequest) {
   const membership = await prisma.companyMembership.create({
     data: { userId: user.id, companyId: session.activeCompanyId, role: userRole ?? 'member' },
   })
+
+  await invalidate(usersCacheKey(session.activeCompanyId))
 
   // Correo de bienvenida / invitación (no bloquea la respuesta). A los usuarios
   // nuevos les llega su contraseña temporal; a los ya existentes, solo el aviso

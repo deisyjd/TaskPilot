@@ -8,11 +8,16 @@ export async function register() {
   const cron = await import('node-cron')
   const { runDailyDigestJob } = await import('@/lib/dailyDigest')
   const { runRecurrenceGenerationJob } = await import('@/lib/recurrenceJob')
+  const { runWithLock } = await import('@/lib/lock')
+
+  // TTL del lock de jobs: cubre el desfase de relojes entre réplicas al disparar
+  // el cron. No necesita cubrir la duración del job.
+  const JOB_LOCK_TTL_MS = 10 * 60 * 1000
 
   cron.schedule(
     '0 7 * * 1-5',
     () => {
-      runDailyDigestJob().catch((err) => {
+      runWithLock('daily-digest', JOB_LOCK_TTL_MS, runDailyDigestJob).catch((err) => {
         console.error('[daily-digest] error en el job programado:', err)
       })
     },
@@ -28,7 +33,7 @@ export async function register() {
   cron.schedule(
     '0 6 * * *',
     () => {
-      runRecurrenceGenerationJob().catch((err) => {
+      runWithLock('recurrence-generation', JOB_LOCK_TTL_MS, runRecurrenceGenerationJob).catch((err) => {
         console.error('[recurrence] error en el job programado:', err)
       })
     },

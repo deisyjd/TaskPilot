@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { invalidate } from '@/lib/cache'
+import { usersCacheKey } from '@/lib/cacheKeys'
 
 type Params = { params: Promise<{ id: string; companyId: string }> }
 
@@ -32,5 +34,6 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
 
   await prisma.companyMembership.delete({ where: { userId_companyId: { userId: id, companyId } } })
+  await invalidate(usersCacheKey(companyId))
   return NextResponse.json({ ok: true })
 }

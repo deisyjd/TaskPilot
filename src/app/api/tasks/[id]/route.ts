@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
-import { recordHistoryEvent } from '@/lib/history'
+import { recordHistoryEvents } from '@/lib/history'
 import { serializeTask, validAssigneeIds, taskVisibilityFilter, canUserEditTaskServer } from '../route'
 import { notifyTaskAssigned } from '@/lib/taskAssignedNotification'
 import { pickFields } from '@/lib/apiBody'
@@ -173,17 +173,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     events.push({ type: 'task-edited', description: 'Tarea editada' })
   }
 
-  for (const e of events) {
-    await recordHistoryEvent({
-      companyId: session.activeCompanyId,
-      type: e.type,
-      taskId: task!.id,
-      taskTitle: task!.title,
-      description: e.description,
-      user: userName,
-      meta: e.meta,
-    })
-  }
+  const historyEvents = events.map((e) => ({
+    companyId: session.activeCompanyId,
+    type: e.type,
+    taskId: task!.id,
+    taskTitle: task!.title,
+    description: e.description,
+    user: userName,
+    meta: e.meta,
+  }))
+  // El historial no bloquea la respuesta: una sola query (createMany) en after()
+  // en vez de N inserts en serie dentro del request.
+  after(() =>
+    recordHistoryEvents(historyEvents).catch((err) =>
+      console.error('[history] error registrando eventos de edición:', err)
+    )
+  )
 
   return NextResponse.json(serializeTask(task!))
 }

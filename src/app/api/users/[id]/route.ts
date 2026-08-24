@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { pickFields } from '@/lib/apiBody'
+import { invalidate } from '@/lib/cache'
+import { usersCacheKey } from '@/lib/cacheKeys'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -43,6 +45,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     finalRole = updated.role
   }
 
+  await invalidate(usersCacheKey(session.activeCompanyId))
+
   return NextResponse.json({ ...user, userRole: finalRole })
 }
 
@@ -55,6 +59,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { id } = await params
   const result = await prisma.companyMembership.deleteMany({ where: { userId: id, companyId: session.activeCompanyId } })
   if (result.count === 0) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+
+  await invalidate(usersCacheKey(session.activeCompanyId))
 
   return NextResponse.json({ ok: true })
 }

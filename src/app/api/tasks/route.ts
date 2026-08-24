@@ -148,15 +148,17 @@ export async function POST(req: NextRequest) {
     include: { checklist: true, comments: true, assignees: { select: { userId: true, role: true } } },
   })
 
-  await recordHistoryEvent({
-    companyId: session.activeCompanyId,
-    type: 'task-created',
-    taskId: task.id,
-    taskTitle: task.title,
-    project: project.name,
-    description: 'Tarea creada',
-    user: authorName,
-  })
+  after(() =>
+    recordHistoryEvent({
+      companyId: session.activeCompanyId,
+      type: 'task-created',
+      taskId: task.id,
+      taskTitle: task.title,
+      project: project.name,
+      description: 'Tarea creada',
+      user: authorName,
+    }).catch((err) => console.error('[history] error registrando tarea creada:', err))
+  )
 
   // Si es una tarea recurrente, generar sus ocurrencias sin bloquear la
   // respuesta (after) — para que aparezcan pronto sin esperar al cron diario.

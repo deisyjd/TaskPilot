@@ -7,22 +7,60 @@ import { getRedis } from '@/lib/redis'
 // `report:monthly:{companyId}:{year}-{month}` o `history:{companyId}`, para
 // poder invalidar por prefijo cuando cambian los datos.
 
+// Protección anti-estampida (single-flight): al expirar una clave caliente, en
+// vez de que N requests recalculen a la vez contra Postgres, solo uno toma un
+// lock corto y recomputa; el resto espera brevemente y relee la caché.
+const SINGLEFLIGHT_LOCK_MS = 5000
+const SINGLEFLIGHT_WAIT_MS = 80
+const SINGLEFLIGHT_MAX_WAITS = 6
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 export async function getOrSet<T>(key: string, ttlSeconds: number, fetchFn: () => Promise<T>): Promise<T> {
   const redis = getRedis()
-  if (redis) {
-    try {
-      const cached = await redis.get(key)
-      if (cached !== null) return JSON.parse(cached) as T
-    } catch {
-      // ignora y consulta la fuente
-    }
+  if (!redis) return fetchFn()
+
+  try {
+    const cached = await redis.get(key)
+    if (cached !== null) return JSON.parse(cached) as T
+  } catch {
+    // Redis caído: consulta la fuente directamente.
   }
+
+  // Single-flight: intenta tomar el lock de recomputación.
+  const lockKey = `lock:${key}`
+  let haveLock = false
+  try {
+    haveLock = (await redis.set(lockKey, '1', 'PX', SINGLEFLIGHT_LOCK_MS, 'NX')) === 'OK'
+  } catch {
+    // Si el lock falla, seguimos y computamos igual (peor caso: recomputa de más).
+  }
+
+  if (!haveLock) {
+    // Otro request está recomputando: espera un poco y relee la caché.
+    for (let i = 0; i < SINGLEFLIGHT_MAX_WAITS; i++) {
+      await sleep(SINGLEFLIGHT_WAIT_MS)
+      try {
+        const cached = await redis.get(key)
+        if (cached !== null) return JSON.parse(cached) as T
+      } catch {
+        break
+      }
+    }
+    // Fallback: el que tenía el lock no terminó a tiempo → computamos nosotros.
+  }
+
   const value = await fetchFn()
-  if (redis) {
+  try {
+    await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds)
+  } catch {
+    // ignora: no cachear no es un error
+  }
+  if (haveLock) {
     try {
-      await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds)
+      await redis.del(lockKey)
     } catch {
-      // ignora: no cachear no es un error
+      // el lock expira solo por PX
     }
   }
   return value

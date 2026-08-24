@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { recordHistoryEvent } from '@/lib/history'
@@ -49,15 +49,17 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   const actor = await prisma.user.findUnique({ where: { id: session.userId } })
   const project = await prisma.project.findUnique({ where: { id: original.projectId } })
-  await recordHistoryEvent({
-    companyId: session.activeCompanyId,
-    type: 'task-created',
-    taskId: duplicate.id,
-    taskTitle: duplicate.title,
-    project: project?.name,
-    description: `Tarea duplicada de "${original.title}"`,
-    user: actor?.name ?? session.email,
-  })
+  after(() =>
+    recordHistoryEvent({
+      companyId: session.activeCompanyId,
+      type: 'task-created',
+      taskId: duplicate.id,
+      taskTitle: duplicate.title,
+      project: project?.name,
+      description: `Tarea duplicada de "${original.title}"`,
+      user: actor?.name ?? session.email,
+    }).catch((err) => console.error('[history] error registrando tarea duplicada:', err))
+  )
 
   return NextResponse.json(serializeTask(duplicate), { status: 201 })
 }

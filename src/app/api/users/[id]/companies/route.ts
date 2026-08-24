@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { invalidate } from '@/lib/cache'
+import { usersCacheKey } from '@/lib/cacheKeys'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -60,6 +62,8 @@ export async function POST(req: NextRequest, { params }: Params) {
     update: { role: role ?? 'member' },
     create: { userId: id, companyId, role: role ?? 'member' },
   })
+
+  await invalidate(usersCacheKey(companyId))
 
   return NextResponse.json({ companyId, role: membership.role }, { status: 201 })
 }
