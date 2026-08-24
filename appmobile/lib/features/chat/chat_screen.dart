@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/config/app_config.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/ui/user_avatar.dart';
 import '../../data/models/conversation.dart';
 import '../../data/models/message.dart';
 import '../../data/models/user.dart';
@@ -37,14 +38,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   String? _error;
   double? _uploadProgress; // null = sin subida en curso; 0..1 mientras sube
 
+  String get _titleInitials {
+    final parts = widget.conversation.name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.characters.first.toUpperCase();
+    return (parts.first.characters.first + parts[1].characters.first).toUpperCase();
+  }
+
   @override
   void initState() {
     super.initState();
+    activeConversationId = widget.conversation.id;
     _load();
   }
 
   @override
   void dispose() {
+    if (activeConversationId == widget.conversation.id) activeConversationId = null;
     _input.dispose();
     _scroll.dispose();
     super.dispose();
@@ -157,12 +167,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _scrollToBottom();
   }
 
+  /// Con la lista invertida (reverse:true), el "fondo" (último mensaje) es el
+  /// offset 0. Al cargar ya arranca ahí; al enviar/recibir animamos a 0.
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) {
         _scroll.animateTo(
-          _scroll.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 200),
+          0,
+          duration: const Duration(milliseconds: 250),
           curve: Curves.easeOut,
         );
       }
@@ -180,7 +192,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final usersById = ref.watch(usersByIdProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.conversation.name)),
+      appBar: AppBar(
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            widget.conversation.isGroup
+                ? Container(
+                    width: 34,
+                    height: 34,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: context.colors.surfaceAlt,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.group, size: 18, color: context.colors.textSecondary),
+                  )
+                : UserAvatar(initials: _titleInitials, size: 34),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                widget.conversation.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+      ),
       body: Column(
         children: [
           Expanded(child: _body(myId, usersById)),
@@ -207,10 +246,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     return ListView.builder(
       controller: _scroll,
+      reverse: true, // el último mensaje queda siempre abajo y visible
       padding: const EdgeInsets.all(16),
       itemCount: _messages.length,
       itemBuilder: (_, i) {
-        final m = _messages[i];
+        final m = _messages[_messages.length - 1 - i];
         final mine = m.senderId == myId;
         final senderName = widget.conversation.isGroup && !mine
             ? usersById[m.senderId]?.name
@@ -329,7 +369,12 @@ class _Bubble extends StatelessWidget {
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         decoration: BoxDecoration(
           color: mine ? AppColors.lime : context.colors.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: Radius.circular(mine ? 18 : 6),
+            bottomRight: Radius.circular(mine ? 6 : 18),
+          ),
           border: mine ? null : Border.all(color: context.colors.border),
         ),
         child: Column(

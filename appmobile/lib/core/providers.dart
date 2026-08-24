@@ -9,6 +9,7 @@ import '../data/repositories/chat_repository.dart';
 import '../data/repositories/notes_repository.dart';
 import '../data/repositories/projects_repository.dart';
 import '../data/repositories/reminders_repository.dart';
+import '../data/repositories/reports_repository.dart';
 import '../data/repositories/tasks_repository.dart';
 import '../data/repositories/users_repository.dart';
 import '../features/auth/auth_controller.dart';
@@ -65,7 +66,10 @@ final Provider<ChatRepository> chatRepositoryProvider =
     Provider<ChatRepository>((ref) => ChatRepository(ref.read(apiClientProvider)));
 
 final Provider<RealtimeService> realtimeServiceProvider =
-    Provider<RealtimeService>((ref) => RealtimeService(ref.read(apiClientProvider)));
+    Provider<RealtimeService>((ref) => RealtimeService(ref.read(sessionManagerProvider)));
+
+final Provider<ReportsRepository> reportsRepositoryProvider =
+    Provider<ReportsRepository>((ref) => ReportsRepository(ref.read(apiClientProvider)));
 
 // ─── Offline (F2b) ────────────────────────────────────────────────
 final Provider<LocalDb> localDbProvider = Provider<LocalDb>((ref) => LocalDb.instance);

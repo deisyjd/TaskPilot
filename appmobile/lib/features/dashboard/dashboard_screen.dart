@@ -28,128 +28,190 @@ class DashboardScreen extends ConsumerWidget {
     final user = auth.session?.user;
 
     return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 16,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Hola, ${user?.name.split(' ').first ?? ''}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          color: AppColors.lime,
+          onRefresh: () => ref.refresh(companyTasksProvider.future),
+          child: tasksAsync.when(
+            loading: () => const LoadingView(),
+            error: (e, _) => ErrorView(
+              message: '$e',
+              onRetry: () => ref.invalidate(companyTasksProvider),
             ),
-            if (auth.session?.activeCompany != null)
-              Text(
-                auth.session!.activeCompany!.name,
-                style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
-              ),
-          ],
-        ),
-        actions: [
-          const Padding(
-            padding: EdgeInsets.only(right: 4),
-            child: Center(child: SyncIndicator()),
-          ),
-          IconButton(
-            tooltip: 'Línea de tiempo',
-            icon: const Icon(Icons.calendar_view_week),
-            onPressed: () => context.push('/timeline'),
-          ),
-          if (user != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: UserAvatar(initials: user.initials, seed: user.color),
-            ),
-        ],
-      ),
-      body: RefreshIndicator(
-        color: AppColors.lime,
-        onRefresh: () => ref.refresh(companyTasksProvider.future),
-        child: tasksAsync.when(
-          loading: () => const LoadingView(),
-          error: (e, _) => ErrorView(
-            message: '$e',
-            onRetry: () => ref.invalidate(companyTasksProvider),
-          ),
-          data: (tasks) {
-            final pending = tasks.where((t) => t.status == TaskStatus.pending).length;
-            final inProgress = tasks.where((t) => t.status == TaskStatus.inProgress).length;
-            final dueToday = tasks.where((t) => t.dueDate == _today && t.status != TaskStatus.done).toList();
+            data: (tasks) {
+              final pending = tasks.where((t) => t.status == TaskStatus.pending).length;
+              final inProgress = tasks.where((t) => t.status == TaskStatus.inProgress).length;
+              final dueToday =
+                  tasks.where((t) => t.dueDate == _today && t.status != TaskStatus.done).toList();
 
-            return ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Row(
-                  children: [
-                    _StatCard(label: 'Pendientes', value: pending, color: AppColors.statusPending),
-                    const SizedBox(width: 12),
-                    _StatCard(label: 'En proceso', value: inProgress, color: AppColors.statusInProgress),
-                    const SizedBox(width: 12),
-                    _StatCard(label: 'Vencen hoy', value: dueToday.length, color: AppColors.statusReview),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                const Text('Vencen hoy', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 12),
-                if (dueToday.isEmpty)
-                  const _EmptyHint(text: 'Nada vence hoy. 🎉')
-                else
-                  ...dueToday.map(
-                    (t) => TaskTile(
-                      task: t,
-                      onTap: () => context.push('/task/${t.id}', extra: t),
-                    ),
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 96),
+                children: [
+                  _Header(
+                    firstName: user?.name.split(' ').first ?? '',
+                    company: auth.session?.activeCompany?.name,
+                    initials: user?.initials ?? '',
                   ),
-              ],
-            );
-          },
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(child: _StatCard(label: 'Pendientes', value: pending)),
+                      const SizedBox(width: 10),
+                      Expanded(child: _StatCard(label: 'En proceso', value: inProgress, emphasis: true)),
+                      const SizedBox(width: 10),
+                      Expanded(child: _StatCard(label: 'Vencen hoy', value: dueToday.length)),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Vencen hoy', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      InkWell(
+                        onTap: () => context.push('/timeline'),
+                        child: Text(
+                          'VER TODO',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                            color: context.colors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (dueToday.isEmpty)
+                    _EmptyHint(text: 'Nada vence hoy 🎉', color: context.colors.textSecondary)
+                  else
+                    ...dueToday.map(
+                      (t) => TaskTile(
+                        task: t,
+                        onTap: () => context.push('/task/${t.id}', extra: t),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.label, required this.value, required this.color});
+/// Header negro redondeado del diseño: marca + estado + avatar + saludo.
+class _Header extends StatelessWidget {
+  const _Header({required this.firstName, required this.company, required this.initials});
 
-  final String label;
-  final int value;
-  final Color color;
+  final String firstName;
+  final String? company;
+  final String initials;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: context.colors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: context.colors.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-            const SizedBox(height: 10),
-            Text('$value', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 2),
-            Text(label, style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 14, 20),
+      decoration: BoxDecoration(
+        color: AppColors.ink,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Wipli',
+                style: TextStyle(color: AppColors.lime, fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(width: 10),
+              const SyncIndicator(),
+              const Spacer(),
+              IconButton(
+                tooltip: 'Línea de tiempo',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.calendar_view_week, color: Colors.white70, size: 22),
+                onPressed: () => context.push('/timeline'),
+              ),
+              const SizedBox(width: 4),
+              UserAvatar(initials: initials, size: 44, primary: true),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Hola, $firstName',
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
+          ),
+          if (company != null && company!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Text(
+                company!.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 11,
+                  letterSpacing: 1.4,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tarjeta de estadística; [emphasis] la invierte a negro (como el diseño).
+class _StatCard extends StatelessWidget {
+  const _StatCard({required this.label, required this.value, this.emphasis = false});
+
+  final String label;
+  final int value;
+  final bool emphasis;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = emphasis ? AppColors.ink : context.colors.surface;
+    final fg = emphasis ? Colors.white : context.colors.textPrimary;
+    final labelColor = emphasis ? Colors.white70 : context.colors.textMuted;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+        border: emphasis ? null : Border.all(color: context.colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: labelColor),
+          ),
+          const SizedBox(height: 10),
+          Text('$value', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: fg)),
+        ],
       ),
     );
   }
 }
 
 class _EmptyHint extends StatelessWidget {
-  const _EmptyHint({required this.text});
+  const _EmptyHint({required this.text, required this.color});
   final String text;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 28),
       alignment: Alignment.center,
-      child: Text(text, style: TextStyle(color: context.colors.textSecondary)),
+      child: Text(text, style: TextStyle(color: color)),
     );
   }
 }

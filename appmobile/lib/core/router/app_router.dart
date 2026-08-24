@@ -11,6 +11,7 @@ import '../../features/auth/splash_screen.dart';
 import '../../features/chat/chat_screen.dart';
 import '../../features/deeplink/deeplink_loaders.dart';
 import '../../features/projects/project_detail_screen.dart';
+import '../../features/reports/reports_screen.dart';
 import '../../features/shell/home_shell.dart';
 import '../../features/tasks/task_detail_screen.dart';
 import '../../features/timeline/timeline_screen.dart';
@@ -47,6 +48,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/home', builder: (_, __) => const HomeShell()),
       GoRoute(path: '/timeline', builder: (_, __) => const TimelineScreen()),
+      GoRoute(path: '/reports', builder: (_, __) => const ReportsScreen()),
       GoRoute(
         path: '/project/:id',
         builder: (context, state) {

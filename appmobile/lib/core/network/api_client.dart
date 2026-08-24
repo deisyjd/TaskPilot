@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../config/app_config.dart';
 import 'api_exception.dart';
@@ -32,11 +33,31 @@ class ApiClient {
           if (bearer != null && bearer.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $bearer';
           }
+          if (kDebugMode) {
+            debugPrint(
+              '[api] → ${options.method} ${options.uri} '
+              'cookie=${options.headers.containsKey('Cookie')} '
+              'bearer=${options.headers.containsKey('Authorization')}',
+            );
+          }
           handler.next(options);
         },
         onResponse: (response, handler) {
+          final hadSetCookie = response.headers.map['set-cookie'] != null;
           _captureSessionCookie(response);
+          if (kDebugMode) {
+            debugPrint(
+              '[api] ← ${response.statusCode} ${response.requestOptions.uri} '
+              'set-cookie=$hadSetCookie captured=${_session.sessionCookie != null}',
+            );
+          }
           handler.next(response);
+        },
+        onError: (e, handler) {
+          if (kDebugMode) {
+            debugPrint('[api] ✕ ${e.type} ${e.requestOptions.uri} :: ${e.message}');
+          }
+          handler.next(e);
         },
       ),
     );
@@ -112,16 +133,20 @@ class ApiClient {
   Future<Response<T>> _guard<T>(Future<Response<T>> Function() run) async {
     try {
       final res = await run();
-      if (res.statusCode == 401) {
-        await onUnauthorized?.call();
-        throw ApiException('Tu sesión expiró. Inicia sesión de nuevo.', statusCode: 401);
-      }
       if (res.statusCode != null && res.statusCode! >= 400) {
         final data = res.data;
-        final msg = data is Map && data['error'] is String
-            ? data['error'] as String
-            : 'Error ${res.statusCode}';
-        throw ApiException(msg, statusCode: res.statusCode);
+        final serverMsg =
+            data is Map && data['error'] is String ? data['error'] as String : null;
+        // Solo tratamos el 401 como "sesión expirada" (limpiar + volver a login)
+        // cuando YA había una sesión. Un 401 del propio login son credenciales
+        // inválidas, no una expiración.
+        if (res.statusCode == 401 && _session.isAuthenticated) {
+          await onUnauthorized?.call();
+        }
+        throw ApiException(
+          serverMsg ?? 'Error ${res.statusCode}',
+          statusCode: res.statusCode,
+        );
       }
       return res;
     } on DioException catch (e) {

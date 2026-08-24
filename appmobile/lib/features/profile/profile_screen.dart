@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_colors.dart';
@@ -63,7 +64,21 @@ class ProfileScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
+                const Text('Configuración', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                ListTile(
+                  onTap: () => context.push('/reports'),
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.bar_chart, color: AppColors.lime),
+                  title: const Text('Reportes'),
+                  subtitle: Text(
+                    'Gráfico de tareas y envío por correo',
+                    style: TextStyle(color: context.colors.textSecondary),
+                  ),
+                  trailing: Icon(Icons.chevron_right, color: context.colors.textMuted),
+                ),
+                const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: () async {
                     final ok = await showDialog<bool>(

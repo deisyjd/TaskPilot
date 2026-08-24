@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../../core/ui/state_views.dart';
 import '../../data/models/task.dart';
 import '../tasks/task_tile.dart';
 import '../tasks/tasks_providers.dart';
@@ -26,25 +27,21 @@ class TimelineScreen extends ConsumerWidget {
     final todayIso = _iso(DateTime(now.year, now.month, now.day));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Línea de tiempo')),
+      appBar: AppBar(backgroundColor: context.colors.background, elevation: 0),
       body: RefreshIndicator(
         color: AppColors.lime,
         onRefresh: () => ref.refresh(companyTasksProvider.future),
         child: async.when(
-          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.lime)),
-          error: (e, _) => ListView(
-            children: [
-              const SizedBox(height: 80),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Text('$e', textAlign: TextAlign.center, style: TextStyle(color: context.colors.textSecondary)),
-              ),
-            ],
-          ),
+          loading: () => const LoadingView(),
+          error: (e, _) => ErrorView(message: '$e', onRetry: () => ref.invalidate(companyTasksProvider)),
           data: (tasks) {
+            final weekIso = days.map(_iso).toSet();
+            final weekCount = tasks.where((t) => weekIso.contains(t.dueDate)).length;
             return ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
               children: [
+                _Summary(count: weekCount),
+                const SizedBox(height: 16),
                 for (var i = 0; i < days.length; i++)
                   _DaySection(
                     label: '${_dayNames[i]} ${days[i].day}',
@@ -55,6 +52,40 @@ class TimelineScreen extends ConsumerWidget {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class _Summary extends StatelessWidget {
+  const _Summary({required this.count});
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(22)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Línea de tiempo',
+                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
+              ),
+              SizedBox(height: 4),
+              Text('Esta semana', style: TextStyle(color: Colors.white54, fontSize: 12)),
+            ],
+          ),
+          Text(
+            '$count',
+            style: const TextStyle(color: AppColors.lime, fontSize: 40, fontWeight: FontWeight.w800),
+          ),
+        ],
       ),
     );
   }

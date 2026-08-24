@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Paleta Wipli. Acento lima (#DFFF5F) + ink (#111318).
+/// Paleta Wipli (adaptada del diseño "Wipli App Mobile"): acento lima
+/// (#DFFF5F), ink casi negro (#0A0A0A) y superficies cálidas.
 ///
 /// Los colores de marca y de estado son iguales en ambos temas y viven en
 /// [AppColors] como `static const`. Las superficies/textos que dependen del
@@ -10,18 +11,21 @@ class AppColors {
 
   // Marca
   static const Color lime = Color(0xFFDFFF5F);
-  static const Color ink = Color(0xFF111318);
+  static const Color ink = Color(0xFF0A0A0A);
+  static const Color limeSoft = Color(0xFFF5FFD6); // fondo lima suave (claro)
+  static const Color limeInk = Color(0xFF5C6B24); // texto lima sobre claro
 
-  // Superficies (tema oscuro)
-  static const Color background = Color(0xFF111318);
-  static const Color surface = Color(0xFF1A1D24);
-  static const Color surfaceAlt = Color(0xFF232733);
-  static const Color border = Color(0xFF2E323D);
+  // Superficies por defecto (tono oscuro; la mayoría de widgets usan
+  // context.colors, esto queda como respaldo/coherencia).
+  static const Color background = Color(0xFF0A0A0A);
+  static const Color surface = Color(0xFF151515);
+  static const Color surfaceAlt = Color(0xFF232323);
+  static const Color border = Color(0xFF2A2A24);
 
   // Texto
-  static const Color textPrimary = Color(0xFFF5F6F8);
-  static const Color textSecondary = Color(0xFF9AA0AD);
-  static const Color textMuted = Color(0xFF6B7280);
+  static const Color textPrimary = Color(0xFFF6F6F2);
+  static const Color textSecondary = Color(0xFF8C8C84);
+  static const Color textMuted = Color(0xFF6B6B64);
 
   // Estados de tarea (espejo de STATUS_DOT_COLORS del web)
   static const Color statusPending = Color(0xFF9CA3AF);
@@ -38,7 +42,7 @@ class AppColors {
   static const Color priorityUrgent = Color(0xFFEF4444);
 
   // Feedback
-  static const Color danger = Color(0xFFEF4444);
+  static const Color danger = Color(0xFFFF8A80); // coral del diseño
   static const Color success = Color(0xFF22C55E);
 }
 
@@ -65,26 +69,26 @@ class WipliColors extends ThemeExtension<WipliColors> {
   final Color textSecondary;
   final Color textMuted;
 
-  /// Paleta oscura (la actual de la marca).
+  /// Paleta oscura (del diseño: negro cálido).
   static const WipliColors dark = WipliColors(
-    background: Color(0xFF111318),
-    surface: Color(0xFF1A1D24),
-    surfaceAlt: Color(0xFF232733),
-    border: Color(0xFF2E323D),
-    textPrimary: Color(0xFFF5F6F8),
-    textSecondary: Color(0xFF9AA0AD),
-    textMuted: Color(0xFF6B7280),
+    background: Color(0xFF0A0A0A),
+    surface: Color(0xFF151515),
+    surfaceAlt: Color(0xFF232323),
+    border: Color(0xFF2A2A24),
+    textPrimary: Color(0xFFF6F6F2),
+    textSecondary: Color(0xFF8C8C84),
+    textMuted: Color(0xFF6B6B64),
   );
 
-  /// Paleta clara.
+  /// Paleta clara (del diseño: off-white cálido).
   static const WipliColors light = WipliColors(
-    background: Color(0xFFF7F8FA),
+    background: Color(0xFFF6F6F2),
     surface: Color(0xFFFFFFFF),
-    surfaceAlt: Color(0xFFEEF1F5),
-    border: Color(0xFFE2E6EC),
-    textPrimary: Color(0xFF14161A),
-    textSecondary: Color(0xFF5B616E),
-    textMuted: Color(0xFF9AA0AD),
+    surfaceAlt: Color(0xFFF0F0EA),
+    border: Color(0xFFE6E6E0),
+    textPrimary: Color(0xFF0A0A0A),
+    textSecondary: Color(0xFF6B6B64),
+    textMuted: Color(0xFF8C8C84),
   );
 
   @override
