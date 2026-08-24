@@ -7,6 +7,7 @@ export async function register() {
 
   const cron = await import('node-cron')
   const { runDailyDigestJob } = await import('@/lib/dailyDigest')
+  const { runRecurrenceGenerationJob } = await import('@/lib/recurrenceJob')
 
   cron.schedule(
     '0 7 * * 1-5',
@@ -19,6 +20,22 @@ export async function register() {
   )
 
   console.log('[daily-digest] cron registrado: lun-vie 7:00 a.m. hora Colombia')
+
+  // Generación de ocurrencias de recurrencia: antes corría en cada GET de
+  // tareas/recordatorios (escrituras en el path de lectura). Ahora es un job
+  // diario. Corre a las 6:00 a.m. — antes del digest, para que el resumen ya
+  // vea las ocurrencias del día.
+  cron.schedule(
+    '0 6 * * *',
+    () => {
+      runRecurrenceGenerationJob().catch((err) => {
+        console.error('[recurrence] error en el job programado:', err)
+      })
+    },
+    { timezone: 'America/Bogota' }
+  )
+
+  console.log('[recurrence] cron registrado: diario 6:00 a.m. hora Colombia')
 
   // Chequeo de Redis al arranque: deja claro en los logs si quedó conectado o
   // si la app está degradando (sondeo del chat + sin caché). No bloquea el

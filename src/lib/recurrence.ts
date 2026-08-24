@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 
 const MAX_GENERATED_PER_TEMPLATE = 120
@@ -43,12 +44,13 @@ function shiftDate(dateStr: string, days: number): string {
  * diciembre" series shows the whole calendar right away instead of one
  * task appearing at a time as the weeks go by.
  *
- * There is no cron/worker in this app — GET /api/tasks (and task
- * creation) are the reliable hooks that fire on every real page load,
- * so generation happens here instead. Series with no `recurrenceUntil`
- * only pre-generate 3 months ahead, to avoid an unbounded series from
- * writing rows forever; `MAX_GENERATED_PER_TEMPLATE` is a hard backstop
- * on top of that.
+ * Generation runs from a daily cron (src/lib/recurrenceJob.ts, registered
+ * in src/instrumentation.ts) and, for immediate feedback, once via `after()`
+ * right after creating a recurring task/reminder — never on the GET read path
+ * anymore (que convertía cada lectura en escrituras bajo concurrencia). Series
+ * with no `recurrenceUntil` only pre-generate 3 months ahead, to avoid an
+ * unbounded series from writing rows forever; `MAX_GENERATED_PER_TEMPLATE` is
+ * a hard backstop on top of that.
  */
 export async function generateDueRecurrences(companyId: string) {
   const today = todayStr()
@@ -92,24 +94,31 @@ export async function generateDueRecurrences(companyId: string) {
       if (nextDate > horizon) break
 
       if (!existingDates.has(nextDate)) {
-        await prisma.task.create({
-          data: {
-            companyId: template.companyId,
-            projectId: template.projectId,
-            title: template.title,
-            description: template.description,
-            status: 'pending',
-            startDate: durationDays !== null ? shiftDate(nextDate, -durationDays) : null,
-            dueDate: nextDate,
-            priority: template.priority,
-            type: template.type,
-            tags: template.tags ?? '[]',
-            parentTaskId: template.id,
-            assignees: template.assignees.length
-              ? { createMany: { data: template.assignees.map((a) => ({ userId: a.userId, role: a.role })) } }
-              : undefined,
-          },
-        })
+        try {
+          await prisma.task.create({
+            data: {
+              companyId: template.companyId,
+              projectId: template.projectId,
+              title: template.title,
+              description: template.description,
+              status: 'pending',
+              startDate: durationDays !== null ? shiftDate(nextDate, -durationDays) : null,
+              dueDate: nextDate,
+              priority: template.priority,
+              type: template.type,
+              tags: template.tags ?? '[]',
+              parentTaskId: template.id,
+              assignees: template.assignees.length
+                ? { createMany: { data: template.assignees.map((a) => ({ userId: a.userId, role: a.role })) } }
+                : undefined,
+            },
+          })
+        } catch (err) {
+          // P2002 = otra generación concurrente (cron/after) ya creó esta
+          // ocurrencia (mismo parentTaskId + dueDate). Se ignora: el índice
+          // único garantiza que no haya duplicados.
+          if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')) throw err
+        }
       }
 
       lastDueDate = nextDate

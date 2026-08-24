@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import { isProjectViewerServer } from '@/lib/projectAccess'
@@ -22,7 +22,8 @@ export async function GET() {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  await generateDueReminderRecurrences(session.activeCompanyId)
+  // La generación de ocurrencias recurrentes ya NO corre aquí: ahora es un
+  // cron diario (src/lib/recurrenceJob.ts). El GET es solo-lectura.
 
   const reminders = await prisma.reminder.findMany({
     where: { companyId: session.activeCompanyId, ...reminderVisibilityFilter(session) },
@@ -77,10 +78,14 @@ export async function POST(req: NextRequest) {
     include: { project: { select: { name: true, color: true } } },
   })
 
-  // Si es recurrente, generar de una vez la siguiente ocurrencia en vez de
-  // esperar a la próxima carga de la lista.
+  // Si es recurrente, generar sus ocurrencias sin bloquear la respuesta
+  // (after) — para que aparezcan pronto sin esperar al cron diario.
   if (hasRecurrence) {
-    await generateDueReminderRecurrences(session.activeCompanyId)
+    after(() =>
+      generateDueReminderRecurrences(session.activeCompanyId).catch((err) =>
+        console.error('[recurrence] error generando ocurrencias tras crear recordatorio:', err)
+      )
+    )
   }
 
   return NextResponse.json(serializeReminder(reminder), { status: 201 })

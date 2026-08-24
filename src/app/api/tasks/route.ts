@@ -51,7 +51,8 @@ export async function GET(req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  await generateDueRecurrences(session.activeCompanyId)
+  // La generación de ocurrencias recurrentes ya NO corre aquí: ahora es un
+  // cron diario (src/lib/recurrenceJob.ts). El GET es solo-lectura.
 
   // Filtros del lado del servidor (no traer todo para filtrar en memoria).
   // Se combinan (AND) con el filtro de visibilidad del usuario.
@@ -157,10 +158,14 @@ export async function POST(req: NextRequest) {
     user: authorName,
   })
 
-  // Si es una tarea recurrente, generar de una vez la siguiente ocurrencia
-  // en vez de esperar a la próxima carga de la lista.
+  // Si es una tarea recurrente, generar sus ocurrencias sin bloquear la
+  // respuesta (after) — para que aparezcan pronto sin esperar al cron diario.
   if (hasRecurrence) {
-    await generateDueRecurrences(session.activeCompanyId)
+    after(() =>
+      generateDueRecurrences(session.activeCompanyId).catch((err) =>
+        console.error('[recurrence] error generando ocurrencias tras crear tarea:', err)
+      )
+    )
   }
 
   for (const userId of validIds) {

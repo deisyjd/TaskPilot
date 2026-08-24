@@ -220,7 +220,16 @@ model Task {
   comments  Comment[]
   assignees TaskAssignee[]
 
+  // Unicidad de ocurrencias de recurrencia: dos generaciones concurrentes no
+  // pueden crear la misma ocurrencia (mismo parentTaskId + dueDate). Las
+  // plantillas (parentTaskId = null) no chocan: Postgres trata cada NULL como
+  // distinto en un índice único.
+  @@unique([parentTaskId, dueDate])
   @@index([companyId])
+  // El listado principal filtra por companyId y ordena por createdAt / filtra
+  // por status: estos compuestos evitan seq-scan + sort en memoria.
+  @@index([companyId, status])
+  @@index([companyId, createdAt])
   @@index([projectId])
   @@index([parentTaskId])
   @@map("tasks")
@@ -251,6 +260,10 @@ model ChecklistItem {
   assigneeId String?
   assignee   User?   @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
 
+  // Se leen/borran por taskId en cada GET del listado (include) — sin índice
+  // era un seq-scan por cada tarea. assigneeId se indexa por el onDelete.
+  @@index([taskId])
+  @@index([assigneeId])
   @@map("checklist_items")
 }
 
@@ -262,6 +275,9 @@ model Comment {
   text      String   @db.Text
   createdAt DateTime @default(now())
 
+  // Se leen por taskId en cada GET del listado (include) — sin índice era un
+  // seq-scan por cada tarea.
+  @@index([taskId])
   @@map("comments")
 }
 
@@ -278,7 +294,9 @@ model HistoryEvent {
   timestamp   DateTime @default(now())
   meta        Json?
 
-  @@index([companyId])
+  // El historial se filtra por companyId y ordena por timestamp desc: el
+  // compuesto sirve ambos (supera al índice simple de companyId).
+  @@index([companyId, timestamp])
   @@map("history_events")
 }
 
@@ -326,7 +344,9 @@ model Message {
   links          Json?
   createdAt      DateTime     @default(now())
 
-  @@index([conversationId])
+  // El historial de una conversación se ordena por createdAt: el compuesto
+  // sirve tanto el filtro por conversationId como el orden (supera al simple).
+  @@index([conversationId, createdAt])
   @@map("messages")
 }
 
@@ -411,7 +431,11 @@ model Reminder {
   parentReminder     Reminder?  @relation("ReminderRecurrence", fields: [parentReminderId], references: [id], onDelete: SetNull)
   occurrences        Reminder[] @relation("ReminderRecurrence")
 
+  // Mismo blindaje de recurrencia que Task: ocurrencias únicas por
+  // (parentReminderId, dueDate). El listado ordena por dueDate.
+  @@unique([parentReminderId, dueDate])
   @@index([companyId])
+  @@index([companyId, dueDate])
   @@index([projectId])
   @@index([parentReminderId])
   @@map("reminders")

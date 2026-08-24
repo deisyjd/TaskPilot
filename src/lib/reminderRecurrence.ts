@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 
 const MAX_GENERATED_PER_TEMPLATE = 120
@@ -28,10 +29,10 @@ function todayStr(): string {
 }
 
 /**
- * Igual patrón que la recurrencia de tareas (src/lib/recurrence.ts): no hay
- * cron en esta app, así que GET /api/reminders (y la creación de un
- * recordatorio recurrente) son los puntos donde se generan las próximas
- * ocurrencias, hasta `recurrenceUntil` o 3 meses/años por defecto si no
+ * Igual patrón que la recurrencia de tareas (src/lib/recurrence.ts): la
+ * generación corre en un cron diario (src/lib/recurrenceJob.ts) y una vez vía
+ * `after()` al crear un recordatorio recurrente, nunca en el GET. Se generan
+ * las ocurrencias hasta `recurrenceUntil` o 3 meses/años por defecto si no
  * tiene fecha límite.
  */
 export async function generateDueReminderRecurrences(companyId: string) {
@@ -67,18 +68,24 @@ export async function generateDueReminderRecurrences(companyId: string) {
       if (nextDate > horizon) break
 
       if (!existingDates.has(nextDate)) {
-        await prisma.reminder.create({
-          data: {
-            companyId: template.companyId,
-            projectId: template.projectId,
-            title: template.title,
-            dueDate: nextDate,
-            dueTime: template.dueTime,
-            assigneeId: template.assigneeId,
-            createdBy: template.createdBy,
-            parentReminderId: template.id,
-          },
-        })
+        try {
+          await prisma.reminder.create({
+            data: {
+              companyId: template.companyId,
+              projectId: template.projectId,
+              title: template.title,
+              dueDate: nextDate,
+              dueTime: template.dueTime,
+              assigneeId: template.assigneeId,
+              createdBy: template.createdBy,
+              parentReminderId: template.id,
+            },
+          })
+        } catch (err) {
+          // P2002 = otra generación concurrente ya creó esta ocurrencia
+          // (mismo parentReminderId + dueDate). Se ignora.
+          if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')) throw err
+        }
       }
 
       lastDueDate = nextDate
