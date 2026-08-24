@@ -75,7 +75,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tarea'),
+        backgroundColor: context.colors.background,
+        elevation: 0,
         actions: [
           IconButton(
             tooltip: 'Editar',
@@ -85,21 +86,30 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 28),
         children: [
-          Text(
-            task.title,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _Chip(label: task.status.label, color: task.status.dotColor),
-              _Chip(label: task.priority.label, color: task.priority.color),
-              _Chip(label: task.type.label, color: context.colors.textMuted),
-            ],
+          Container(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+            decoration: BoxDecoration(color: AppColors.ink, borderRadius: BorderRadius.circular(22)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task.title,
+                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _DarkPill(label: task.status.label, filled: true),
+                    _DarkPill(label: task.priority.label),
+                    _DarkPill(label: task.type.label),
+                  ],
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           _MetaRow(icon: Icons.event, label: 'Vence', value: task.dueDate),
@@ -195,26 +205,28 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
   }
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.color});
+/// Pill para el header negro: [filled] en lima (estado), si no outline claro.
+class _DarkPill extends StatelessWidget {
+  const _DarkPill({required this.label, this.filled = false});
   final String label;
-  final Color color;
+  final bool filled;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
+        color: filled ? AppColors.lime : Colors.transparent,
+        borderRadius: BorderRadius.circular(99),
+        border: filled ? null : Border.all(color: Colors.white24),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-          const SizedBox(width: 6),
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-        ],
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w700,
+          color: filled ? AppColors.ink : Colors.white70,
+        ),
       ),
     );
   }
