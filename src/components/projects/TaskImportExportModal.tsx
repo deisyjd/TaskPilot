@@ -5,6 +5,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useTaskStore } from '@/store/useTaskStore'
 import { Task, User, TaskStatus, Priority, STATUS_LABELS, PRIORITY_LABELS } from '@/types'
 import { parseCsv, toCsv, downloadCsv } from '@/lib/csv'
+import { htmlToPlainPreview } from '@/lib/richText'
 import { Download, Upload, FileSpreadsheet } from 'lucide-react'
 
 interface Props {
@@ -84,7 +85,7 @@ export function TaskImportExportModal({ open, onClose, projectId, projectName, t
       HEADER,
       ...filtered.map((t) => [
         t.title,
-        t.description ?? '',
+        htmlToPlainPreview(t.description ?? '', 5000),
         STATUS_LABELS[t.status] ?? t.status,
         PRIORITY_LABELS[t.priority] ?? t.priority,
         t.dueDate ?? '',

@@ -40,6 +40,7 @@ export interface ChecklistItem {
   text: string
   done: boolean
   dueDate?: string | null
+  dueTime?: string | null
   assigneeId?: string | null
 }
 
@@ -82,6 +83,7 @@ export interface Task {
   viewerAssigneeIds?: string[]
   startDate?: string | null
   dueDate: string
+  dueTime?: string | null
   priority: Priority
   type: TaskType
   tags: string[]

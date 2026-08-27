@@ -29,6 +29,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
       status: 'pending',
       startDate: original.startDate,
       dueDate: original.dueDate,
+      dueTime: original.dueTime,
       priority: original.priority,
       type: original.type,
       tags: original.tags ?? '[]',
@@ -38,7 +39,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
       // La duplicada no hereda comentarios ni recurrencia — empieza como
       // una tarea normal e independiente.
       checklist: original.checklist.length
-        ? { create: original.checklist.map((c) => ({ text: c.text, done: false, dueDate: c.dueDate })) }
+        ? { create: original.checklist.map((c) => ({ text: c.text, done: false, dueDate: c.dueDate, dueTime: c.dueTime })) }
         : undefined,
       assignees: original.assignees.length
         ? { createMany: { data: original.assignees.map((a) => ({ userId: a.userId, role: a.role })) } }

@@ -74,7 +74,7 @@ function toReferenceLinks(rawLinks: unknown, createdBy: string): Record<string, 
 interface TaskShape {
   id: string
   assigneeIds?: string[]
-  checklist?: { text: string; done: boolean; dueDate?: string | null; assigneeId?: string | null }[]
+  checklist?: { text: string; done: boolean; dueDate?: string | null; dueTime?: string | null; assigneeId?: string | null }[]
   [k: string]: unknown
 }
 
@@ -210,6 +210,7 @@ export const TOOLS: McpTool[] = [
         priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: 'Prioridad (por defecto medium).' },
         startDate: str('Fecha de inicio ISO (YYYY-MM-DD), opcional.'),
         dueDate: str('Fecha límite ISO (YYYY-MM-DD), opcional.'),
+        dueTime: str('Hora límite (HH:MM), opcional.'),
         assigneeIds: strArr('IDs de responsables (usa list_users), opcional.'),
         links: linkArr('Enlaces de referencia a agregar a la tarea, opcional.'),
       },
@@ -234,6 +235,7 @@ export const TOOLS: McpTool[] = [
           startDate: (args.startDate as string) || null,
           // dueDate es String no nulo en el modelo: si no se da, usa hoy.
           dueDate: (args.dueDate as string) || new Date().toISOString().slice(0, 10),
+          dueTime: (args.dueTime as string) || null,
           tags: [],
           assigneeIds: Array.isArray(args.assigneeIds) ? args.assigneeIds : [],
           links,
@@ -253,13 +255,14 @@ export const TOOLS: McpTool[] = [
         priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: 'Nueva prioridad (opcional).' },
         startDate: str('Nueva fecha de inicio ISO (opcional). Usa cadena vacía para quitarla.'),
         dueDate: str('Nueva fecha límite ISO (opcional).'),
+        dueTime: str('Nueva hora límite (HH:MM), opcional. Usa cadena vacía para quitarla.'),
         links: linkArr('Enlaces de referencia a agregar a la tarea (se suman a los que ya tiene), opcional.'),
       },
       ['taskId']
     ),
     handler: async (args, ctx) => {
       const patch: Record<string, unknown> = {}
-      for (const k of ['title', 'description', 'status', 'priority', 'startDate', 'dueDate']) {
+      for (const k of ['title', 'description', 'status', 'priority', 'startDate', 'dueDate', 'dueTime']) {
         if (args[k] !== undefined) patch[k] = args[k]
       }
       if (Array.isArray(args.links) && args.links.length > 0) {
@@ -346,6 +349,7 @@ export const TOOLS: McpTool[] = [
         taskId: str('ID de la tarea.'),
         text: str('Texto del ítem.'),
         dueDate: str('Fecha límite del ítem (YYYY-MM-DD), opcional.'),
+        dueTime: str('Hora límite del ítem (HH:MM), opcional.'),
         assignee: str('Responsable del ítem por nombre o correo (debe ser responsable de la tarea), opcional.'),
         assigneeId: str('Responsable del ítem por ID (usa list_users), opcional — alternativa a assignee.'),
       },
@@ -354,8 +358,8 @@ export const TOOLS: McpTool[] = [
     handler: async (args, ctx) => {
       const task = await getTask(args.taskId as string, ctx)
       const assigneeId = (await resolveChecklistAssignee(args, task, ctx)) ?? null
-      const existing = (task.checklist ?? []).map((c) => ({ text: c.text, done: c.done, dueDate: c.dueDate ?? null, assigneeId: c.assigneeId ?? null }))
-      const checklist = [...existing, { text: args.text as string, done: false, dueDate: (args.dueDate as string) || null, assigneeId }]
+      const existing = (task.checklist ?? []).map((c) => ({ text: c.text, done: c.done, dueDate: c.dueDate ?? null, dueTime: c.dueTime ?? null, assigneeId: c.assigneeId ?? null }))
+      const checklist = [...existing, { text: args.text as string, done: false, dueDate: (args.dueDate as string) || null, dueTime: (args.dueTime as string) || null, assigneeId }]
       return ctx.api(`/api/tasks/${args.taskId as string}`, { method: 'PATCH', body: JSON.stringify({ checklist }) })
     },
   },
@@ -379,6 +383,7 @@ export const TOOLS: McpTool[] = [
         text: str('Texto del ítem del checklist a modificar.'),
         done: { type: 'boolean', description: 'true para marcar como hecho (por defecto), false para desmarcar.' },
         dueDate: str('Nueva fecha límite del ítem (YYYY-MM-DD). Usa cadena vacía para quitarla. Opcional.'),
+        dueTime: str('Nueva hora límite del ítem (HH:MM). Usa cadena vacía para quitarla. Opcional.'),
         assignee: str('Nuevo responsable del ítem por nombre o correo. Usa cadena vacía para quitarlo. Opcional.'),
         assigneeId: str('Nuevo responsable del ítem por ID (usa list_users), opcional — alternativa a assignee.'),
       },
@@ -396,6 +401,7 @@ export const TOOLS: McpTool[] = [
         text: c.text,
         done: i === idx ? done : c.done,
         dueDate: i === idx && args.dueDate !== undefined ? (args.dueDate as string) || null : c.dueDate ?? null,
+        dueTime: i === idx && args.dueTime !== undefined ? (args.dueTime as string) || null : c.dueTime ?? null,
         assigneeId: i === idx && newAssigneeId !== undefined ? newAssigneeId : c.assigneeId ?? null,
       }))
       return ctx.api(`/api/tasks/${args.taskId as string}`, { method: 'PATCH', body: JSON.stringify({ checklist }) })

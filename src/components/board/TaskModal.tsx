@@ -7,7 +7,7 @@ import {
 } from '@/types'
 import { useTaskStore } from '@/store/useTaskStore'
 import { useUserStore, useCurrentUser } from '@/store/useUserStore'
-import { formatDateTime, formatDateOnly, formatDate, isOverdue } from '@/lib/dates'
+import { formatDateTime, formatDateOnly, formatDateWithTime, isOverdue } from '@/lib/dates'
 import { canEditTask } from '@/lib/permissions'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -17,6 +17,8 @@ import { ImageUploader } from '@/components/shared/ImageUploader'
 import { FileUploader } from '@/components/shared/FileUploader'
 import { FilePreviewModal } from '@/components/shared/FilePreviewModal'
 import { ReferenceLinks } from '@/components/shared/ReferenceLinks'
+import { RichTextEditor } from '@/components/projects/RichTextEditor'
+import { toEditableHtml } from '@/lib/richText'
 import { Attachment, ReferenceLink } from '@/types'
 
 const STATUSES = Object.entries(STATUS_LABELS) as [TaskStatus, string][]
@@ -45,11 +47,17 @@ function emptyTask(status: TaskStatus = 'pending', projectId = '', assigneeIds: 
   const now = new Date().toISOString()
   return {
     id: `t-${uid()}`, title: '', projectId, description: '', status,
-    assigneeIds, startDate: null, dueDate: dueDate || formatDateOnly(new Date()),
+    assigneeIds, startDate: null, dueDate: dueDate || formatDateOnly(new Date()), dueTime: null,
     priority: 'medium', type: 'other', tags: [], checklist: [], comments: [],
     createdAt: now, updatedAt: now,
     recurrence: null, recurrenceInterval: null, recurrenceUntil: null,
   }
+}
+
+// Las descripciones viejas se guardaron como texto plano — toEditableHtml las
+// envuelve en HTML equivalente para que el editor visual las muestre bien.
+function withEditableDescription(task: Task): Task {
+  return { ...task, description: toEditableHtml(task.description) }
 }
 
 interface Props {
@@ -116,7 +124,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
 
   const defaultAssigneeIds = users[0] ? [users[0].id] : []
   const resolvedDefaultProject = defaultProject ?? projects[0]?.id ?? ''
-  const [form, setForm] = useState<Task>(task ?? emptyTask(defaultStatus, resolvedDefaultProject, defaultAssigneeIds, defaultDueDate))
+  const [form, setForm] = useState<Task>(task ? withEditableDescription(task) : emptyTask(defaultStatus, resolvedDefaultProject, defaultAssigneeIds, defaultDueDate))
   const [tagInput, setTagInput] = useState('')
   const [checkInput, setCheckInput] = useState('')
   const [commentInput, setCommentInput] = useState('')
@@ -128,7 +136,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setForm(task ?? emptyTask(defaultStatus, resolvedDefaultProject, defaultAssigneeIds, defaultDueDate))
+    setForm(task ? withEditableDescription(task) : emptyTask(defaultStatus, resolvedDefaultProject, defaultAssigneeIds, defaultDueDate))
     setTagInput(''); setCheckInput(''); setCommentInput('')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task, defaultStatus, resolvedDefaultProject, defaultDueDate, open])
@@ -153,7 +161,7 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
 
   const addChecklist = () => {
     if (!checkInput.trim()) return
-    setField('checklist', [...form.checklist, { id: uid(), text: checkInput.trim(), done: false, dueDate: null, assigneeId: null }])
+    setField('checklist', [...form.checklist, { id: uid(), text: checkInput.trim(), done: false, dueDate: null, dueTime: null, assigneeId: null }])
     setCheckInput('')
   }
   const toggleChecklist = (id: string) =>
@@ -163,7 +171,9 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
   const tagChecklist = (id: string, assigneeId: string | null) =>
     setField('checklist', form.checklist.map((c) => (c.id === id ? { ...c, assigneeId } : c)))
   const setChecklistDate = (id: string, dueDate: string) =>
-    setField('checklist', form.checklist.map((c) => (c.id === id ? { ...c, dueDate: dueDate || null } : c)))
+    setField('checklist', form.checklist.map((c) => (c.id === id ? { ...c, dueDate: dueDate || null, dueTime: dueDate ? c.dueTime : null } : c)))
+  const setChecklistTime = (id: string, dueTime: string) =>
+    setField('checklist', form.checklist.map((c) => (c.id === id ? { ...c, dueTime: dueTime || null } : c)))
   const editChecklistText = (id: string, text: string) =>
     setField('checklist', form.checklist.map((c) => (c.id === id ? { ...c, text } : c)))
   const startEditChecklist = (id: string, text: string) => {
@@ -303,23 +313,25 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
             {/* Description */}
             <div>
               <FieldLabel>Descripción</FieldLabel>
-              <textarea
-                value={form.description}
-                onChange={(e) => setField('description', e.target.value)}
-                placeholder="Agrega contexto, notas o instrucciones sobre esta tarea..."
-                readOnly={readOnly}
-                rows={4}
-                className="resize-none w-full text-sm outline-none"
+              <div
+                className="resize-y overflow-auto flex flex-col w-full"
                 style={{
+                  height: '180px',
+                  minHeight: '120px',
+                  maxHeight: '70vh',
                   borderRadius: '12px',
                   border: '1px solid var(--tp-border)',
                   backgroundColor: 'var(--tp-bg)',
-                  color: 'var(--tp-text)',
-                  fontSize: '13px',
-                  padding: '12px 14px',
-                  lineHeight: '1.6',
+                  padding: '8px 10px',
                 }}
-              />
+              >
+                <RichTextEditor
+                  content={form.description}
+                  editable={!readOnly}
+                  onChange={(html) => setField('description', html)}
+                  placeholder="Agrega contexto, notas o instrucciones sobre esta tarea..."
+                />
+              </div>
             </div>
 
             {/* Checklist */}
@@ -397,23 +409,40 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
                               className="text-xs shrink-0"
                               style={{ color: !item.done && isOverdue(item.dueDate, item.done ? 'done' : 'pending') ? '#DC2626' : 'var(--tp-text-2)' }}
                             >
-                              {formatDate(item.dueDate)}
+                              {formatDateWithTime(item.dueDate, item.dueTime)}
                             </span>
                           )
                         ) : (
-                          <input
-                            type="date"
-                            value={item.dueDate ?? ''}
-                            onChange={(e) => setChecklistDate(item.id, e.target.value)}
-                            title="Fecha límite del ítem"
-                            className="text-xs rounded-full px-2 py-1 border outline-none shrink-0"
-                            style={{
-                              borderColor: 'var(--tp-border)',
-                              backgroundColor: 'var(--tp-bg)',
-                              color: item.dueDate && !item.done && isOverdue(item.dueDate, 'pending') ? '#DC2626' : 'var(--tp-text-2)',
-                              width: '120px',
-                            }}
-                          />
+                          <>
+                            <input
+                              type="date"
+                              value={item.dueDate ?? ''}
+                              onChange={(e) => setChecklistDate(item.id, e.target.value)}
+                              title="Fecha límite del ítem"
+                              className="text-xs rounded-full px-2 py-1 border outline-none shrink-0"
+                              style={{
+                                borderColor: 'var(--tp-border)',
+                                backgroundColor: 'var(--tp-bg)',
+                                color: item.dueDate && !item.done && isOverdue(item.dueDate, 'pending') ? '#DC2626' : 'var(--tp-text-2)',
+                                width: '120px',
+                              }}
+                            />
+                            {item.dueDate && (
+                              <input
+                                type="time"
+                                value={item.dueTime ?? ''}
+                                onChange={(e) => setChecklistTime(item.id, e.target.value)}
+                                title="Hora límite del ítem"
+                                className="text-xs rounded-full px-2 py-1 border outline-none shrink-0"
+                                style={{
+                                  borderColor: 'var(--tp-border)',
+                                  backgroundColor: 'var(--tp-bg)',
+                                  color: 'var(--tp-text-2)',
+                                  width: '90px',
+                                }}
+                              />
+                            )}
+                          </>
                         )}
                         <select
                           value={item.assigneeId ?? ''}
@@ -702,13 +731,23 @@ export function TaskModal({ task, defaultStatus = 'pending', defaultProject, def
             {/* Due date */}
             <div>
               <FieldLabel>Fecha límite</FieldLabel>
-              <input
-                type="date"
-                value={form.dueDate}
-                onChange={(e) => setField('dueDate', e.target.value)}
-                disabled={readOnly}
-                style={{ ...fieldInput, backgroundColor: 'var(--tp-surface)' }}
-              />
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={form.dueDate}
+                  onChange={(e) => setField('dueDate', e.target.value)}
+                  disabled={readOnly}
+                  style={{ ...fieldInput, backgroundColor: 'var(--tp-surface)', flex: 1 }}
+                />
+                <input
+                  type="time"
+                  value={form.dueTime ?? ''}
+                  onChange={(e) => setField('dueTime', e.target.value || null)}
+                  disabled={readOnly}
+                  title="Hora límite (opcional)"
+                  style={{ ...fieldInput, backgroundColor: 'var(--tp-surface)', width: '110px' }}
+                />
+              </div>
             </div>
 
             {/* Recurrence — only for new tasks or editing a template (not a generated occurrence) */}

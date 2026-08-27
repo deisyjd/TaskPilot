@@ -6,6 +6,7 @@ import { recordHistoryEvent } from '@/lib/history'
 import { generateDueRecurrences } from '@/lib/recurrence'
 import { isProjectViewerServer } from '@/lib/projectAccess'
 import { notifyTaskAssigned } from '@/lib/taskAssignedNotification'
+import { sanitizeNoteHtml } from '@/lib/richText'
 
 const RECURRENCE_VALUES = ['daily', 'weekly', 'monthly']
 
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const {
-    checklist, comments, projectId, title, description, status, assigneeIds, viewerAssigneeIds, startDate, dueDate, priority, type, tags,
+    checklist, comments, projectId, title, description, status, assigneeIds, viewerAssigneeIds, startDate, dueDate, dueTime, priority, type, tags,
     recurrence, recurrenceInterval, recurrenceUntil, coverImageUrl, attachments, links,
   } = body
 
@@ -106,10 +107,11 @@ export async function POST(req: NextRequest) {
   const task = await prisma.task.create({
     data: {
       title,
-      description,
+      description: sanitizeNoteHtml(description ?? ''),
       status,
       startDate: startDate || null,
       dueDate,
+      dueTime: dueTime || null,
       priority,
       type,
       projectId,
@@ -123,10 +125,11 @@ export async function POST(req: NextRequest) {
       recurrenceUntil: hasRecurrence ? (recurrenceUntil || null) : null,
       checklist: checklist?.length
         ? {
-            create: checklist.map((c: { text: string; done?: boolean; dueDate?: string | null; assigneeId?: string | null }) => ({
+            create: checklist.map((c: { text: string; done?: boolean; dueDate?: string | null; dueTime?: string | null; assigneeId?: string | null }) => ({
               text: c.text,
               done: Boolean(c.done),
               dueDate: c.dueDate || null,
+              dueTime: c.dueTime || null,
               assigneeId: c.assigneeId && validIds.includes(c.assigneeId) ? c.assigneeId : null,
             })),
           }

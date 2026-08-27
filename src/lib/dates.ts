@@ -66,6 +66,17 @@ export function formatRelative(dateStr: string): string {
   return formatDate(dateStr)
 }
 
+// Combina una fecha (YYYY-MM-DD) con una hora opcional (HH:MM) — mismo
+// criterio que formatReminderDateTime en lib/reminders.ts.
+export function formatDateWithTime(dateStr: string, time?: string | null): string {
+  const datePart = formatDate(dateStr)
+  if (!time) return datePart
+  const [hh, mm] = time.split(':').map(Number)
+  const withTime = new Date(2000, 0, 1, hh, mm)
+  const timePart = withTime.toLocaleTimeString('es-ES', { hour: 'numeric', minute: '2-digit' })
+  return `${datePart}, ${timePart}`
+}
+
 export function formatDateTime(dateStr: string): string {
   return parseLocal(dateStr).toLocaleString('es-ES', {
     day: '2-digit',

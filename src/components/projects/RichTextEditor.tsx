@@ -5,7 +5,7 @@ import { useEditor, useEditorState, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Highlight from '@tiptap/extension-highlight'
 import { Placeholder } from '@tiptap/extensions'
-import { Bold, Italic, Strikethrough, Highlighter, Link2, Link2Off } from 'lucide-react'
+import { Bold, Italic, Strikethrough, Highlighter, Link2, Link2Off, List, ListOrdered } from 'lucide-react'
 
 export interface RichTextEditorHandle {
   focus: () => void
@@ -63,6 +63,8 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, Props>(function R
         italic: e.isActive('italic'),
         strike: e.isActive('strike'),
         highlight: e.isActive('highlight'),
+        bulletList: e.isActive('bulletList'),
+        orderedList: e.isActive('orderedList'),
         headingLevel: HEADING_LEVELS.find((l) => e.isActive('heading', { level: l })) ?? 0,
         linkHref: (e.getAttributes('link').href as string | undefined) ?? '',
       }
@@ -123,6 +125,12 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, Props>(function R
           </ToolbarButton>
           <ToolbarButton active={state?.highlight} label="Resaltar" onClick={() => editor.chain().focus().toggleHighlight().run()}>
             <Highlighter className="w-3.5 h-3.5" />
+          </ToolbarButton>
+          <ToolbarButton active={state?.bulletList} label="Lista" onClick={() => editor.chain().focus().toggleBulletList().run()}>
+            <List className="w-3.5 h-3.5" />
+          </ToolbarButton>
+          <ToolbarButton active={state?.orderedList} label="Lista numerada" onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+            <ListOrdered className="w-3.5 h-3.5" />
           </ToolbarButton>
           <ToolbarButton active={Boolean(state?.linkHref) || linkPopoverOpen} label="Enlace" onClick={openLinkPopover}>
             <Link2 className="w-3.5 h-3.5" />

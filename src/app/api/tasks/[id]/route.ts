@@ -5,6 +5,7 @@ import { recordHistoryEvents } from '@/lib/history'
 import { serializeTask, validAssigneeIds, taskVisibilityFilter, canUserEditTaskServer } from '../route'
 import { notifyTaskAssigned } from '@/lib/taskAssignedNotification'
 import { pickFields } from '@/lib/apiBody'
+import { sanitizeNoteHtml } from '@/lib/richText'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -38,17 +39,20 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const body = await req.json()
 
-  // description/coverImageUrl/startDate son nullables: '' → null para limpiarlos.
+  // description/coverImageUrl/startDate/dueTime son nullables: '' → null para limpiarlos.
   const data = pickFields(
     body,
     [
-      'title', 'description', 'status', 'startDate', 'dueDate', 'priority', 'type', 'projectId', 'tags',
+      'title', 'description', 'status', 'startDate', 'dueDate', 'dueTime', 'priority', 'type', 'projectId', 'tags',
       'recurrence', 'recurrenceInterval', 'recurrenceUntil', 'coverImageUrl', 'attachments', 'links',
     ],
-    ['description', 'coverImageUrl', 'startDate']
+    ['description', 'coverImageUrl', 'startDate', 'dueTime']
   )
 
   if (data.tags) data.tags = JSON.stringify(data.tags)
+  // El HTML de la descripción puede venir de cualquier cliente (no solo del
+  // editor de la app) — se sanea igual que el contenido de las notas.
+  if (typeof data.description === 'string') data.description = sanitizeNoteHtml(data.description)
 
   if (data.projectId) {
     const project = await prisma.project.findUnique({ where: { id: data.projectId as string } })
@@ -99,11 +103,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...(body.checklist.length > 0
         ? [
             prisma.checklistItem.createMany({
-              data: body.checklist.map((c: { text: string; done?: boolean; dueDate?: string | null; assigneeId?: string | null }) => ({
+              data: body.checklist.map((c: { text: string; done?: boolean; dueDate?: string | null; dueTime?: string | null; assigneeId?: string | null }) => ({
                 taskId: id,
                 text: c.text,
                 done: Boolean(c.done),
                 dueDate: c.dueDate || null,
+                dueTime: c.dueTime || null,
                 assigneeId: c.assigneeId && newIds.includes(c.assigneeId) ? c.assigneeId : null,
               })),
             }),

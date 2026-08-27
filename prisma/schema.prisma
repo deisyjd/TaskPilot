@@ -198,6 +198,7 @@ model Task {
   status      String   @default("pending")
   startDate   String?
   dueDate     String
+  dueTime     String?
   priority    String   @default("medium")
   type        String   @default("other")
   tags        Json     @default("[]")
@@ -257,6 +258,7 @@ model ChecklistItem {
   text       String
   done       Boolean @default(false)
   dueDate    String?
+  dueTime    String?
   assigneeId String?
   assignee   User?   @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
 
